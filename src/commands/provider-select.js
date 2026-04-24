@@ -133,7 +133,8 @@ function saveConfig(config) {
 
 async function fetchModels(provider) {
   const p = PROVIDERS[provider]
-  const apiKey = process.env[p.envKey]
+  const config = loadConfig()
+  const apiKey = config?.apiKeys?.[provider] || process.env[p.envKey]
   
   if (!apiKey && !p.isLocal) {
     if (p.defaultModelVerified && p.defaultModel) {
@@ -192,6 +193,43 @@ async function promptForModel(provider) {
   return new Promise(resolve => {
     readline.question(`\n🔧 Enter a model for ${p.label}: `, answer => {
       readline.close()
+      resolve(answer.trim())
+    })
+  })
+}
+
+async function promptForApiKey(provider) {
+  const p = PROVIDERS[provider]
+  if (p.isLocal) {
+    return ''
+  }
+
+  const config = loadConfig()
+  const hasExistingKey = Boolean(config?.apiKeys?.[provider] || process.env[p.envKey])
+  const readline = require('readline').createInterface({
+    input: process.stdin,
+    output: process.stdout,
+  })
+
+  readline.stdoutMuted = false
+  readline._writeToOutput = function _writeToOutput(stringToWrite) {
+    if (readline.stdoutMuted && stringToWrite.trim()) {
+      readline.output.write('*'.repeat(stringToWrite.length))
+      return
+    }
+    readline.output.write(stringToWrite)
+  }
+
+  const prompt = hasExistingKey
+    ? `\n🔑 Enter ${p.envKey} for ${p.label} (leave blank to keep existing): `
+    : `\n🔑 Enter ${p.envKey} for ${p.label}: `
+
+  return new Promise(resolve => {
+    process.stdout.write(prompt)
+    readline.stdoutMuted = true
+    readline.question('', answer => {
+      readline.close()
+      process.stdout.write('\n')
       resolve(answer.trim())
     })
   })
@@ -257,11 +295,26 @@ async function selectProvider() {
       process.exit(1)
     }
   }
+
+  const apiKey = await promptForApiKey(provider)
+  const currentConfig = loadConfig()
+  const hasExistingKey = Boolean(currentConfig?.apiKeys?.[provider] || process.env[PROVIDERS[provider].envKey])
+
+  if (!PROVIDERS[provider].isLocal && !apiKey && !hasExistingKey) {
+    console.log(`❌ No API key provided for ${PROVIDERS[provider].envKey}. Aborting.`)
+    process.exit(1)
+  }
+
+  const apiKeys = {
+    ...(currentConfig?.apiKeys || {}),
+    ...(apiKey ? { [provider]: apiKey } : {})
+  }
   
   const config = { 
     provider, 
     model,
-    providerConfig: PROVIDERS[provider]
+    providerConfig: PROVIDERS[provider],
+    apiKeys
   }
   
   return config

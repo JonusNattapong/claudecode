@@ -2,6 +2,8 @@ import { readFile, writeFile } from 'fs/promises'
 import { join } from 'path'
 import * as React from 'react'
 import { Select } from '../../components/CustomSelect/select.js'
+import TextInput from '../../components/TextInput.js'
+import { Box, Text } from '../../ink.js'
 import type {
   LocalCommandResult,
   LocalJSXCommandCall,
@@ -26,14 +28,36 @@ type ProviderInfo = {
   isLocal?: boolean
   timeout?: number
   supportsStreaming?: boolean
+  supportsToolCalling?: boolean
 }
+
+type ProviderModelInfo = {
+  id: string
+  supportsToolCalling?: boolean
+}
+
+const PROVIDER_KEYS = [
+  'openai',
+  'anthropic',
+  'gemini',
+  'openrouter',
+  'opencode',
+  'cline',
+  'groq',
+  'xai',
+  'mistral',
+  'kilocode',
+  'ollama',
+] as const
+
+type ProviderKey = (typeof PROVIDER_KEYS)[number]
 
 const CONFIG_PATH = join(
   process.env.HOME || process.env.USERPROFILE || '',
   '.claude-code-provider.json',
 )
 
-const PROVIDERS = {
+const PROVIDERS: Record<ProviderKey, ProviderInfo> = {
   openai: {
     label: 'OpenAI',
     envKey: 'OPENAI_API_KEY',
@@ -67,6 +91,7 @@ const PROVIDERS = {
     baseUrl: 'https://openrouter.ai/api/v1',
     modelsUrl: 'https://openrouter.ai/api/v1/models',
     defaultModel: 'openai/gpt-5.4-mini',
+    supportsToolCalling: true,
     note: 'Use model strings like provider/model-name',
   },
   opencode: {
@@ -118,6 +143,7 @@ const PROVIDERS = {
     defaultModel: 'kilo-auto/free',
     defaultModelVerified: true,
     supportsStreaming: true,
+    supportsToolCalling: true,
     note: 'KiloCode AI Gateway',
   },
   ollama: {
@@ -130,12 +156,10 @@ const PROVIDERS = {
     isLocal: true,
     note: 'Local Ollama server',
   },
-} satisfies Record<string, ProviderInfo>
-
-type ProviderKey = keyof typeof PROVIDERS
+}
 
 function isProviderKey(provider: string): provider is ProviderKey {
-  return provider in PROVIDERS
+  return (PROVIDER_KEYS as readonly string[]).includes(provider)
 }
 
 async function loadConfig(): Promise<ProviderConfig | null> {
@@ -160,11 +184,15 @@ function help(): string {
     '  /provider reset',
     '  /provider models <provider>',
     '',
-    `Available providers: ${Object.keys(PROVIDERS).join(', ')}`,
+    `Available providers: ${PROVIDER_KEYS.join(', ')}`,
   ].join('\n')
 }
 
 async function fetchModels(provider: ProviderKey): Promise<string[]> {
+  return (await fetchModelInfos(provider)).map(model => model.id)
+}
+
+async function fetchModelInfos(provider: ProviderKey): Promise<ProviderModelInfo[]> {
   const info = PROVIDERS[provider]
   const headers: Record<string, string> = { 'Content-Type': 'application/json' }
   const config = await loadConfig()
@@ -172,7 +200,12 @@ async function fetchModels(provider: ProviderKey): Promise<string[]> {
 
   if (!apiKey && !info.isLocal) {
     if (info.defaultModelVerified && info.defaultModel) {
-      return [info.defaultModel]
+      return [
+        {
+          id: info.defaultModel,
+          supportsToolCalling: info.supportsToolCalling,
+        },
+      ]
     }
     throw new Error(`missing ${info.envKey}`)
   }
@@ -190,35 +223,89 @@ async function fetchModels(provider: ProviderKey): Promise<string[]> {
     signal: AbortSignal.timeout(30000),
   })
   const data = (await response.json()) as {
-    data?: Array<{ id?: string; name?: string }>
-    models?: Array<{ id?: string; name?: string }>
+    data?: Array<{
+      id?: string
+      name?: string
+      supported_parameters?: string[]
+      capabilities?: { tools?: boolean; tool_calling?: boolean }
+    }>
+    models?: Array<{
+      id?: string
+      name?: string
+      supported_parameters?: string[]
+      capabilities?: { tools?: boolean; tool_calling?: boolean }
+    }>
   }
   const models = data.data ?? data.models ?? []
   const parsed = models
-    .map(model => model.id ?? model.name)
-    .filter((model): model is string => Boolean(model))
+    .map(model => {
+      const id = model.id ?? model.name
+      if (!id) return null
+      return {
+        id,
+        supportsToolCalling: modelSupportsToolCalling(provider, id, model),
+      }
+    })
+    .filter((model): model is ProviderModelInfo => Boolean(model))
 
   if (parsed.length > 0) {
     return parsed
   }
 
   if (info.defaultModelVerified && info.defaultModel) {
-    return [info.defaultModel]
+    return [
+      {
+        id: info.defaultModel,
+        supportsToolCalling: info.supportsToolCalling,
+      },
+    ]
   }
 
   return []
 }
 
+function modelSupportsToolCalling(
+  provider: ProviderKey,
+  model: string,
+  metadata?: {
+    supported_parameters?: string[]
+    capabilities?: { tools?: boolean; tool_calling?: boolean }
+  },
+): boolean | undefined {
+  const normalized = model.toLowerCase()
+  if (provider === 'kilocode' && normalized === 'tencent/hy3-preview:free') {
+    return false
+  }
+
+  const params = metadata?.supported_parameters
+  if (Array.isArray(params)) {
+    return params.includes('tools') || params.includes('tool_choice')
+  }
+
+  if (metadata?.capabilities) {
+    return Boolean(
+      metadata.capabilities.tools || metadata.capabilities.tool_calling,
+    )
+  }
+
+  return PROVIDERS[provider].supportsToolCalling
+}
+
 async function providerList(): Promise<string> {
   const config = await loadConfig()
   const entries = await Promise.all(
-    (Object.keys(PROVIDERS) as ProviderKey[]).map(async provider => {
+    PROVIDER_KEYS.map(async provider => {
       const info = PROVIDERS[provider]
       const hasKey = Boolean(config?.apiKeys?.[provider] || process.env[info.envKey])
 
       try {
-        const models = await fetchModels(provider)
-        const visible = models.slice(0, 12).join('\n    ')
+        const models = await fetchModelInfos(provider)
+        const visible = models
+          .slice(0, 12)
+          .map(model =>
+            `${model.id}${model.supportsToolCalling === false ? ' (no tools)' : ''}`,
+          )
+          .join('\n    ')
         const suffix =
           models.length > 12 ? `\n    ... and ${models.length - 12} more` : ''
 
@@ -384,8 +471,13 @@ async function runProviderCommand(args: string): Promise<LocalCommandResult> {
     }
 
     try {
-      const models = await fetchModels(provider)
-      const visible = models.slice(0, 30).join('\n')
+      const models = await fetchModelInfos(provider)
+      const visible = models
+        .slice(0, 30)
+        .map(model =>
+          `${model.id}${model.supportsToolCalling === false ? ' (no tools)' : ''}`,
+        )
+        .join('\n')
       const suffix =
         models.length > 30 ? `\n... and ${models.length - 30} more` : ''
       return {
@@ -413,6 +505,10 @@ function ProviderPicker({
 }): React.ReactNode {
   const [provider, setProvider] = React.useState<ProviderKey | null>(null)
   const [models, setModels] = React.useState<string[] | null>(null)
+  const [selectedModel, setSelectedModel] = React.useState<string | null>(null)
+  const [apiKeyInput, setApiKeyInput] = React.useState('')
+  const [apiKeyCursorOffset, setApiKeyCursorOffset] = React.useState(0)
+  const [apiKeyError, setApiKeyError] = React.useState<string | null>(null)
   const [error, setError] = React.useState<string | null>(null)
   const [config, setConfig] = React.useState<ProviderConfig | null>(null)
 
@@ -427,9 +523,9 @@ function ProviderPicker({
     setModels(null)
     setError(null)
 
-    void fetchModels(provider)
+    void fetchModelInfos(provider)
       .then(nextModels => {
-        if (!cancelled) setModels(nextModels)
+        if (!cancelled) setModels(nextModels.map(model => model.id))
       })
       .catch(err => {
         if (!cancelled) setError((err as Error).message)
@@ -440,8 +536,38 @@ function ProviderPicker({
     }
   }, [provider])
 
+  async function saveProviderSelection(apiKey?: string) {
+    if (!provider || !selectedModel) return
+
+    const trimmedApiKey = apiKey?.trim()
+    const nextApiKeys = {
+      ...(config?.apiKeys ?? {}),
+      ...(trimmedApiKey ? { [provider]: trimmedApiKey } : {}),
+    }
+
+    await saveConfig({
+      provider,
+      model: selectedModel,
+      providerConfig: PROVIDERS[provider],
+      apiKeys: nextApiKeys,
+    })
+
+    setConfig({
+      provider,
+      model: selectedModel,
+      providerConfig: PROVIDERS[provider],
+      apiKeys: nextApiKeys,
+    })
+
+    onDone(
+      `Set provider to ${provider}\nSet model to ${selectedModel}${
+        trimmedApiKey ? `\nSaved API key for ${provider}` : ''
+      }`,
+    )
+  }
+
   if (!provider) {
-    const options = (Object.keys(PROVIDERS) as ProviderKey[]).map(key => {
+    const options = PROVIDER_KEYS.map(key => {
       const info = PROVIDERS[key]
       return {
         label: `${info.label} (${key})`,
@@ -457,9 +583,69 @@ function ProviderPicker({
     return React.createElement(Select, {
       options,
       visibleOptionCount: 10,
-      onChange: value => setProvider(value as ProviderKey),
+      onChange: value => {
+        setProvider(value as ProviderKey)
+        setSelectedModel(null)
+        setApiKeyInput('')
+        setApiKeyCursorOffset(0)
+        setApiKeyError(null)
+      },
       onCancel: () => onDone('Provider selection cancelled', { display: 'system' }),
     })
+  }
+
+  if (selectedModel) {
+    const info = PROVIDERS[provider]
+    const hasExistingKey = Boolean(config?.apiKeys?.[provider] || process.env[info.envKey])
+
+    return React.createElement(
+      Box,
+      { flexDirection: 'column' },
+      React.createElement(
+        Text,
+        null,
+        `API key for ${info.label} (${info.envKey})`,
+      ),
+      hasExistingKey
+        ? React.createElement(
+            Text,
+            { dimColor: true },
+            'Press Enter without typing to keep the existing key.',
+          )
+        : null,
+      apiKeyError
+        ? React.createElement(Text, { color: 'error' }, apiKeyError)
+        : null,
+      React.createElement(TextInput, {
+        value: apiKeyInput,
+        onChange: value => {
+          setApiKeyInput(value)
+          setApiKeyError(null)
+        },
+        onSubmit: async value => {
+          const trimmed = value.trim()
+          if (!trimmed && !hasExistingKey) {
+            setApiKeyError(`Enter ${info.envKey} or cancel to go back.`)
+            return
+          }
+
+          await saveProviderSelection(trimmed || undefined)
+        },
+        onExit: () => {
+          setSelectedModel(null)
+          setApiKeyInput('')
+          setApiKeyCursorOffset(0)
+          setApiKeyError(null)
+        },
+        placeholder: `Paste ${info.envKey}`,
+        mask: '*',
+        focus: true,
+        showCursor: true,
+        columns: 80,
+        cursorOffset: apiKeyCursorOffset,
+        onChangeCursorOffset: setApiKeyCursorOffset,
+      }),
+    )
   }
 
   if (error) {
@@ -497,13 +683,21 @@ function ProviderPicker({
     visibleOptionCount: 12,
     onChange: async value => {
       const model = String(value)
-      await saveConfig({
-        provider,
-        model,
-        providerConfig: PROVIDERS[provider],
-        apiKeys: config?.apiKeys,
-      })
-      onDone(`Set provider to ${provider}\nSet model to ${model}`)
+      if (PROVIDERS[provider].isLocal) {
+        await saveConfig({
+          provider,
+          model,
+          providerConfig: PROVIDERS[provider],
+          apiKeys: config?.apiKeys,
+        })
+        onDone(`Set provider to ${provider}\nSet model to ${model}`)
+        return
+      }
+
+      setSelectedModel(model)
+      setApiKeyInput('')
+      setApiKeyCursorOffset(0)
+      setApiKeyError(null)
     },
     onCancel: () => setProvider(null),
   })

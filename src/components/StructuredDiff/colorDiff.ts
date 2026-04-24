@@ -23,15 +23,25 @@ export function getColorModuleUnavailableReason(): ColorModuleUnavailableReason 
 }
 
 export function expectColorDiff(): typeof ColorDiff | null {
-  return getColorModuleUnavailableReason() === null ? ColorDiff : null
+  if (getColorModuleUnavailableReason() !== null) return null
+  return hasRenderMethod(ColorDiff) ? ColorDiff : null
 }
 
 export function expectColorFile(): typeof ColorFile | null {
-  return getColorModuleUnavailableReason() === null ? ColorFile : null
+  if (getColorModuleUnavailableReason() !== null) return null
+  return hasRenderMethod(ColorFile) ? ColorFile : null
 }
 
 export function getSyntaxTheme(themeName: string): SyntaxTheme | null {
   return getColorModuleUnavailableReason() === null
     ? nativeGetSyntaxTheme(themeName)
     : null
+}
+
+function hasRenderMethod(value: unknown): boolean {
+  return (
+    typeof value === 'function' &&
+    typeof (value as { prototype?: { render?: unknown } }).prototype?.render ===
+      'function'
+  )
 }

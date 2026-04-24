@@ -36,13 +36,19 @@ claude --web
 
 ## Configuration
 
-Set your Anthropic API key (current runtime only supports Anthropic Claude models):
+Set your API key for the provider you want to use. The runtime supports Anthropic Claude plus OpenAI-compatible providers via the provider abstraction layer.
 
 ```bash
-export ANTHROPIC_API_KEY="your-key"
+export ANTHROPIC_API_KEY="your-anthropic-key"
+# or for OpenAI-compatible providers
+export OPENAI_API_KEY="your-openai-key"
 ```
 
-Note: While the configuration system supports multiple providers (OpenAI, Google Gemini, etc.), the current runtime only supports Anthropic Claude models. All API requests are sent to Anthropic's API. Multi-provider support is planned for future implementation.
+Note: Provider selection is configurable, and the runtime currently routes through Anthropic plus OpenAI-compatible adapters such as OpenAI, Gemini, OpenRouter, KiloCode, Ollama, and others.
+
+### Privacy / Metadata
+
+Metadata injection has been disabled for Anthropic/OpenAI-compatible API requests in this fork. Local user/device/session context is not sent in the `metadata` field of outgoing model requests.
 
 ## Provider Selection
 
@@ -74,4 +80,4 @@ bun test
 
 ## License
 
-MIT
+See [LICENSE.md](LICENSE.md). © Anthropic PBC. All rights reserved. Use is subject to Anthropic's Commercial Terms of Service.

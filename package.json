@@ -4,11 +4,12 @@
   "description": "Official Claude Code CLI — AI-powered coding assistant",
   "main": "src/main.tsx",
   "type": "module",
-   "scripts": {
-     "cli": "bun run src/main.tsx",
-     "build": "bun build src/main.tsx --outdir ./dist --target bun",
-     "test": "bun test"
-   },
+  "scripts": {
+    "cli": "bun run src/main.tsx",
+    "dev": "bun --watch run src/main.tsx",
+    "build": "bun build src/main.tsx --outdir ./dist --target bun",
+    "test": "bun test"
+  },
   "keywords": [
     "ai",
     "coding-assistant",
@@ -23,7 +24,7 @@
     "opencode"
   ],
   "author": "Dek1milliontoken",
-  "license": "MIT",
+  "license": "SEE LICENSE IN LICENSE.md",
   "dependencies": {
     "@ai-sdk/anthropic": "^3.0.0",
     "@ai-sdk/google": "^3.0.0",
@@ -79,6 +80,7 @@
     "ink": "^6.8.0",
     "jose": "^6.2.2",
     "jsonc-parser": "^3.3.1",
+    "jsonrepair": "^3.14.0",
     "lodash-es": "^4.18.1",
     "marked": "^17.0.5",
     "minimatch": "^10.2.5",

@@ -21,6 +21,7 @@ import type { TextBlockParam } from '@anthropic-ai/sdk/resources/index.mjs'
 import type { Stream } from '@anthropic-ai/sdk/streaming.mjs'
 import { randomUUID } from 'crypto'
 import { readFile } from 'fs/promises'
+import { jsonrepair } from 'jsonrepair'
 import { join } from 'path'
 import {
   getAPIProvider,
@@ -385,17 +386,18 @@ async function callOpenAICompatibleProvider({
     )
   }
 
-  const systemText = Array.isArray(systemPrompt)
+  const baseSystemText = Array.isArray(systemPrompt)
     ? systemPrompt.join('\n\n')
     : String(systemPrompt)
+  const systemText = appendTextToolFallbackInstructions(baseSystemText, tools)
   const openAIMessages = systemText
     ? [{ role: 'system', content: systemText }, ...messagesToOpenAI(messages as MessageParam[])]
     : messagesToOpenAI(messages as MessageParam[])
 
-  const functionSchemas = tools.length
-    ? openAIToolSchemasFromBetaTools(tools)
+  const openAITools = tools.length
+    ? openAIToolsFromBetaTools(tools)
     : undefined
-  const functionCall = openAIToolChoice(toolChoice)
+  const openAIToolChoiceValue = openAIToolChoice(toolChoice)
 
   if (provider === 'openai') {
     const client = await getAIProviderClient({
@@ -411,10 +413,12 @@ async function callOpenAICompatibleProvider({
         messages: openAIMessages,
         max_tokens: maxTokens,
         temperature,
-        ...(functionSchemas ? { functions: functionSchemas } : {}),
-        ...(functionCall !== undefined ? { function_call: functionCall } : {}),
+        ...(openAITools ? { tools: openAITools } : {}),
+        ...(openAIToolChoiceValue !== undefined
+          ? { tool_choice: openAIToolChoiceValue }
+          : {}),
       })
-      return createAssistantMessageFromOpenAIResponse(response)
+      return createAssistantMessageFromOpenAIResponse(response, tools)
     }
 
     if (client?.responses?.create) {
@@ -424,7 +428,7 @@ async function callOpenAICompatibleProvider({
         max_output_tokens: maxTokens,
         temperature,
       })
-      return createAssistantMessageFromOpenAIResponse(response)
+      return createAssistantMessageFromOpenAIResponse(response, tools)
     }
 
     throw new Error(
@@ -450,11 +454,11 @@ async function callOpenAICompatibleProvider({
     temperature,
   }
 
-  if (functionSchemas) {
-    body.functions = functionSchemas
+  if (openAITools) {
+    body.tools = openAITools
   }
-  if (functionCall !== undefined) {
-    body.function_call = functionCall
+  if (openAIToolChoiceValue !== undefined) {
+    body.tool_choice = openAIToolChoiceValue
   }
 
   const response = await fetch(
@@ -480,7 +484,7 @@ async function callOpenAICompatibleProvider({
   }
 
   const data = await response.json()
-  return createAssistantMessageFromOpenAIResponse(data)
+  return createAssistantMessageFromOpenAIResponse(data, tools)
 }
 
 async function loadProviderConfig(): Promise<ProviderConfig | null> {
@@ -732,31 +736,10 @@ export function configureTaskBudgetParams(
   }
 }
 
-export function getAPIMetadata() {
-  // https://docs.google.com/document/d/1dURO9ycXXQCBS0V4Vhl4poDBRgkelFc5t2BNPoEgH5Q/edit?tab=t.0#heading=h.5g7nec5b09w5
-  let extra: JsonObject = {}
-  const extraStr = process.env.CLAUDE_CODE_EXTRA_METADATA
-  if (extraStr) {
-    const parsed = safeParseJSON(extraStr, false)
-    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
-      extra = parsed as JsonObject
-    } else {
-      logForDebugging(
-        `CLAUDE_CODE_EXTRA_METADATA env var must be a JSON object, but was given ${extraStr}`,
-        { level: 'error' },
-      )
-    }
-  }
-
-  return {
-    user_id: jsonStringify({
-      ...extra,
-      device_id: getOrCreateUserID(),
-      // Only include OAuth account UUID when actively using OAuth authentication
-      account_uuid: getOauthAccountInfo()?.accountUuid ?? '',
-      session_id: getSessionId(),
-    }),
-  }
+export function getAPIMetadata(): undefined {
+  // Metadata injection has been disabled to prevent user/device context from
+  // being sent back to Anthropic/OpenAI-compatible request endpoints.
+  return undefined
 }
 
 export async function verifyApiKey(
@@ -1312,6 +1295,7 @@ function messagesToOpenAI(messages: MessageParam[]): Record<string, unknown>[] {
         if (toolName) {
           result.push({
             role: 'tool',
+            tool_call_id: String(toolResult.tool_use_id ?? randomUUID()),
             name: toolName,
             content: toolContent,
           })
@@ -1368,16 +1352,52 @@ function openAIToolSchemasFromBetaTools(
   }))
 }
 
+function openAIToolsFromBetaTools(
+  tools: BetaToolUnion[],
+): Array<Record<string, unknown>> {
+  return openAIToolSchemasFromBetaTools(tools).map(tool => ({
+    type: 'function',
+    function: tool,
+  }))
+}
+
+function appendTextToolFallbackInstructions(
+  systemText: string,
+  tools: BetaToolUnion[],
+): string {
+  if (tools.length === 0) return systemText
+
+  const fallbackToolSchemas = openAIToolSchemasFromBetaTools(tools)
+  const instructions = [
+    'OpenAI-compatible tool fallback:',
+    'Prefer native tool_calls when the provider/model supports them.',
+    'If you need to use one or more tools but cannot emit native tool_calls, respond with ONLY valid JSON and no markdown, prose, or code fences.',
+    'Use this exact shape:',
+    '{"tools":[{"name":"ToolName","input":{"argument":"value"}}]}',
+    'For a single tool, {"tool":"ToolName","input":{...}} is also accepted.',
+    'Only use tool names and input fields from the available tool schemas below. If no tool is needed, answer normally.',
+    `Available tool schemas: ${jsonStringify(fallbackToolSchemas)}`,
+  ].join('\n')
+
+  return systemText ? `${systemText}\n\n${instructions}` : instructions
+}
+
 function openAIToolChoice(
   toolChoice?: BetaToolChoiceTool | BetaToolChoiceAuto,
-): 'auto' | 'none' | { name: string } | undefined {
+): 'auto' | 'none' | { type: 'function'; function: { name: string } } | undefined {
   if (!toolChoice || typeof toolChoice !== 'object') {
     return undefined
   }
 
   const choice = toolChoice as Record<string, unknown>
-  if (choice.type === 'tool' && typeof choice.tool_name === 'string') {
-    return { name: String(choice.tool_name) }
+  const toolName =
+    typeof choice.tool_name === 'string'
+      ? choice.tool_name
+      : typeof choice.name === 'string'
+        ? choice.name
+        : undefined
+  if (choice.type === 'tool' && toolName) {
+    return { type: 'function', function: { name: toolName } }
   }
   if (choice.type === 'auto') {
     return 'auto'
@@ -1396,24 +1416,183 @@ function parseOpenAIArguments(argumentsValue: unknown): unknown {
   return argumentsValue
 }
 
-function createAssistantMessageFromOpenAIResponse(response: any): AssistantMessage {
+function stringifyOpenAIContent(content: unknown): string {
+  if (typeof content === 'string') return content
+  if (Array.isArray(content)) {
+    return content
+      .map(part => {
+        if (typeof part === 'string') return part
+        if (!part || typeof part !== 'object') return ''
+        const obj = part as Record<string, unknown>
+        if (typeof obj.text === 'string') return obj.text
+        if (typeof obj.content === 'string') return obj.content
+        return ''
+      })
+      .join('')
+  }
+  return ''
+}
+
+type TextToolCall = {
+  id?: string
+  name: string
+  input: unknown
+}
+
+function createToolUseBlocks(
+  calls: TextToolCall[],
+  tools: BetaToolUnion[],
+): BetaContentBlock[] {
+  const allowedNames = new Set(tools.map(tool => tool.name))
+
+  return calls
+    .filter(call => allowedNames.has(call.name))
+    .map(call => ({
+      type: 'tool_use',
+      id: call.id ?? randomUUID(),
+      name: call.name,
+      input:
+        call.input && typeof call.input === 'object'
+          ? call.input
+          : {},
+    }) as BetaContentBlock)
+}
+
+function collectNativeOpenAIToolCalls(message: any): TextToolCall[] {
+  const rawCalls = [
+    ...(Array.isArray(message?.tool_calls) ? message.tool_calls : []),
+    ...(message?.tool_call ? [message.tool_call] : []),
+    ...(message?.function_call ? [message.function_call] : []),
+  ]
+
+  return rawCalls
+    .map(call => {
+      const fn = call?.function ?? call
+      const name = fn?.name
+      if (typeof name !== 'string' || !name) return null
+      return {
+        id: typeof call?.id === 'string' ? call.id : undefined,
+        name,
+        input: parseOpenAIArguments(fn.arguments ?? fn.input ?? {}),
+      }
+    })
+    .filter((call): call is TextToolCall => Boolean(call))
+}
+
+function parseJSONToolPayload(payload: unknown): TextToolCall[] {
+  const container =
+    payload && typeof payload === 'object'
+      ? (payload as Record<string, unknown>)
+      : null
+
+  const rawCalls = Array.isArray(payload)
+    ? payload
+    : Array.isArray(container?.tools)
+      ? container.tools
+      : Array.isArray(container?.tool_calls)
+        ? container.tool_calls
+        : Array.isArray(container?.calls)
+          ? container.calls
+          : container?.tool || container?.name
+            ? [container]
+            : []
+
+  return rawCalls
+    .map(raw => {
+      if (!raw || typeof raw !== 'object') return null
+      const call = raw as Record<string, unknown>
+      const fn =
+        call.function && typeof call.function === 'object'
+          ? (call.function as Record<string, unknown>)
+          : null
+      const name =
+        typeof call.name === 'string'
+          ? call.name
+          : typeof call.tool === 'string'
+            ? call.tool
+            : typeof fn?.name === 'string'
+              ? fn.name
+              : undefined
+      if (!name) return null
+
+      const input =
+        call.input ??
+        call.arguments ??
+        call.args ??
+        call.parameters ??
+        fn?.arguments ??
+        fn?.input ??
+        {}
+
+      return {
+        id: typeof call.id === 'string' ? call.id : undefined,
+        name,
+        input: parseOpenAIArguments(input),
+      }
+    })
+    .filter((call): call is TextToolCall => Boolean(call))
+}
+
+function parseRepairedJSON(candidate: string): unknown | null {
+  const trimmed = candidate.trim()
+  if (!trimmed) return null
+
+  const direct = safeParseJSON(trimmed)
+  if (direct !== null) return direct
+
+  try {
+    return JSON.parse(jsonrepair(trimmed))
+  } catch {
+    return null
+  }
+}
+
+function extractJSONCandidates(text: string): string[] {
+  const candidates = [text]
+  const fencePattern = /```(?:json)?\s*([\s\S]*?)```/gi
+  for (const match of text.matchAll(fencePattern)) {
+    if (match[1]) candidates.push(match[1])
+  }
+
+  const firstObject = text.indexOf('{')
+  const lastObject = text.lastIndexOf('}')
+  if (firstObject >= 0 && lastObject > firstObject) {
+    candidates.push(text.slice(firstObject, lastObject + 1))
+  }
+
+  const firstArray = text.indexOf('[')
+  const lastArray = text.lastIndexOf(']')
+  if (firstArray >= 0 && lastArray > firstArray) {
+    candidates.push(text.slice(firstArray, lastArray + 1))
+  }
+
+  return [...new Set(candidates)]
+}
+
+function parseTextJSONToolCalls(text: string): TextToolCall[] {
+  for (const candidate of extractJSONCandidates(text)) {
+    const parsed = parseRepairedJSON(candidate)
+    if (parsed === null) continue
+    const calls = parseJSONToolPayload(parsed)
+    if (calls.length > 0) return calls
+  }
+  return []
+}
+
+function createAssistantMessageFromOpenAIResponse(
+  response: any,
+  tools: BetaToolUnion[],
+): AssistantMessage {
   const choice = response?.choices?.[0]
   const message = choice?.message ?? choice
-  const functionCall =
-    message?.function_call ??
-    (message?.tool_call as any) ??
-    (Array.isArray(message?.tool_calls) ? message.tool_calls[0] : undefined)
 
-  if (functionCall?.name) {
+  const nativeToolCalls = createToolUseBlocks(
+    collectNativeOpenAIToolCalls(message),
+    tools,
+  )
+  if (nativeToolCalls.length > 0) {
     return createAssistantMessage({
-      content: [
-        {
-          type: 'tool_use',
-          id: randomUUID(),
-          name: String(functionCall.name),
-          input: parseOpenAIArguments(functionCall.arguments ?? functionCall.input),
-        },
-      ],
+      content: nativeToolCalls,
     })
   }
 
@@ -1427,12 +1606,38 @@ function createAssistantMessageFromOpenAIResponse(response: any): AssistantMessa
     }
   }
 
-  const content =
-    Array.isArray(message?.content?.parts) && message.content.parts.length > 0
+  const content = [
+    Array.isArray(message?.content?.parts)
       ? message.content.parts.join('')
-      : message?.content ?? response?.output_text ?? message?.text ?? ''
+      : stringifyOpenAIContent(message?.content),
+    stringifyOpenAIContent(message?.reasoning_content),
+    stringifyOpenAIContent(message?.reasoning),
+    stringifyOpenAIContent(choice?.text),
+    stringifyOpenAIContent(response?.output_text),
+    stringifyOpenAIContent(response?.text),
+    stringifyOpenAIContent(response?.content),
+  ].find(text => text.trim().length > 0)
 
-  return createAssistantMessage({ content: String(content) })
+  if (!content) {
+    const finishReason = choice?.finish_reason ?? response?.finish_reason
+    return createAssistantMessage({
+      content: finishReason
+        ? `Provider returned an empty response (finish_reason: ${finishReason}).`
+        : 'Provider returned an empty response.',
+    })
+  }
+
+  const textJSONToolCalls = createToolUseBlocks(
+    parseTextJSONToolCalls(content),
+    tools,
+  )
+  if (textJSONToolCalls.length > 0) {
+    return createAssistantMessage({
+      content: textJSONToolCalls,
+    })
+  }
+
+  return createAssistantMessage({ content })
 }
 
 /**
@@ -2183,7 +2388,7 @@ async function* queryModel(
     lastRequestBetas = betasParams
 
     return {
-      model: normalizeModelStringForAPI(options.model),
+      model: normalizeModelStringForAPI(retryContext.model),
       messages: addCacheBreakpoints(
         messagesForAPI,
         enablePromptCaching,

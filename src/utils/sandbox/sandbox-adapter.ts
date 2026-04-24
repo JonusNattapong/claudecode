@@ -958,8 +958,12 @@ export const SandboxManager: ISandboxManager = {
   getLinuxSocksSocketPath: BaseSandboxManager.getLinuxSocksSocketPath,
   waitForNetworkInitialization: BaseSandboxManager.waitForNetworkInitialization,
   getSandboxViolationStore: BaseSandboxManager.getSandboxViolationStore,
-  annotateStderrWithSandboxFailures:
-    BaseSandboxManager.annotateStderrWithSandboxFailures,
+  annotateStderrWithSandboxFailures(command: string, stderr: string): string {
+    const annotate = BaseSandboxManager.annotateStderrWithSandboxFailures
+    return typeof annotate === 'function'
+      ? annotate(command, stderr)
+      : stderr
+  },
   cleanupAfterCommand: (): void => {
     BaseSandboxManager.cleanupAfterCommand()
     scrubBareGitRepoFiles()

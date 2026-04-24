@@ -1,59 +1,87 @@
-# Claude Code Agent Instructions
+# CLAUDE.md
 
-## Purpose
-This file gives AI coding agents the context needed to contribute correctly to this repository.
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Key project facts
-- This is a Bun-based TypeScript/React CLI app called **Claude Code**.
-- The app is a terminal-first AI assistant with a web interface option.
-- The main entrypoint is `src/main.tsx`.
-- `shared/` contains cross-cutting provider and AI integration code.
-- `dist/` is generated build output and should not be edited directly.
+## Project Overview
 
-## Build and test commands
-Use Bun for development and verification:
-- `bun install`
-- `bun run src/main.tsx` — run in development mode
-- `bun run build` — build output to `dist/`
-- `bun test` — run tests
+**Claude Code** is a Bun-based TypeScript/React AI coding assistant with multi-provider support. It uses [Ink](https://github.com/vadimdemedes/ink) (React for CLI) for the terminal UI and [Vercel AI SDK](https://sdk.vercel.ai) for AI provider integration.
 
-If you need type checking, use:
-- `npx tsc --noEmit`
+- **Runtime**: Bun 1.0+ (enforced in `package.json` engines)
+- **Main entry**: `src/main.tsx`
+- **Module system**: ESM (`"type": "module"` in `package.json`)
 
-## Important directories
-- `src/` — primary source code for the CLI app and core runtime
-- `src/commands/` — command definitions and CLI behavior
-- `src/tools/` — tool implementations the AI can use
-- `shared/services/ai/` — provider abstractions and AI integrations
-- `web/` — web interface code (separate frontend path)
-- `docs/` — design, usage, and architecture documentation
+## Build and Development Commands
 
-## Provider and configuration conventions
-- Supports multiple AI providers: Anthropic, OpenAI, Google, and others.
-- Common environment variables:
-  - `ANTHROPIC_API_KEY`
-  - `OPENAI_API_KEY`
-  - `GOOGLE_API_KEY`
-- Provider selection is exposed via CLI flags such as `--provider` and `--model`.
+```bash
+# Install dependencies
+bun install
 
-## Agent guidance
-- Prefer modifying source files under `src/` or `shared/`.
-- Do not edit the generated `dist/` directory.
-- Avoid adding or changing `node_modules/`.
-- When adding features, also add or update tests.
-- Keep code style consistent with existing TypeScript and React patterns.
+# Development mode with file watching
+bun run dev
 
-## What to link instead of duplicate
-- Use `README.md` for high-level usage and developer setup.
-- Use `CONTRIBUTING.md` for contribution workflow and conventions.
-- Use `docs/ARCHITECTURE.md` for architecture guidance.
+# Run CLI directly
+bun run cli
 
-## When working on commands and tools
-- New CLI commands should generally be added under `src/commands/` and registered through the main command loader.
-- Tool implementations belong in `src/tools/` and must expose input validation, execution logic, and registration.
-- If a change affects provider behavior, inspect `shared/services/ai/` first.
+# Build to dist/ (Bun runtime target)
+bun run build
 
-## Notes for AI agents
-- This repo is not a typical `create-react-app` or full-stack monorepo; focus on the CLI code paths.
-- Don’t assume a separate package manager workflow beyond Bun.
-- Validate changes by running the relevant Bun scripts when possible.
+# Run tests
+bun test
+
+# Run specific test by pattern
+bun test <pattern>
+
+# Type-check without emit
+npx tsc --noEmit
+```
+
+## Architecture
+
+```
+src/
+├── main.tsx              # CLI bootstrap: Ink TUI, command loading, REPL
+├── commands/            # CLI commands (provider-select, commit, diff, etc.)
+│   └── provider-select/ # Provider selection (multi-provider config)
+├── services/             # API clients and business logic
+│   └── api/             # AI API integrations
+├── components/          # Ink React UI components (StructuredDiff, etc.)
+├── ink.ts               # Ink exports
+└── types/               # TypeScript types
+```
+
+**Provider system**: Located in `src/commands/provider-select/provider-select.ts`. Providers are configured via CLI commands (`/provider list`, `/provider set`, `/provider key`, `/provider models`) and stored in `~/.claude-code-provider.json`.
+
+## Provider Configuration
+
+Available providers in `PROVIDERS` map:
+- `openai` — OpenAI API (`OPENAI_API_KEY`)
+- `anthropic` — Anthropic Claude (`ANTHROPIC_API_KEY`)
+- `gemini` — Google Gemini (`GEMINI_API_KEY`)
+- `openrouter` — OpenRouter.ai (`OPENROUTER_API_KEY`)
+- `opencode` — OpenCode AI (`OPENCODE_API_KEY`)
+- `groq` — Groq (`GROQ_API_KEY`)
+- `xai` — xAI (`XAI_API_KEY`)
+- `mistral` — Mistral (`MISTRAL_API_KEY`)
+- `kilocode` — KiloCode Gateway (`KILOCODE_API_KEY`)
+- `ollama` — Local Ollama (`OLLAMA_API_KEY`)
+
+Provider selection flow:
+1. `/provider list` — shows all available providers and their API key status
+2. `/provider set <provider> <model>` — sets active provider and model
+3. `/provider key <provider> <api-key>` — saves API key to config file
+
+## Tool and Command Development
+
+- **Add CLI command**: Create `src/commands/<name>/index.ts` or `src/commands/<name>.ts`, register via main command loader
+- **Add AI tool**: Implement in `src/tools/`, expose validation (Zod schema) and execution logic
+- **Provider changes**: Modify `src/commands/provider-select/provider-select.ts` for provider metadata, then update runtime routing in `src/services/api/claude.ts`
+
+## Environment Variables
+
+Core provider keys: `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GOOGLE_API_KEY`, plus provider-specific keys listed above.
+
+## References
+
+- `docs/ARCHITECTURE.md` — detailed architecture
+- `CONTRIBUTING.md` — contribution workflow
+- `README.md` — usage overview
