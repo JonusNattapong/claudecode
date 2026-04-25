@@ -280,20 +280,31 @@ function StatsContent(t0) {
   } else {
     t8 = $[25];
   }
-  let t9;
-  if ($[26] !== t7 || $[27] !== t8) {
-    t9 = <Box flexDirection="row" gap={1} marginBottom={1}><Tabs title="" color="claude" defaultTab="Overview">{t7}{t8}</Tabs></Box>;
-    $[26] = t7;
-    $[27] = t8;
-    $[28] = t9;
-  } else {
-    t9 = $[28];
-  }
-  const t10 = copyStatus ? ` · ${copyStatus}` : "";
-  let t11;
-  if ($[29] !== t10) {
-    t11 = <Box paddingLeft={2}><Text dimColor={true}>Esc to cancel · r to cycle dates · ctrl+s to copy{t10}</Text></Box>;
+  let t10;
+  if ($[26] !== dateRange || $[27] !== displayStats || $[28] !== isLoadingFiltered) {
+    t10 = <Tab title="Providers"><ProvidersTab stats={displayStats} dateRange={dateRange} isLoading={isLoadingFiltered} /></Tab>;
+    $[26] = dateRange;
+    $[27] = displayStats;
+    $[28] = isLoadingFiltered;
     $[29] = t10;
+  } else {
+    t10 = $[29];
+  }
+  let t9;
+  if ($[30] !== t7 || $[31] !== t8 || $[32] !== t10) {
+    t9 = <Box flexDirection="row" gap={1} marginBottom={1}><Tabs title="" color="claude" defaultTab="Overview">{t7}{t8}{t10}</Tabs></Box>;
+    $[30] = t7;
+    $[31] = t8;
+    $[32] = t10;
+    $[33] = t9;
+  } else {
+    t9 = $[33];
+  }
+  const t13 = copyStatus ? ` · ${copyStatus}` : "";
+  let t11;
+  if ($[29] !== t13) {
+    t11 = <Box paddingLeft={2}><Text dimColor={true}>Esc to cancel · r to cycle dates · ctrl+s to copy{t13}</Text></Box>;
+    $[29] = t13;
     $[30] = t11;
   } else {
     t11 = $[30];
@@ -454,6 +465,30 @@ function OverviewTab({
           </Text>
         </Box>
       </Box>
+
+      {/* Provider Usage */}
+      {stats.providerUsage && Object.keys(stats.providerUsage).length > 0 && <>
+        <Box flexDirection="row" gap={4} marginBottom={1}>
+          {Object.entries(stats.providerUsage)
+            .sort(([, a], [, b]) => (b.inputTokens + b.outputTokens) - (a.inputTokens + a.outputTokens))
+            .slice(0, 3)
+            .map(([provider, usage], i) => (
+              <Box flexDirection="column" width={28} key={provider}>
+                <Text wrap="truncate">
+                  {i === 0 && 'Top provider: '}
+                  {i > 0 && '  '}
+                  <Text color="claude" bold={i === 0}>
+                    {provider}
+                  </Text>
+                  {' '}
+                  <Text color="subtle">
+                    {formatNumber(usage.inputTokens + usage.outputTokens)} tokens
+                  </Text>
+                </Text>
+              </Box>
+            ))}
+        </Box>
+      </>}
 
       {/* Section 2: Activity - Row 1: Sessions | Longest session */}
       <Box flexDirection="row" gap={4}>
@@ -1180,6 +1215,22 @@ function renderOverviewToAnsi(stats: ClaudeCodeStats): string[] {
       lines.push(`${'Avg/session:'.padEnd(COL1_LABEL_WIDTH)}${h(avgShots)}`);
     }
   }
+
+  // Provider usage
+  if (stats.providerUsage && Object.keys(stats.providerUsage).length > 0) {
+    const providerEntries = Object.entries(stats.providerUsage)
+      .sort(([, a], [, b]) => (b.inputTokens + b.outputTokens) - (a.inputTokens + a.outputTokens));
+    const topProviders = providerEntries.slice(0, 3);
+    if (topProviders.length > 0) {
+      lines.push('');
+      lines.push('Top providers');
+      for (const [provider, usage] of topProviders) {
+        const totalTokens = usage.inputTokens + usage.outputTokens;
+        lines.push(`  ${provider}: ${h(formatNumber(totalTokens))} tokens`);
+      }
+    }
+  }
+
   lines.push('');
 
   // Fun factoid

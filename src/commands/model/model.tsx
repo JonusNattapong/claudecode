@@ -5,6 +5,8 @@ import type { CommandResultDisplay } from '../../commands.js';
 import { ModelPicker } from '../../components/ModelPicker.js';
 import { COMMON_HELP_ARGS, COMMON_INFO_ARGS } from '../../constants/xml.js';
 import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from '../../services/analytics/index.js';
+import { ProviderManager } from '../../services/ai/ProviderManager.js';
+import { getProviderRegistryEntry } from '../../services/ai/providerRegistry.js';
 import { useAppState, useSetAppState } from '../../state/AppState.js';
 import type { LocalJSXCommandCall } from '../../types/command.js';
 import type { EffortLevel } from '../../utils/effort.js';
@@ -30,7 +32,7 @@ function ModelPickerWrapper(t0) {
       logEvent("tengu_model_command_menu", {
         action: "cancel" as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS
       });
-      const displayModel = renderModelLabel(mainLoopModel);
+      const displayModel = renderModelLabel(mainLoopModel as string | null);
       onDone(`Kept model as ${chalk.bold(displayModel)}`, {
         display: "system"
       });
@@ -44,7 +46,7 @@ function ModelPickerWrapper(t0) {
   const handleCancel = t1;
   let t2;
   if ($[3] !== isFastMode || $[4] !== mainLoopModel || $[5] !== onDone || $[6] !== setAppState) {
-    t2 = function handleSelect(model, effort) {
+    t2 = function handleSelect(model: string | null, effort: EffortLevel | undefined) {
       logEvent("tengu_model_command_menu", {
         action: model as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
         from_model: mainLoopModel as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
@@ -55,6 +57,7 @@ function ModelPickerWrapper(t0) {
         mainLoopModel: model,
         mainLoopModelForSession: null
       }));
+      syncSelectedProviderModel(model);
       let message = `Set model to ${chalk.bold(renderModelLabel(model))}`;
       if (effort !== undefined) {
         message = message + ` with ${chalk.bold(effort)} effort`;
@@ -91,7 +94,7 @@ function ModelPickerWrapper(t0) {
   const handleSelect = t2;
   let t3;
   if ($[8] !== isFastMode || $[9] !== mainLoopModel) {
-    t3 = isFastModeEnabled() && isFastMode && isFastModeSupportedByModel(mainLoopModel) && isFastModeAvailable();
+    t3 = isFastModeEnabled() && isFastMode && isFastModeSupportedByModel(mainLoopModel as string | null) && isFastModeAvailable();
     $[8] = isFastMode;
     $[9] = mainLoopModel;
     $[10] = t3;
@@ -126,6 +129,18 @@ function _temp2(s_0) {
 }
 function _temp(s) {
   return s.mainLoopModel;
+}
+function syncSelectedProviderModel(model: string | null): void {
+  const providerManager = ProviderManager.getInstance();
+  const currentConfig = providerManager.getSelectedProviderConfig(true);
+  if (!currentConfig.provider) {
+    return;
+  }
+  const providerEntry = getProviderRegistryEntry(currentConfig.provider);
+  providerManager.saveSelectedProviderConfig({
+    ...currentConfig,
+    model: model ?? providerEntry.defaultModel ?? currentConfig.model,
+  });
 }
 function SetModelAndClose({
   args,
@@ -201,6 +216,7 @@ function SetModelAndClose({
         mainLoopModel: modelValue,
         mainLoopModelForSession: null
       }));
+      syncSelectedProviderModel(modelValue);
       let message = `Set model to ${chalk.bold(renderModelLabel(modelValue))}`;
       let wasFastModeToggledOn = undefined;
       if (isFastModeEnabled()) {
@@ -250,10 +266,10 @@ function ShowModelAndClose(t0) {
   const mainLoopModel = useAppState(_temp7);
   const mainLoopModelForSession = useAppState(_temp8);
   const effortValue = useAppState(_temp9);
-  const displayModel = renderModelLabel(mainLoopModel);
+  const displayModel = renderModelLabel(mainLoopModel as string | null);
   const effortInfo = effortValue !== undefined ? ` (effort: ${effortValue})` : "";
   if (mainLoopModelForSession) {
-    onDone(`Current model: ${chalk.bold(renderModelLabel(mainLoopModelForSession))} (session override from plan mode)\nBase model: ${displayModel}${effortInfo}`);
+    onDone(`Current model: ${chalk.bold(renderModelLabel(mainLoopModelForSession as string | null))} (session override from plan mode)\nBase model: ${displayModel}${effortInfo}`);
   } else {
     onDone(`Current model: ${displayModel}${effortInfo}`);
   }

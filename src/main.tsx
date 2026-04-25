@@ -13,11 +13,10 @@ try {
     process.stdin.setRawMode = (mode: boolean) => {};
   }
 } catch(e) {}
-console.error('[DEBUG] main.tsx: Forced isTTY=true');
 
 // Define MACRO for build (normally replaced by macro processor)
 globalThis.MACRO = {
-  VERSION: '1.0.24'
+  VERSION: '2.1.119'
 };
 
 // These side-effects must run before all other imports:
@@ -28,10 +27,7 @@ globalThis.MACRO = {
 //    key) in parallel — isRemoteManagedSettingsEligible() otherwise reads them
 //    sequentially via sync spawn inside applySafeConfigEnvironmentVariables()
 //    (~65ms on every macOS startup)
-console.error('[DEBUG] main.tsx: Before first import');
 import { profileCheckpoint, profileReport } from './utils/startupProfiler.js';
-console.error('[DEBUG] After startupProfiler import');
-console.error('[DEBUG] isTTY check - stdout:', process.stdout.isTTY, 'stderr:', process.stderr.isTTY);
 
 // eslint-disable-next-line custom-rules/no-top-level-side-effects
 profileCheckpoint('main_tsx_entry');
@@ -334,7 +330,6 @@ import { getTmuxInstallInstructions, isTmuxAvailable, parsePRReference } from '.
 
 // eslint-disable-next-line custom-rules/no-top-level-side-effects
 profileCheckpoint('main_tsx_imports_loaded');
-console.error('[DEBUG] After imports_loaded checkpoint');
 
 /**
  * Log managed settings keys to Statsig for analytics.
@@ -391,8 +386,6 @@ function isBeingDebugged() {
 }
 
 // Exit if we detect node debugging or inspection
-console.error('[DEBUG] Before isBeingDebugged check, isBeingDebugged:', isBeingDebugged());
-console.error('[DEBUG] After isBeingDebugged check, continuing...');
 if ("external" !== 'ant' && isBeingDebugged()) {
   // Use process.exit directly here since we're in the top-level code before imports
   // and gracefulShutdown is not yet available
@@ -400,7 +393,6 @@ if ("external" !== 'ant' && isBeingDebugged()) {
   process.exit(1);
 }
 
-console.error('[DEBUG] Line 283: Before logSessionTelemetry definition');
 /**
  * Per-session skill/plugin telemetry. Called from both the interactive path
  * and the headless -p path (before runHeadless) — both go through
@@ -451,7 +443,6 @@ async function logStartupTelemetry(): Promise<void> {
   });
 }
 
-console.error('[DEBUG] Line 332: Before runMigrations definition');
 // @[MODEL LAUNCH]: Consider any migrations you may need for model strings. See migrateSonnet1mToSonnet45.ts for an example.
 // Bump this when adding a new sync migration so existing users re-run the set.
 const CURRENT_MIGRATION_VERSION = 11;
@@ -561,7 +552,6 @@ export function startDeferredPrefetches(): void {
     void import('./utils/eventLoopStallDetector.js').then(m => m.startEventLoopStallDetector());
   }
 }
-console.error('[DEBUG] Line 445: Before loadSettingsFromFlag');
 function loadSettingsFromFlag(settingsFile: string): void {
   try {
     const trimmedSettings = settingsFile.trim();
@@ -647,7 +637,6 @@ function eagerLoadSettings(): void {
   }
   profileCheckpoint('eagerLoadSettings_end');
 }
-console.error('[DEBUG] Line 530: After eagerLoadSettings definition');
 
 function initializeEntrypoint(isNonInteractive: boolean): void {
   // Skip if already set (e.g., by SDK or other entrypoints)
@@ -662,7 +651,6 @@ function initializeEntrypoint(isNonInteractive: boolean): void {
     process.env.CLAUDE_CODE_ENTRYPOINT = 'mcp';
     return;
   }
-  console.error('[DEBUG] Line 544: Inside initializeEntrypoint');
   if (isEnvTruthy(process.env.CLAUDE_CODE_ACTION)) {
     process.env.CLAUDE_CODE_ENTRYPOINT = 'claude-code-github-action';
     return;
@@ -937,7 +925,6 @@ export async function main() {
   const hasInitOnlyFlag = cliArgs.includes('--init-only');
   const hasSdkUrl = cliArgs.some(arg => arg.startsWith('--sdk-url'));
   const isNonInteractive = hasPrintFlag || hasInitOnlyFlag || hasSdkUrl || !process.stdout.isTTY;
-  console.error('[DEBUG] isNonInteractive:', isNonInteractive, 'hasPrintFlag:', hasPrintFlag, 'hasInitOnlyFlag:', hasInitOnlyFlag, 'hasSdkUrl:', hasSdkUrl, 'isTTY:', process.stdout.isTTY);
 
   // Stop capturing early input for non-interactive modes
   if (isNonInteractive) {

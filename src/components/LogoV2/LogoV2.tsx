@@ -264,6 +264,7 @@ export function LogoV2() {
     }
     const cwdAvailableWidth = agentName ? columns - 4 - 1 - stringWidth(agentName) - 3 : columns - 4;
     const truncatedCwd = truncatePath(cwd, Math.max(cwdAvailableWidth, 10));
+    const cwdLine = cwd ? agentName ? `@${agentName} · ${truncatedCwd}` : truncatedCwd : agentName ? `@${agentName}` : "";
     let t11;
     if ($[32] !== compactBorderTitle) {
       t11 = {
@@ -326,13 +327,13 @@ export function LogoV2() {
       t18 = $[42];
       t19 = $[43];
     }
-    return <><OffscreenFreeze><Box flexDirection="column" borderStyle="round" borderColor="claude" borderText={t11} paddingX={1} paddingY={1} alignItems="center" width={columns}><Text bold={true}>{welcomeMessage}</Text>{t12}{t13}<Text dimColor={true}>{billingType}</Text><Text dimColor={true}>{agentName ? `@${agentName} · ${truncatedCwd}` : truncatedCwd}</Text></Box></OffscreenFreeze>{t14}{t15}{t16}{t17}{t18}{t19}</>;
+    return <><OffscreenFreeze><Box flexDirection="column" borderStyle="round" borderColor="claude" borderText={t11} paddingX={1} paddingY={1} alignItems="center" width={columns}><Text bold={true}>{welcomeMessage}</Text>{t12}{t13}<Text dimColor={true}>{billingType}</Text>{cwdLine && <Text dimColor={true}>{cwdLine}</Text>}</Box></OffscreenFreeze>{t14}{t15}{t16}{t17}{t18}{t19}</>;
   }
   const welcomeMessage_0 = formatWelcomeMessage(username);
   const modelLine = !process.env.IS_DEMO && config.oauthAccount?.organizationName ? `${modelDisplayName} · ${billingType} · ${config.oauthAccount.organizationName}` : `${modelDisplayName} · ${billingType}`;
   const cwdAvailableWidth_0 = agentName ? LEFT_PANEL_MAX_WIDTH - 1 - stringWidth(agentName) - 3 : LEFT_PANEL_MAX_WIDTH;
   const truncatedCwd_0 = truncatePath(cwd, Math.max(cwdAvailableWidth_0, 10));
-  const cwdLine = agentName ? `@${agentName} · ${truncatedCwd_0}` : truncatedCwd_0;
+  const cwdLine = cwd ? agentName ? `@${agentName} · ${truncatedCwd_0}` : truncatedCwd_0 : agentName ? `@${agentName}` : "";
   const optimalLeftWidth = calculateOptimalLeftWidth(welcomeMessage_0, cwdLine, modelLine);
   const {
     leftWidth,

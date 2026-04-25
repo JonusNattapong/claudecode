@@ -3,7 +3,9 @@ import capitalize from 'lodash-es/capitalize.js';
 import * as React from 'react';
 import { useCallback, useMemo, useState } from 'react';
 import { useExitOnCtrlCDWithKeybindings } from 'src/hooks/useExitOnCtrlCDWithKeybindings.js';
+import { ProviderManager } from 'src/services/ai/ProviderManager.js';
 import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from 'src/services/analytics/index.js';
+import { getProviderRegistryEntry, type ProviderModelInfo } from 'src/services/ai/providerRegistry.js';
 import { FAST_MODE_MODEL_DISPLAY, isFastModeAvailable, isFastModeCooldown, isFastModeEnabled } from 'src/utils/fastMode.js';
 import { Box, Text } from '../ink.js';
 import { useKeybindings } from '../keybindings/useKeybinding.js';
@@ -64,10 +66,10 @@ export function ModelPicker(t0) {
     t1 = $[1];
   }
   const [effort, setEffort] = useState(t1);
-  const t2 = isFastMode ?? false;
+  const t2 = Boolean(isFastMode);
   let t3;
   if ($[2] !== t2) {
-    t3 = getModelOptions(t2);
+    t3 = getEffectiveModelOptions(t2);
     $[2] = t2;
     $[3] = t3;
   } else {
@@ -265,7 +267,7 @@ export function ModelPicker(t0) {
   } else {
     t15 = $[41];
   }
-  const t16 = headerText ?? "Switch between Claude models. Applies to this session and future Claude Code sessions. For other/previous model names, specify with --model.";
+  const t16 = headerText ?? getDefaultHeaderText();
   let t17;
   if ($[42] !== t16) {
     t17 = <Text dimColor={true}>{t16}</Text>;
@@ -397,6 +399,55 @@ function _temp2(s_0) {
 }
 function _temp(s) {
   return isFastModeEnabled() ? s.fastMode : false;
+}
+function getDefaultHeaderText(): string {
+  const providerInfo = getActiveProviderInfo();
+  if (!providerInfo) {
+    return "Switch between Claude models. Applies to this session and future sessions.";
+  }
+  return `Switch to ${providerInfo.entry.label} model. Applies to current session and future sessions.`;
+}
+
+function getActiveProviderInfo(): { entry: ReturnType<typeof getProviderRegistryEntry>; selectedModel: string | undefined; providerId: string } | null {
+  const providerManager = ProviderManager.getInstance();
+  const config = providerManager.getSelectedProviderConfig(true);
+  if (!config.provider || config.provider === 'anthropic') {
+    return null;
+  }
+  const entry = getProviderRegistryEntry(config.provider);
+  return {
+    entry,
+    selectedModel: config.model,
+    providerId: config.provider
+  };
+}
+
+function getEffectiveModelOptions(fastMode: boolean): Array<{
+  value: ModelSetting;
+  label: string;
+  description: string;
+  descriptionForModel?: string;
+}> {
+  const providerInfo = getActiveProviderInfo();
+  if (!providerInfo) {
+    return getModelOptions(fastMode);
+  }
+  const defaultModel = providerInfo.selectedModel ?? providerInfo.entry.defaultModel ?? 'provider default';
+  return [{
+    value: null,
+    label: 'Default (recommended)',
+    description: `Use ${providerInfo.entry.label} default (${defaultModel})`
+  }, ...providerInfo.entry.models.map(model => toProviderModelOption(model))];
+}
+function toProviderModelOption(model: ProviderModelInfo) {
+  const label = model.label ?? model.id;
+  const tags = model.tags?.slice(0, 3).join(' · ');
+  return {
+    value: model.id,
+    label,
+    description: tags || model.id,
+    descriptionForModel: model.id
+  };
 }
 function resolveOptionModel(value?: string): string | undefined {
   if (!value) return undefined;

@@ -235,6 +235,13 @@ import { isToolFromMcpServer } from '../mcp/utils.js'
 import { withStreamingVCR, withVCR } from '../vcr.js'
 import { CLIENT_REQUEST_ID_HEADER, getAIProviderClient } from './client.js'
 import {
+  PROVIDER_REGISTRY,
+  type ProviderId,
+  getProviderRegistryEntry,
+  DEFAULT_PROVIDER,
+} from '../ai/providerRegistry.js'
+import { parseToolCalls } from '../ai/toolCallParser.js'
+import {
   API_ERROR_MESSAGE_PREFIX,
   CUSTOM_OFF_SWITCH_MESSAGE,
   getAssistantMessageFromError,
@@ -266,83 +273,32 @@ type JsonValue = string | number | boolean | null | JsonObject | JsonArray
 type JsonObject = { [key: string]: JsonValue }
 type JsonArray = JsonValue[]
 
-type ProviderKey =
-  | 'openai'
-  | 'anthropic'
-  | 'gemini'
-  | 'openrouter'
-  | 'opencode'
-  | 'groq'
-  | 'xai'
-  | 'mistral'
-  | 'kilocode'
-  | 'cline'
-  | 'ollama'
-
 type ProviderConfig = {
-  provider?: ProviderKey
+  provider?: ProviderId
   model?: string
-  apiKeys?: Partial<Record<ProviderKey, string>>
+  apiKeys?: Partial<Record<ProviderId, string>>
   providerConfig?: {
     baseUrl?: string
     envKey?: string
   }
 }
 
-type OpenAICompatibleProviderKey = Exclude<
-  ProviderKey,
-  'anthropic'
->
-
-const DEFAULT_PROVIDER: OpenAICompatibleProviderKey = 'openai'
-
 const PROVIDER_CONFIG_PATH = join(
   process.env.HOME || process.env.USERPROFILE || '',
   '.claude-code-provider.json',
 )
 
-const OPENAI_COMPATIBLE_PROVIDER_DEFAULTS: Record<
-  OpenAICompatibleProviderKey,
-  { baseUrl: string; envKey: string }
-> = {
-  openai: { baseUrl: 'https://api.openai.com/v1', envKey: 'OPENAI_API_KEY' },
-  gemini: {
-    baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai',
-    envKey: 'GEMINI_API_KEY',
-  },
-  openrouter: {
-    baseUrl: 'https://openrouter.ai/api/v1',
-    envKey: 'OPENROUTER_API_KEY',
-  },
-  opencode: {
-    baseUrl: 'https://opencode.ai/zen/v1',
-    envKey: 'OPENCODE_API_KEY',
-  },
-  cline: {
-    baseUrl: 'https://api.cline.bot/api/v1',
-    envKey: 'CLINE_API_KEY',
-  },
-  groq: { baseUrl: 'https://api.groq.com/openai/v1', envKey: 'GROQ_API_KEY' },
-  xai: { baseUrl: 'https://api.x.ai/v1', envKey: 'XAI_API_KEY' },
-  mistral: { baseUrl: 'https://api.mistral.ai/v1', envKey: 'MISTRAL_API_KEY' },
-  kilocode: {
-    baseUrl: 'https://api.kilo.ai/api/gateway',
-    envKey: 'KILOCODE_API_KEY',
-  },
-  ollama: { baseUrl: 'http://localhost:11434/v1', envKey: 'OLLAMA_API_KEY' },
-}
-
 function isOpenAICompatibleProvider(
-  provider: ProviderKey,
-): provider is OpenAICompatibleProviderKey {
-  return provider !== 'anthropic'
+  provider: ProviderId,
+): boolean {
+  return provider !== 'anthropic' && provider !== 'google'
 }
 
 function getActiveProviderConfig(
   config: ProviderConfig | null,
-): ProviderConfig & { provider: ProviderKey } {
+): ProviderConfig & { provider: ProviderId } {
   if (config?.provider) {
-    return config as ProviderConfig & { provider: ProviderKey }
+    return config as ProviderConfig & { provider: ProviderId }
   }
 
   return {
@@ -368,7 +324,7 @@ async function callOpenAICompatibleProvider({
   model,
   signal,
 }: {
-  config: ProviderConfig & { provider: OpenAICompatibleProviderKey }
+  config: ProviderConfig & { provider: ProviderId }
   messages: unknown[]
   systemPrompt: SystemPrompt
   tools: BetaToolUnion[]
@@ -436,8 +392,8 @@ async function callOpenAICompatibleProvider({
     )
   }
 
-  const providerDefaults = OPENAI_COMPATIBLE_PROVIDER_DEFAULTS[provider]
-  const envKey = config.providerConfig?.envKey ?? providerDefaults.envKey
+  const providerEntry = getProviderRegistryEntry(provider)
+  const envKey = config.providerConfig?.envKey ?? providerEntry.envKey
   const apiKey =
     config.apiKeys?.[provider] ?? process.env[envKey]
 
@@ -463,7 +419,7 @@ async function callOpenAICompatibleProvider({
 
   const response = await fetch(
     getOpenAICompatibleChatCompletionsUrl(
-      config.providerConfig?.baseUrl ?? providerDefaults.baseUrl,
+      config.providerConfig?.baseUrl ?? providerEntry.defaultBaseUrl,
     ),
     {
       method: 'POST',
@@ -1586,6 +1542,23 @@ function createAssistantMessageFromOpenAIResponse(
   const choice = response?.choices?.[0]
   const message = choice?.message ?? choice
 
+  // Try parsing tool calls using toolCallParser
+  const parsedCalls = parseToolCalls(message)
+  if (parsedCalls.length > 0) {
+    const toolCalls: TextToolCall[] = parsedCalls.map(call => ({
+      id: undefined,
+      name: call.name,
+      input: call.input,
+    }))
+    const toolUseBlocks = createToolUseBlocks(toolCalls, tools)
+    if (toolUseBlocks.length > 0) {
+      return createAssistantMessage({
+        content: toolUseBlocks,
+      })
+    }
+  }
+
+  // Fallback to native OpenAI tool calls
   const nativeToolCalls = createToolUseBlocks(
     collectNativeOpenAIToolCalls(message),
     tools,
@@ -1627,6 +1600,7 @@ function createAssistantMessageFromOpenAIResponse(
     })
   }
 
+  // Try parsing JSON tool calls from text
   const textJSONToolCalls = createToolUseBlocks(
     parseTextJSONToolCalls(content),
     tools,

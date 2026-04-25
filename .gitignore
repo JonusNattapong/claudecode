@@ -27,6 +27,12 @@ Thumbs.db
 *.swo
 *~
 
+# Claude Code / Kilo
+.claude/
+
+# Claude Code / Kilo CLI
+.claude/
+
 # Testing
 coverage/
 .nyc_output
@@ -45,3 +51,4 @@ bun.lockb
 # Temp
 tmp/
 temp/
+.docs/

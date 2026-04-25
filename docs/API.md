@@ -1,10 +1,17 @@
 # API Reference — Current Implementation
 
-The current implementation uses Anthropic's Claude models as the primary AI provider through the official `@anthropic-ai/sdk` package.
+The current implementation supports multiple AI providers through a provider abstraction layer in `src/services/ai/`. Supported providers include Anthropic Claude, OpenAI, Google Gemini, OpenRouter, KiloCode, Ollama, and other OpenAI-compatible APIs.
 
 ## Current Architecture
 
-The system directly uses Anthropic's SDK without a provider abstraction layer. The main API client is in `src/services/api/client.ts`.
+The system uses a provider abstraction layer with `ProviderInterface` implementations for each provider:
+- `AnthropicProvider` - Native Anthropic SDK integration
+- `OpenAIProvider` - Native OpenAI SDK integration
+- `GoogleProvider` - Native Google Gemini SDK integration
+- `OpenAICompatibleProvider` - Base class for OpenAI-compatible providers
+- Provider-specific adapters: `OllamaProvider`, `OpenRouterProvider`
+
+The main API client is in `src/services/api/client.ts` with provider registry in `src/services/ai/providerRegistry.ts`.
 
 ### Message Types
 
@@ -93,27 +100,31 @@ export ANTHROPIC_VERTEX_PROJECT_ID="your-gcp-project"
 # Uses Google Application Default Credentials
 ```
 
-### Provider Configuration (Future/Planned)
+### Provider Configuration
 
-While the runtime currently only supports Anthropic, the CLI includes configuration for multiple providers:
+The runtime supports multiple providers. Configure via CLI or environment variables:
 
 ```bash
 # Configure provider and model
-claude --provider openai --model gpt-4.1-mini
-claude --provider anthropic --model claude-3-5-sonnet-20241022
+claude --provider openai --model gpt-5.5
+claude --provider anthropic --model claude-sonnet-4-6
+claude --provider google --model gemini-3.1-flash
 ```
 
-Available providers in configuration:
-- **OpenAI**: GPT-4, GPT-4.1, GPT-4.1-mini, GPT-4o-mini
-- **Anthropic**: Claude Opus 4, Sonnet 4, Haiku
-- **Google Gemini**: Gemini 2.5 Flash
-- **OpenRouter**: 100+ models
-- **Groq**: Llama 3.3, 3.1
-- **xAI**: Grok 4, Grok 4-mini
-- **Mistral**: Mistral Large
-- **KiloCode**: KiloCode AI Gateway
-- **OpenCode**: OpenCode AI Gateway
-- **Ollama**: Local models
+Available providers:
+- **Anthropic**: Claude Opus 4.7, Sonnet 4.6, Haiku 4.5 (native SDK)
+- **OpenAI**: GPT-5.5, GPT-5.5 Pro (native SDK)
+- **Google**: Gemini 3.1 Pro/Flash via native SDK or OpenAI-compatible endpoint
+- **OpenRouter**: 100+ models (OpenAI-compatible)
+- **KiloCode**: KiloCode AI Gateway with 500+ models
+- **Ollama**: Local models (OpenAI-compatible, no API key required)
+- **Cline**: Cline API (OpenAI-compatible)
+- **OpenCode**: OpenCode AI Gateway (OpenAI-compatible)
+- **Groq**: Llama 3.3, Mixtral (OpenAI-compatible)
+- **xAI**: Grok 4, Grok 4.20 (OpenAI-compatible)
+- **Mistral**: Mistral Large, Small (OpenAI-compatible)
+
+Use `/provider` command in CLI for interactive provider management.
 
 ### Tool System
 
@@ -135,20 +146,22 @@ Available tools include:
 - MCP server integration
 - And more...
 
-### Multi-Provider Support (Planned)
+### Multi-Provider Support (Implemented)
 
-The codebase includes infrastructure for future multi-provider support:
+The codebase now includes full multi-provider support through a provider abstraction layer:
 
-- Provider configuration system in `src/main.tsx`
-- Model selection per provider
-- Base URLs for different providers
-- Environment variable keys for each provider
+- Provider registry in `src/services/ai/providerRegistry.ts`
+- Provider interface: `src/services/ai/providers/ProviderInterface.ts`
+- Provider-specific implementations in `src/services/ai/providers/`
+- Streaming support with SSE parsing for OpenAI-compatible providers
+- Model discovery with caching and fallback to hardcoded registry
+- Normalized error handling, usage tracking, and tool call parsing
 
-To enable full multi-provider support, a provider abstraction layer would need to be implemented to wrap different SDKs (OpenAI, Google, etc.) with a unified interface.
+### Provider Capabilities
 
-### Current Limitations
-
-- Only Anthropic Claude models are actively supported at runtime
-- Other providers (OpenAI, Google, etc.) are configured but not integrated
-- All API requests go through Anthropic's API
-- Multi-provider support requires additional implementation
+Each provider has declared capabilities in the registry:
+- **Tool calling**: Native, JSON-text fallback, or none
+- **Streaming**: Full, partial, or none
+- **Vision**: Supported or not
+- **Reasoning**: Supported or not
+- **Context length**: Varies by model

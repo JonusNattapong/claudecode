@@ -67,6 +67,7 @@ import { uniq } from './array.js'
 import { registerCleanup } from './cleanupRegistry.js'
 import { updateSessionName } from './concurrentSessions.js'
 import { getCwd } from './cwd.js'
+import { getSettingsForSource } from './settings/settings.js'
 import { logForDebugging } from './debug.js'
 import { logForDiagnosticsNoPII } from './diagLogs.js'
 import { getClaudeConfigHomeDir, isEnvTruthy } from './envUtils.js'
@@ -2709,12 +2710,13 @@ export async function linkSessionToPR(
   prRepository: string,
   fullPath?: string,
 ): Promise<void> {
+  const effectivePrUrl = getEffectivePrUrl(prUrl, prRepository, prNumber)
   const resolvedPath = fullPath ?? getTranscriptPathForSession(sessionId)
   appendEntryToFile(resolvedPath, {
     type: 'pr-link',
     sessionId,
     prNumber,
-    prUrl,
+    prUrl: effectivePrUrl,
     prRepository,
     timestamp: new Date().toISOString(),
   })
@@ -2722,10 +2724,47 @@ export async function linkSessionToPR(
   if (sessionId === getSessionId()) {
     const project = getProject()
     project.currentSessionPrNumber = prNumber
-    project.currentSessionPrUrl = prUrl
+    project.currentSessionPrUrl = effectivePrUrl
     project.currentSessionPrRepository = prRepository
   }
   logEvent('tengu_session_linked_to_pr', { prNumber })
+}
+
+function getEffectivePrUrl(
+  originalPrUrl: string,
+  prRepository: string,
+  prNumber: number,
+): string {
+  const template = getPrUrlTemplate()
+  if (!template) {
+    return originalPrUrl
+  }
+
+  const customUrl = renderPrUrlTemplate(template, prRepository, prNumber)
+  return customUrl || originalPrUrl
+}
+
+function getPrUrlTemplate(): string | undefined {
+  return (
+    getSettingsForSource('flagSettings')?.prUrlTemplate ??
+    getSettingsForSource('localSettings')?.prUrlTemplate ??
+    getSettingsForSource('projectSettings')?.prUrlTemplate ??
+    getSettingsForSource('userSettings')?.prUrlTemplate ??
+    getSettingsForSource('policySettings')?.prUrlTemplate
+  )
+}
+
+function renderPrUrlTemplate(
+  template: string,
+  prRepository: string,
+  prNumber: number,
+): string {
+  const [repoOwner = '', repoName = ''] = prRepository.split('/', 2)
+  return template
+    .replace(/{{\s*repo\s*}}/g, prRepository)
+    .replace(/{{\s*repoOwner\s*}}/g, repoOwner)
+    .replace(/{{\s*repoName\s*}}/g, repoName)
+    .replace(/{{\s*prNumber\s*}}/g, String(prNumber))
 }
 
 export function getCurrentSessionTag(sessionId: UUID): string | undefined {

@@ -60,67 +60,38 @@ import vim from './commands/vim/index.js'
 import { feature } from 'bun:bundle'
 // Dead code elimination: conditional imports
 /* eslint-disable @typescript-eslint/no-require-imports */
-const proactive =
-  feature('PROACTIVE') || feature('KAIROS')
-    ? require('./commands/proactive.js').default
-    : null
-const briefCommand =
-  feature('KAIROS') || feature('KAIROS_BRIEF')
-    ? require('./commands/brief.js').default
-    : null
-const assistantCommand = feature('KAIROS')
-  ? require('./commands/assistant/index.js').default
+// Feature-gated commands (enable via env vars: KAIROS=1 VOICE_MODE=1 BRIDGE_MODE=1)
+// Default commands (always available):
+const buddy = require('./commands/buddy/index.js').default
+
+// Feature-gated (require env var):
+const _hasFeature = (name: string): boolean => process.env[name] === '1'
+
+const proactive = null
+const briefCommand = _hasFeature('KAIROS')
+  ? (require('./commands/brief.ts') as typeof import('./commands/brief.ts')).default
   : null
-const bridge = feature('BRIDGE_MODE')
-  ? require('./commands/bridge/index.js').default
+const assistantCommand = _hasFeature('KAIROS')
+  ? (require('./commands/assistant/assistant.js') as typeof import('./commands/assistant/assistant.js')).default
   : null
-const remoteControlServerCommand =
-  feature('DAEMON') && feature('BRIDGE_MODE')
-    ? require('./commands/remoteControlServer/index.js').default
-    : null
-const voiceCommand = feature('VOICE_MODE')
-  ? require('./commands/voice/index.js').default
+const bridge = _hasFeature('BRIDGE_MODE')
+  ? (require('./commands/bridge/index.ts') as typeof import('./commands/bridge/index.ts')).default
   : null
-const forceSnip = feature('HISTORY_SNIP')
-  ? require('./commands/force-snip.js').default
+const remoteControlServerCommand = null
+const voiceCommand = _hasFeature('VOICE_MODE')
+  ? (require('./commands/voice/index.ts') as typeof import('./commands/voice/index.ts')).default
   : null
-const workflowsCmd = feature('WORKFLOW_SCRIPTS')
-  ? (
-      require('./commands/workflows/index.js') as typeof import('./commands/workflows/index.js')
-    ).default
+const forceSnip = null
+const webCmd = null
+const clearSkillIndexCache = null
+const subscribePr = null
+const ultraplan = _hasFeature('ULTRAPLAN')
+  ? (require('./commands/ultraplan.tsx') as typeof import('./commands/ultraplan.tsx')).default
   : null
-const webCmd = feature('CCR_REMOTE_SETUP')
-  ? (
-      require('./commands/remote-setup/index.js') as typeof import('./commands/remote-setup/index.js')
-    ).default
-  : null
-const clearSkillIndexCache = feature('EXPERIMENTAL_SKILL_SEARCH')
-  ? (
-      require('./services/skillSearch/localSearch.js') as typeof import('./services/skillSearch/localSearch.js')
-    ).clearSkillIndexCache
-  : null
-const subscribePr = feature('KAIROS_GITHUB_WEBHOOKS')
-  ? require('./commands/subscribe-pr.js').default
-  : null
-const ultraplan = feature('ULTRAPLAN')
-  ? require('./commands/ultraplan.js').default
-  : null
-const torch = feature('TORCH') ? require('./commands/torch.js').default : null
-const peersCmd = feature('UDS_INBOX')
-  ? (
-      require('./commands/peers/index.js') as typeof import('./commands/peers/index.js')
-    ).default
-  : null
-const forkCmd = feature('FORK_SUBAGENT')
-  ? (
-      require('./commands/fork/index.js') as typeof import('./commands/fork/index.js')
-    ).default
-  : null
-const buddy = feature('BUDDY')
-  ? (
-      require('./commands/buddy/index.js') as typeof import('./commands/buddy/index.js')
-    ).default
-  : null
+const torch = null
+const workflowsCmd = null
+const peersCmd = null
+const forkCmd = null
 /* eslint-enable @typescript-eslint/no-require-imports */
 import thinkback from './commands/thinkback/index.js'
 import thinkbackPlay from './commands/thinkback-play/index.js'
@@ -400,11 +371,7 @@ async function getSkills(cwd: string): Promise<{
 }
 
 /* eslint-disable @typescript-eslint/no-require-imports */
-const getWorkflowCommands = feature('WORKFLOW_SCRIPTS')
-  ? (
-      require('./tools/WorkflowTool/createWorkflowCommand.js') as typeof import('./tools/WorkflowTool/createWorkflowCommand.js')
-    ).getWorkflowCommands
-  : null
+const getWorkflowCommands = null // feature('WORKFLOW_SCRIPTS') ? ... : null
 /* eslint-enable @typescript-eslint/no-require-imports */
 
 /**

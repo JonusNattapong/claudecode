@@ -22,6 +22,24 @@ export type BuiltinPluginDefinition = {
   description: string
   /** Optional version string */
   version?: string
+  /** Optional filesystem root for bundled plugin assets */
+  path?: string
+  /** Optional slash command source path */
+  commandsPath?: string
+  /** Optional additional slash command source paths */
+  commandsPaths?: string[]
+  /** Optional agent source path */
+  agentsPath?: string
+  /** Optional additional agent source paths */
+  agentsPaths?: string[]
+  /** Optional skill source path */
+  skillsPath?: string
+  /** Optional additional skill source paths */
+  skillsPaths?: string[]
+  /** Optional output style source path */
+  outputStylesPath?: string
+  /** Optional additional output style source paths */
+  outputStylesPaths?: string[]
   /** Skills provided by this plugin */
   skills?: BundledSkillDefinition[]
   /** Hooks provided by this plugin */

@@ -1,278 +1,564 @@
 # Architecture
 
-This document outlines Claude Code's architecture, design patterns, and data flow.
+## System Overview
 
-## Overview
+Claude Code is a terminal-based AI coding assistant built with a modular, service-oriented architecture. It combines a reactive UI (Ink + React) with a powerful AI orchestration layer supporting multiple LLM providers.
 
-Claude Code is an AI-powered coding assistant with two frontends:
-- **CLI** (TUI) — Built with Ink/React, runs in terminal
-- **Web** — Next.js web app (optional)
-
-Both share a common `shared/` package containing core services and AI provider integrations.
+## High-Level Architecture
 
 ```
-┌─────────────────────────────────────────────┐
-│                  Frontends                   │
-│  ┌─────────────┐         ┌─────────────┐   │
-│  │   CLI TUI   │         │   Web App   │   │
-│  │ (Ink/React) │         │  (Next.js)  │   │
-│  └──────┬──────┘         └──────┬──────┘   │
-│         │                       │           │
-│         └───────────┬───────────┘           │
-│                     │                       │
-│         ┌───────────▼───────────┐           │
-│         │   shared/ services    │           │
-│         │  • Provider System    │           │
-│         │  • Auth               │           │
-│         │  • Tool definitions   │           │
-│         └───────────────────────┘           │
-└─────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────┐
+│                        Terminal UI                          │
+│                     (Ink / React / TUI)                     │
+├─────────────────────────────────────────────────────────────┤
+│                    Command Handler Layer                     │
+│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────────┐  │
+│  │  Files   │ │   Git    │ │  MCP     │ │   Agent      │  │
+│  │ Commands │ │Commands  │ │ Servers  │ │  System      │  │
+├─────────────────────────────────────────────────────────────┤
+│                    AI Provider Layer                         │
+│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────────┐  │
+│  │Anthropic │ │ OpenAI   │ │ Google   │ │  OpenRouter  │  │
+│  │Provider  │ │Provider  │ │Provider  │ │   Provider   │  │
+├─────────────────────────────────────────────────────────────┤
+│                    Core Services                             │
+│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────────┐  │
+│  │Provider  │ │Session   │ │Permission│ │   Plugin     │  │
+│  │Registry  │ │Manager   │ │Manager   │ │   Manager    │  │
+├─────────────────────────────────────────────────────────────┤
+│                    Data & Storage                            │
+│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────────┐  │
+│  │~/.claude/│ │Session   │ │Settings  │ │   Cache      │  │
+│  │Sessions  │ │Transcript│ │(JSON)    │ │  (5-min)     │  │
+└─────────────────────────────────────────────────────────────┘
 ```
 
 ## Core Components
 
-### Main Entry Point
+### 1. Main Entry Point (`src/main.tsx`)
 
-`src/main.tsx` — Bootstraps the application:
-- Initializes telemetry & feature flags
-- Loads settings from config/env
-- Parses command-line arguments
-- Starts the REPL (Read-Eval-Print Loop)
+The application entry point that:
+- Initializes the TUI (Terminal User Interface)
+- Sets up Ink/React renderer
+- Bootstraps core services (ProviderRegistry, SessionManager, etc.)
+- Handles CLI arguments and flags
+- Registers all built-in commands
+- Loads plugins and skills
+- Starts the REPL loop
 
-### Claude Integration
+**Key responsibilities:**
+- Process command-line options (`--provider`, `--model`, `--resume`, etc.)
+- Initialize environment (API keys, config, settings)
+- Construct and render the main App component
 
-Located in `shared/services/ai/`:
+### 2. App Component (`src/cli/App.tsx`)
 
-- `ProviderManager.ts` — Central orchestrator for all AI providers
-- `ProviderInterface.ts` — Base interface for all provider implementations
-- `MultiProviderAuth.ts` — Manages authentication across multiple providers
-- `AnthropicProvider.ts` — Anthropic Claude integration
-- `OpenAIProvider.ts` — OpenAI GPT integration
-- `GoogleProvider.ts` — Google Gemini integration
-- `ClaudeModels.ts` — Model definitions and utilities (Anthropic-specific)
+The root React component that:
+- Manages global application state
+- Coordinates between UI layout, input handling, and AI interactions
+- Controls fullscreen/normal mode toggling
+- Handles session lifecycle (create, resume, exit)
+- Maintains conversation history and message list
+- Displays the prompt input and response rendering
 
-Flow:
-```
-CLI/UI → ProviderManager → ProviderInterface → Provider SDK → AI Provider API
-```
+**State management:**
+- `messages` — Array of conversation messages
+- `inputValue` — Current prompt text
+- `mode` — `Normal`, `Plan`, `Compact`, or `Fullscreen`
+- `isResponding` — Loading state
+- `providerManager` — Shared provider instance
 
-## Current Implementation
+### 3. Provider System (`src/services/ai/`)
 
-The current implementation uses Anthropic's Claude models as the primary AI provider. The codebase includes configuration support for multiple providers, but the actual API integration currently only supports Anthropic.
+Abstraction layer for AI model providers.
 
-### Current Architecture
+#### Provider Interface (`ProviderInterface.ts`)
 
-```
-CLI/UI → Anthropic Client → Anthropic API (Claude models)
-```
+All providers must implement:
+- `streamMessage()` — Streaming responses
+- `nonStreamingMessage()` — Non-streaming fallback
+- `getModels()` — Model discovery
+- `getToolResultSchema()` — Tool schema for function calling
+- `normalize*()` — Normalization helpers for responses, tools, errors
 
-The main API client (`src/services/api/client.ts`) uses the official `@anthropic-ai/sdk` package to interact with Claude models. It supports:
+#### Built-in Providers
 
-- Direct API access with `ANTHROPIC_API_KEY`
-- AWS Bedrock deployment
-- Azure Foundry (Azure OpenAI)
-- Google Vertex AI
+| Provider | Adapter | Features |
+|----------|---------|----------|
+| Anthropic | `@ai-sdk/anthropic` | Native Claude models, native SSE streaming |
+| OpenAI | `@ai-sdk/openai` | GPT-4, GPT-3.5-turbo, o1, o3 |
+| Google | `@ai-sdk/google` | Gemini Pro, Gemini Flash |
+| OpenRouter | `@openrouter/ai-sdk-provider` | 100+ models via unified API |
+| KiloCode | `ai-sdk-provider-opencode-sdk` | Custom provider |
+| Ollama | Custom HTTP | Local models, no API key |
+| AWS Bedrock | `@aws-sdk/client-bedrock` | Claude on Bedrock, region support |
+| Google Vertex AI | `@google/generative-ai` | Claude/Vertex models |
+| Azure | `@azure/identity` | Azure-hosted models |
 
-### Provider Configuration
+#### Provider Registry (`providerRegistry.ts`)
 
-While the runtime only supports Anthropic, the CLI includes a provider selection system that allows configuration of different providers for future multi-provider support. The configuration is stored in `~/.claude-code-provider.json`.
+Singleton registry that:
+- Registers all available providers
+- Handles provider switching
+- Provides access to current provider instance
+- Persists provider/model selection in settings
 
-Available providers in configuration:
-- **OpenAI** - GPT-4, GPT-4.1, GPT-4.1-mini, GPT-4o-mini
-- **Anthropic** - Claude Opus 4, Sonnet 4, Haiku (active)
-- **Google Gemini** - Gemini 2.5 Flash
-- **OpenRouter** - 100+ models via OpenRouter
-- **Groq** - Llama 3.3, 3.1, etc.
-- **xAI** - Grok 4, Grok 4-mini
-- **Mistral** - Mistral Large
-- **KiloCode** - KiloCode AI Gateway
-- **OpenCode** - OpenCode AI Gateway
-- **Ollama** - Local models
+#### Provider Manager (`ProviderManager.ts`)
 
-### Current API Client
+Orchestrates:
+- API key management (per-provider storage)
+- Model selection and discovery
+- Streaming response handling
+- Token usage tracking
+- Error normalization
 
-The `getAnthropicClient()` function in `src/services/api/client.ts` creates an Anthropic SDK client with support for:
+### 4. Tools System (`src/infra/tools/`)
 
-- Standard API key authentication
-- AWS Bedrock (with IAM or API key)
-- Azure Foundry (with Azure AD or API key)
-- Google Vertex AI (with GCP credentials)
+Tools extend Claude's capabilities by allowing it to perform actions.
 
-### Future Multi-Provider Support
+#### Tool Categories
 
-The codebase includes infrastructure for multi-provider support that could be activated:
+**Core System Tools:**
+- `Read` — Read file contents
+- `Edit` — Edit files with precise replacements
+- `Write` — Write or create files
+- `Glob` / `Grep` — File searching
+- `Bash` / `PowerShell` — Command execution
+- `Git` — Version control operations
 
-- Provider configuration system (`CLI_PROVIDER_DEFAULTS`)
-- Model selection per provider
-- Base URLs for different providers
-- Environment variable keys for each provider
+**Integration Tools:**
+- `WebFetch` — Fetch web pages
+- `WebSearch` — Search the web
+- `Task` — Create subagent tasks
+- `Agent` — Invoke other agents
+- `MCP` — Model Context Protocol integration
 
-To enable full multi-provider support, the following would need to be implemented:
+**Session Tools:**
+- `Session` — Save/load sessions
+- `Ask` — Ask follow-up questions
+- `Feedback` — Send feedback
 
-1. Provider abstraction layer (similar to the documented `ProviderInterface`)
-2. Provider-specific SDK integrations (OpenAI, Google, etc.)
-3. Unified message format conversion
-4. Runtime provider switching logic
-5. Per-provider authentication management
+#### Tool Implementation Pattern
 
-### Message Format
-
-The system uses Anthropic's message format with beta features for:
-- Tool use
-- JSON mode output
-- Document inputs
-- Image inputs
-
-### Message Pipeline
-
-```
-User Input → Tool Execution → Context Assembly → Anthropic Client → Anthropic API → Streaming Response → Display
-```
-
-Key modules:
-- `src/utils/messages.ts` — Message conversion utilities
-- `src/services/api/client.ts` — Anthropic SDK client
-- `src/services/api/claude.ts` — Message processing and streaming
-- `src/utils/toolExecution.ts` — Tool orchestration
-
-### Tool System
-
-Tools allow the AI to interact with the environment (files, git, shell, etc.).
-
-Structure:
-```
-src/tools/
-├── Tool.ts              # Base class
-├── index.ts             # Tool registry
-├── BashTool/           # Shell execution
-├── FileReadTool/       # Read files
-├── FileWriteTool/      # Write files
-├── GitTool/            # Git operations
-├── WebSearchTool/      # Web search
-└── ...
+Each tool exports:
+```typescript
+{
+  name: string,
+  description: string,
+  parameters: zod.Schema,
+  isEnabled: (context) => boolean,
+  userFacingName: () => string,
+  renderToolUse: () => JSX.Element,
+  renderResult: () => JSX.Element,
+}
 ```
 
-Each tool implements:
-- `inputSchema` — Zod schema for validation
-- `execute` — Runtime implementation
-- Permissions (sandbox requirements)
+### 5. CLI Commands (`src/commands/`)
 
-### Permission System
+All slash commands (`/command`) are implemented as independent modules.
 
-Located in `src/utils/permissions/`:
+#### Command Structure
 
-- Tools require approval (auto/manual mode)
-- Sandboxing for shell commands
-- Configurable per-session or globally
+Each command directory contains:
+- `index.ts` — Command handler (interactive mode)
+- `*noninteractive.ts` — Non-interactive mode handler
+- `*ui.tsx` — UI components (optional)
 
-### Session & State Management
+#### Command Registration
 
-- **Zustand** stores in `src/state/` for UI state (CLI)
-- Session data persisted in `~/.claude/` or project `.claude/`
-- `src/utils/sessionStorage.ts` — Save/resume sessions
-- `src/history.js` — Command history
-
-### MCP (Model Context Protocol)
-
-MCP servers extend Claude Code with external tools and data:
-
-```
-Claude Code ↔ MCP Client ↔ MCP Server (external process)
+Commands register via:
+```typescript
+registerCommand({
+  name: "command-name",
+  description: "Description",
+  symbol: "⚡",  // Optional emoji
+  isEnabled: (context) => boolean,
+  handler: async (context) => { ... },
+});
 ```
 
-Implementation:
-- `src/services/mcp/client.ts` — MCP client
-- `src/services/mcp/config.ts` — MCP config parsing
-- Tools/resources from MCP are dynamically added
+**Built-in Commands** (partial list):
+- `/model` — Switch AI model
+- `/provider` — Manage providers
+- `/config` — Settings editor
+- `/buddy` — Configure AI companion
+- `/cost` / `/usage` — Token usage and cost
+- `/context` — Context window usage
+- `/resume` / `/continue` — Resume sessions
+- `/agents` — Agent management
+- `/skills` — Skill management
+- `/mcp` — MCP server management
+- `/plugin` — Plugin marketplace
+- `/status` — System status
+- `/doctor` — Diagnostics
 
-### Remote Control & Teleport
+### 6. Plugin System (`src/plugins/`)
 
-Multi-user collaboration features:
+Plugins extend Claude Code with custom functionality.
 
-- `src/bridge/` — REPL bridge for remote connections
-- `src/remote/` — Remote session management
-- WebSocket-based communication
+#### Plugin Structure
 
-### Feature Flags & Analytics
+```
+plugin-name/
+├── .claude-plugin/
+│   ├── plugin.json      # Manifest (name, version, skills, hooks)
+│   ├── skills/          # Skill implementations
+│   ├── hooks/           # Hook handlers
+│   └── tools/           # Custom tools (optional)
+├── marketplace.json     # Marketplace metadata
+└── README.md           # Plugin documentation
+```
 
-- **GrowthBook** for feature flags
-- `src/services/analytics/` — Event tracking
-- `src/utils/fastMode.ts` — Early loading optimizations
+#### Plugin Loading Process
+
+1. Discover plugins from:
+   - Built-in plugins (`plugins/`)
+   - User plugins (`~/.claude/plugins/`)
+   - Marketplace entries
+2. Validate `plugin.json` manifest
+3. Resolve dependencies between plugins
+4. Load skills and register slash commands
+5. Register hooks
+6. Start background monitors (if any)
+
+**Plugin Types:**
+- **Local** — Loaded from filesystem
+- **Git** — Loaded from git repository
+- **Marketplace** — Installed from plugin marketplace
+
+#### Skill Definition
+
+Skills are specialized commands or automation:
+
+```json
+{
+  "name": "my-skill",
+  "description": "Does something useful",
+  "command": "my-skill",  // Slash command name
+  "group": "Custom",
+  "frontmatter": "---",
+  "mcpServers": { ... }   // Optional MCP servers
+}
+```
+
+#### Hook Types
+
+Plugins can hook into lifecycle events:
+- `PreToolUse` — Before tool execution
+- `PostToolUse` — After tool execution
+- `PreBash` — Before Bash command
+- `PostPrompt` — After user prompt
+- `PreAcceptEdit` — Before accepting edit
+- And more...
+
+### 7. Permissions System (`src/cli/permissions/`)
+
+Security layer controlling what Claude can do.
+
+#### Permission Hierarchy
+
+1. **Policy** (highest) — Managed by organization admin
+2. **Project** — `.claude/settings.json` in project root
+3. **User** — `~/.claude/settings.json`
+4. **Local** — `CLAUDE_CODE_LOCAL_*` env vars
+5. **Environment** — `CLAUDE_CODE_*` env vars
+6. **Code** (lowest) — Hardcoded defaults
+
+#### Permission Modes
+
+- `auto` — Automatically allow based on rules
+- `accept-edits` — Allow file edits automatically, prompt for other tools
+- `ask-first` — Always prompt for confirmation (default)
+- `bypass` — Allow everything (warning: dangerous)
+
+#### Permission Scopes
+
+Permissions apply to:
+- **Directories** — Filesystem access bounds
+- **Tools** — Which tools are available
+- **Environment** — Which env vars can be read
+- **Network** — Allowed domains and ports
+
+#### Sandboxing
+
+Bash commands run in a sandbox when possible:
+- Linux: PID namespace + seccomp-bpf
+- macOS: Seatbelt sandbox
+- Windows: Job objects + restricted token
+
+### 8. Session Management (`src/cli/session/`)
+
+Handles conversation persistence and lifecycle.
+
+#### Session Files
+
+Sessions stored in `~/.claude/sessions/`:
+- `{id}.json` — Session metadata
+- `{id}.txt` — Transcript (plaintext)
+- `{id}.json` — Full JSON transcript
+
+#### Session Modes
+
+- **Normal** — Standard conversation
+- **Plan** — Structured planning mode
+- **Compact** — Context compression enabled
+- **Focus** — Minimal UI, only conversation
+
+#### Session Actions
+
+- `--resume <id>` — Resume existing session
+- `--continue` — Continue most recent session
+- `--from-pr <url>` — Start from GitHub PR
+- `/add-dir` — Add project directory to session
+
+### 9. Bridge Mode (`src/bridge/`)
+
+Enables remote collaboration features.
+
+**Components:**
+- `bridgeMain.ts` — Core bridge implementation
+- `replBridge.ts` — REPL bridge for WebSocket transport
+- `codeSessionApi.ts` — API client for claude.ai
+- `bridgeConfig.ts` — Configuration loading
+
+**Features:**
+- Share session URL with teammates
+- Remote control from web/desktop
+- Live transcription
+- Voice dictation sync
+
+### 10. Agent System (`src/agents/`)
+
+Agents are specialized AI instances with custom tools and behavior.
+
+#### Agent Types
+
+- **Subagent** — Spawned from main conversation
+- **Parallel Agent** — Runs alongside main agent
+- **Forked Agent** — Independent session fork
+
+#### Agent Configuration
+
+```typescript
+interface Agent {
+  name: string;
+  description: string;
+  prompt: string;
+  tools?: string[];
+  MCP servers?: Record<string, any>;
+  permissionMode?: PermissionMode;
+  allowedPaths?: string[];
+}
+```
+
+#### Agent Tool
+
+The `/agent` tool allows:
+- Spawning subagents for specific tasks
+- Parallel execution
+- Tool chaining
+- Result aggregation
 
 ## Data Flow
 
-### Single Query (Non-Streaming)
+### Request → Response Flow
 
-1. User types message in REPL
-2. Context manager adds relevant files/git status
-3. Tool use decisions are made by model
-4. Tool results collected and fed back
-5. Final response rendered
-6. Session persisted
+```
+User types prompt
+      ↓
+Input capture (keyboard handling)
+      ↓
+Message added to conversation
+      ↓
+Context window check (auto-compact if needed)
+      ↓
+Permission checks (PreToolUse hooks, sandbox)
+      ↓
+Build API request (tools, system prompt, context)
+      ↓
+Stream response (via SSE transport)
+      ↓
+Render UI (incremental updates)
+      ↓
+Tool calls extracted
+      ↓
+Permission prompts (if needed)
+      ↓
+Execute tools
+      ↓
+Tool results added to context
+      ↓
+Continue streaming (back to step 5)
+      ↓
+Response complete
+      ↓
+Post-processing (hooks, transcript save, telemetry)
+```
 
-### Streaming Query
+### Tool Execution Flow
 
-Same as above, but response tokens stream as they arrive.
+```
+Model calls tool
+      ↓
+ToolUse message added
+      ↓
+PreToolUse hook (if registered)
+      ↓
+Permission check (sandbox, rule evaluation)
+      ↓
+Prompt user (if required)
+      ↓
+Execute tool implementation
+      ↓
+PostToolUse hook (if registered)
+      ↓
+ToolResult message added
+      ↓
+Continue conversation
+```
 
-## Extensibility
+## Extension Points
 
-### Adding a Tool
+### 1. Custom Tools
 
-1. Create tool class extending `Tool`
-2. Define input schema with Zod
-3. Implement `execute` method
-4. Register in `src/tools/index.ts`
-5. Add permission flags if sandboxed
+Implement the Tool interface:
+```typescript
+import { Tool } from "./tool.tsx";
 
-### Adding a Command
+const myTool: Tool = {
+  name: "my_tool",
+  description: "Does something cool",
+  parameters: z.object({
+    input: z.string(),
+  }),
+  isEnabled: () => true,
+  async *execute(args) {
+    // Tool logic
+    yield { type: "result", content: "Done!" };
+  },
+};
+```
 
-1. Create file `src/commands/<name>/index.ts`
-2. Export Commander command
-3. Register in appropriate command loader
-4. Add help text
+### 2. Custom Commands
+
+Create a directory under `src/commands/`:
+```typescript
+import { registerCommand } from "../cli/commands.ts";
+
+registerCommand({
+  name: "mycommand",
+  description: "My custom command",
+  handler: async (session) => {
+    session.ui.print("Hello from my command!");
+  },
+});
+```
+
+### 3. Plugins
+
+Create a plugin manifest (`plugin.json`):
+```json
+{
+  "name": "my-plugin",
+  "version": "1.0.0",
+  "description": "A plugin for Claude Code",
+  "skills": ["./skills/my-skill.ts"],
+  "hooks": {
+    "PreToolUse": ["./hooks/pre-tool.ts"]
+  }
+}
+```
+
+### 4. Hooks
+
+Hooks allow intercepting tool execution:
+```typescript
+export default {
+  name: "my-hook",
+  version: "1.0.0",
+  hooks: {
+    PreToolUse: async (input) => {
+      // Modify input, block tool, or request permission
+      return input;
+    },
+  },
+};
+```
+
+## Configuration
+
+Settings are loaded from multiple sources:
+1. Built-in defaults
+2. Environment variables (`CLAUDE_CODE_*`)
+3. Managed settings (enterprise policy)
+4. Project settings (`.claude/settings.json`)
+5. User settings (`~/.claude/settings.json`)
+
+See [Configuration](CONFIGURATION.md) for complete details.
+
+## Storage Layout
+
+```
+~/.claude/
+├── sessions/            # Session files
+│   ├── {id}.json       # Metadata
+│   ├── {id}.txt        # Transcript
+│   └── {id}.jsonl      # JSON transcript
+├── settings.json       # User settings
+├── credentials.json    # Stored API tokens
+├── keybindings.json    # Custom keybindings
+├── plugins/            # Installed plugins
+│   └── {plugin-name}/
+├── themes/             # Custom color themes
+├── backups/            # Session backups
+├── tasks/              # Scheduled tasks
+├── shell-snapshots/    # Shell state snapshots
+└── cache/
+    ├── models/         # Model metadata cache
+    └── providers/      # Provider responses
+```
+
+Project-specific:
+```
+.project/
+├── .claude/
+│   ├── settings.json   # Project settings
+│   ├── contexts.json   # Git branch mappings
+│   └── plugin-overrides.json
+└── .git/
+```
 
 ## Performance Optimizations
 
-- **Prefetching**: Startup prefetch for user config, git status
-- **Bundle splitting**: Dynamic imports for heavy features
-- **Caching**: Prompt cache, provider config cache
-- **Lazy loading**: MCP servers only when needed
+- **Model Cache** — 5-minute TTL for model lists
+- **Session Index** — In-memory index for fast resume lookup
+- **Lazy Loading** — Grammars and large dependencies loaded on-demand
+- **Virtual Scroller** — Only visible messages rendered
+- **Streaming SSE** — Real-time without buffering
+- **Token Budgeting** — Preemptive compaction before overflow
 
 ## Security Considerations
 
-- API keys stored in OS keychain or env vars
-- Shell commands sandboxed by default
-- Tools require explicit permission (except safe ones)
-- Code execution always asks confirmation unless auto-mode enabled
-- All tool inputs validated with Zod schemas
+- **Sandboxing** — All tool execution isolated
+- **Permission Model** — Multi-layer approval system
+- **Credential Storage** — Encrypted keychain (macOS Keychain, Windows Credential Manager, Secret Service on Linux)
+- **Audit Trail** — All actions logged in session transcript
+- **No Secret Logging** — API keys redacted from logs
+- **Network Restrictions** — Configurable allowed domains
+- **MCP OAuth** — Full OAuth 2.1 flow with PKCE
 
-## Testing
+## OpenTelemetry & Observability
 
-- Unit tests with Bun's test runner
-- Integration tests for tools and providers
-- E2E tests with Playwright (optional)
+Claude Code exports traces, metrics, and logs:
+- **Traces** — Request flows, tool execution chains
+- **Metrics** — Token usage, latency, error rates
+- **Logs** — Structured logs with context
 
-Run:
-```bash
-bun test
-# or specific test
-bun test test/my-test.ts
-```
+Export endpoints configurable via:
+- `OTEL_EXPORTER_OTLP_ENDPOINT`
+- `OTEL_EXPORTER_OTLP_PROTOCOL` (grpc / http)
+- `OTEL_SERVICE_NAME`
 
-## Build & Distribution
+## Contributing
 
-```bash
-# Build CLI
-bun run build  # Outputs to dist/
-
-# Package with pkg or nexe for distribution
-# Bundled executables available from releases
-```
-
-## Future Directions
-
-- VS Code extension integration
-- Enhanced Claude feature support (vision, tool use)
-- Improved agent system (auto-swarming)
-- Cloud sync for sessions
-- Plugin marketplace
+See [DEVELOPMENT.md](DEVELOPMENT.md) for contribution guidelines.

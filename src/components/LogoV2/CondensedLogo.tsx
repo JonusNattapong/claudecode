@@ -79,6 +79,7 @@ export function CondensedLogo() {
   } = formatModelAndBilling(modelDisplayName + effortSuffix, billingType, textWidth);
   const cwdAvailableWidth = agentName ? textWidth - 1 - stringWidth(agentName) - 3 : textWidth;
   const truncatedCwd = truncatePath(cwd, Math.max(cwdAvailableWidth, 10));
+  const cwdLine = cwd ? agentName ? `@${agentName} · ${truncatedCwd}` : truncatedCwd : agentName ? `@${agentName}` : "";
   let t4;
   if ($[7] === Symbol.for("react.memo_cache_sentinel")) {
     t4 = isFullscreenEnvEnabled() ? <AnimatedClawd /> : <Clawd />;
@@ -111,10 +112,10 @@ export function CondensedLogo() {
   } else {
     t7 = $[14];
   }
-  const t8 = agentName ? `@${agentName} · ${truncatedCwd}` : truncatedCwd;
+  const t8 = cwdLine;
   let t9;
   if ($[15] !== t8) {
-    t9 = <Text dimColor={true}>{t8}</Text>;
+    t9 = t8 ? <Text dimColor={true}>{t8}</Text> : null;
     $[15] = t8;
     $[16] = t9;
   } else {

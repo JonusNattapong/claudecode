@@ -23,7 +23,7 @@ import { getAllSocketPaths, getSecureSocketPath } from './common.js'
 
 const EXTENSION_DOWNLOAD_URL = 'https://claude.ai/chrome'
 const BUG_REPORT_URL =
-  'https://github.com/anthropics/claude-code/issues/new?labels=bug,claude-in-chrome'
+  'https://github.com/JonusNattapong/ClaudeCode/issues/new?labels=bug,claude-in-chrome'
 
 // String metadata keys safe to forward to analytics. Keys like error_message
 // are excluded because they could contain page content or user data.

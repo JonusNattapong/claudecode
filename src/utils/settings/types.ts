@@ -640,6 +640,12 @@ export const SettingsSchema = lazySchema(() =>
         .string()
         .optional()
         .describe('Controls the output style for assistant responses'),
+      prUrlTemplate: z
+        .string()
+        .optional()
+        .describe(
+          'Custom PR URL template for linked sessions. Supports {{repo}}, {{repoOwner}}, {{repoName}}, and {{prNumber}}.',
+        ),
       language: z
         .string()
         .optional()

@@ -1,5 +1,5 @@
 export function profileCheckpoint(label) {
-  console.error(`[profile] ${label}`)
+  void label
 }
 export function profileReport() {
   // No-op

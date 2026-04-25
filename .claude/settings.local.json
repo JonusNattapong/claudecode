@@ -1,7 +1,13 @@
 {
   "permissions": {
     "allow": [
-      "Bash(find D:/Projects/Github/claude-code-mark1 -type f -name *.ts -o -name *.tsx -o -name *.md -o -name *.json)"
+      "Bash(find D:/Projects/Github/claude-code-mark1 -type f -name *.ts -o -name *.tsx -o -name *.md -o -name *.json)",
+      "Bash(dir src:*)",
+      "Bash(git:*)",
+      "Bash(__NEW_LINE_97c316389822b90a__ cd:*)",
+      "Bash(__NEW_LINE_74d75f38f294a516__ pwd:*)",
+      "Bash(git remote:*)",
+      "Bash(git branch:*)"
     ]
   }
 }

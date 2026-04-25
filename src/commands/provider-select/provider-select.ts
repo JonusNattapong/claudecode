@@ -4,163 +4,52 @@ import * as React from 'react'
 import { Select } from '../../components/CustomSelect/select.js'
 import TextInput from '../../components/TextInput.js'
 import { Box, Text } from '../../ink.js'
+import { useSetAppState } from '../../state/AppState.js'
 import type {
   LocalCommandResult,
   LocalJSXCommandCall,
+  LocalJSXCommandContext,
   LocalJSXCommandOnDone,
 } from '../../types/command.js'
+import {
+  PROVIDER_IDS,
+  getProviderRegistryEntry,
+  type ProviderRegistryEntry,
+} from '../../services/ai/providerRegistry.js'
+import { clearProviderModelsCache, fetchProviderModels } from '../../services/ai/providerModels.js'
+
+type SerializableProviderRegistryEntry = Omit<ProviderRegistryEntry, 'provider'>
 
 type ProviderConfig = {
-  provider: string
+  provider: typeof PROVIDER_IDS[number]
   model: string
-  apiKeys?: Partial<Record<ProviderKey, string>>
-  providerConfig?: ProviderInfo
+  apiKeys?: Partial<Record<typeof PROVIDER_IDS[number], string>>
+  providerConfig?: SerializableProviderRegistryEntry
 }
 
-type ProviderInfo = {
-  label: string
-  envKey: string
-  baseUrl: string
-  modelsUrl: string
-  defaultModel?: string
-  defaultModelVerified?: boolean
-  note: string
-  isLocal?: boolean
-  timeout?: number
-  supportsStreaming?: boolean
-  supportsToolCalling?: boolean
-}
-
-type ProviderModelInfo = {
-  id: string
-  supportsToolCalling?: boolean
-}
-
-const PROVIDER_KEYS = [
-  'openai',
-  'anthropic',
-  'gemini',
-  'openrouter',
-  'opencode',
-  'cline',
-  'groq',
-  'xai',
-  'mistral',
-  'kilocode',
-  'ollama',
-] as const
+const PROVIDER_KEYS = PROVIDER_IDS
 
 type ProviderKey = (typeof PROVIDER_KEYS)[number]
+
+function isProviderKey(provider: string): provider is ProviderKey {
+  return PROVIDER_KEYS.includes(provider as ProviderKey)
+}
+
+function getProviderInfo(provider: ProviderKey): ProviderRegistryEntry {
+  return getProviderRegistryEntry(provider)
+}
+
+function getSerializableProviderInfo(
+  provider: ProviderKey,
+): SerializableProviderRegistryEntry {
+  const { provider: _provider, ...serializable } = getProviderInfo(provider)
+  return serializable
+}
 
 const CONFIG_PATH = join(
   process.env.HOME || process.env.USERPROFILE || '',
   '.claude-code-provider.json',
 )
-
-const PROVIDERS: Record<ProviderKey, ProviderInfo> = {
-  openai: {
-    label: 'OpenAI',
-    envKey: 'OPENAI_API_KEY',
-    baseUrl: 'https://api.openai.com/v1',
-    modelsUrl: 'https://api.openai.com/v1/models',
-    defaultModel: 'gpt-5.4-mini',
-    defaultModelVerified: true,
-    note: 'gpt-5.4 = flagship, gpt-5.4-mini = cost-efficient',
-  },
-  anthropic: {
-    label: 'Anthropic',
-    envKey: 'ANTHROPIC_API_KEY',
-    baseUrl: 'https://api.anthropic.com/v1',
-    modelsUrl: 'https://api.anthropic.com/v1/models',
-    defaultModel: 'claude-sonnet-4-20250514',
-    defaultModelVerified: true,
-    note: 'claude-sonnet-4-20250514 = balanced',
-  },
-  gemini: {
-    label: 'Google Gemini',
-    envKey: 'GEMINI_API_KEY',
-    baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai',
-    modelsUrl: 'https://generativelanguage.googleapis.com/v1beta/models',
-    defaultModel: 'gemini-2.5-flash',
-    defaultModelVerified: true,
-    note: 'gemini-2.5-flash = best price-performance',
-  },
-  openrouter: {
-    label: 'OpenRouter',
-    envKey: 'OPENROUTER_API_KEY',
-    baseUrl: 'https://openrouter.ai/api/v1',
-    modelsUrl: 'https://openrouter.ai/api/v1/models',
-    defaultModel: 'openai/gpt-5.4-mini',
-    supportsToolCalling: true,
-    note: 'Use model strings like provider/model-name',
-  },
-  opencode: {
-    label: 'OpenCode',
-    envKey: 'OPENCODE_API_KEY',
-    baseUrl: 'https://opencode.ai/zen/v1',
-    modelsUrl: 'https://opencode.ai/zen/v1/models',
-    defaultModel: 'qwen3.6-plus',
-    note: 'For OpenAI-compatible /chat/completions use qwen3.6-plus, minimax-m2.7, glm-5.1, kimi-k2.6, big-pickle.',
-  },
-  cline: {
-    label: 'Cline API',
-    envKey: 'CLINE_API_KEY',
-    baseUrl: 'https://api.cline.bot/api/v1',
-    modelsUrl: 'https://api.cline.bot/api/v1/models',
-    defaultModel: 'anthropic/claude-sonnet-4-6',
-    note: 'Cline is OpenAI-compatible chat/completions; use free model examples like minimax/minimax-m2.5',
-  },
-  groq: {
-    label: 'Groq',
-    envKey: 'GROQ_API_KEY',
-    baseUrl: 'https://api.groq.com/openai/v1',
-    modelsUrl: 'https://api.groq.com/openai/v1/models',
-    defaultModel: 'llama-3.3-70b-versatile',
-    note: 'llama-3.1-8b-instant = fast, llama-3.3-70b-versatile = smarter',
-  },
-  xai: {
-    label: 'xAI',
-    envKey: 'XAI_API_KEY',
-    baseUrl: 'https://api.x.ai/v1',
-    modelsUrl: 'https://api.x.ai/v1/models',
-    defaultModel: 'grok-4-mini',
-    note: 'chat/completions is legacy; newer xAI features may arrive via Responses first',
-  },
-  mistral: {
-    label: 'Mistral',
-    envKey: 'MISTRAL_API_KEY',
-    baseUrl: 'https://api.mistral.ai/v1',
-    modelsUrl: 'https://api.mistral.ai/v1/models',
-    defaultModel: 'mistral-large-latest',
-    defaultModelVerified: true,
-    note: 'mistral-large-latest = flagship',
-  },
-  kilocode: {
-    label: 'KiloCode',
-    envKey: 'KILOCODE_API_KEY',
-    baseUrl: 'https://api.kilo.ai/api/gateway',
-    modelsUrl: 'https://api.kilo.ai/api/gateway/models',
-    defaultModel: 'kilo-auto/free',
-    defaultModelVerified: true,
-    supportsStreaming: true,
-    supportsToolCalling: true,
-    note: 'KiloCode AI Gateway',
-  },
-  ollama: {
-    label: 'Ollama (Local)',
-    envKey: 'OLLAMA_API_KEY',
-    baseUrl: 'http://localhost:11434/v1',
-    modelsUrl: 'http://localhost:11434/v1/models',
-    defaultModel: 'llama3.3',
-    defaultModelVerified: true,
-    isLocal: true,
-    note: 'Local Ollama server',
-  },
-}
-
-function isProviderKey(provider: string): provider is ProviderKey {
-  return (PROVIDER_KEYS as readonly string[]).includes(provider)
-}
 
 async function loadConfig(): Promise<ProviderConfig | null> {
   try {
@@ -192,110 +81,21 @@ async function fetchModels(provider: ProviderKey): Promise<string[]> {
   return (await fetchModelInfos(provider)).map(model => model.id)
 }
 
-async function fetchModelInfos(provider: ProviderKey): Promise<ProviderModelInfo[]> {
-  const info = PROVIDERS[provider]
-  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
-  const config = await loadConfig()
-  const apiKey = config?.apiKeys?.[provider] || process.env[info.envKey]
-
-  if (!apiKey && !info.isLocal) {
-    if (info.defaultModelVerified && info.defaultModel) {
-      return [
-        {
-          id: info.defaultModel,
-          supportsToolCalling: info.supportsToolCalling,
-        },
-      ]
-    }
-    throw new Error(`missing ${info.envKey}`)
-  }
-
-  if (apiKey) {
-    if (provider === 'anthropic') {
-      headers['x-api-key'] = apiKey
-    } else {
-      headers.Authorization = `Bearer ${apiKey}`
-    }
-  }
-
-  const response = await fetch(info.modelsUrl, {
-    headers,
-    signal: AbortSignal.timeout(30000),
-  })
-  const data = (await response.json()) as {
-    data?: Array<{
-      id?: string
-      name?: string
-      supported_parameters?: string[]
-      capabilities?: { tools?: boolean; tool_calling?: boolean }
-    }>
-    models?: Array<{
-      id?: string
-      name?: string
-      supported_parameters?: string[]
-      capabilities?: { tools?: boolean; tool_calling?: boolean }
-    }>
-  }
-  const models = data.data ?? data.models ?? []
-  const parsed = models
-    .map(model => {
-      const id = model.id ?? model.name
-      if (!id) return null
-      return {
-        id,
-        supportsToolCalling: modelSupportsToolCalling(provider, id, model),
-      }
-    })
-    .filter((model): model is ProviderModelInfo => Boolean(model))
-
-  if (parsed.length > 0) {
-    return parsed
-  }
-
-  if (info.defaultModelVerified && info.defaultModel) {
-    return [
-      {
-        id: info.defaultModel,
-        supportsToolCalling: info.supportsToolCalling,
-      },
-    ]
-  }
-
-  return []
-}
-
-function modelSupportsToolCalling(
+async function fetchModelInfos(
   provider: ProviderKey,
-  model: string,
-  metadata?: {
-    supported_parameters?: string[]
-    capabilities?: { tools?: boolean; tool_calling?: boolean }
-  },
-): boolean | undefined {
-  const normalized = model.toLowerCase()
-  if (provider === 'kilocode' && normalized === 'tencent/hy3-preview:free') {
-    return false
-  }
-
-  const params = metadata?.supported_parameters
-  if (Array.isArray(params)) {
-    return params.includes('tools') || params.includes('tool_choice')
-  }
-
-  if (metadata?.capabilities) {
-    return Boolean(
-      metadata.capabilities.tools || metadata.capabilities.tool_calling,
-    )
-  }
-
-  return PROVIDERS[provider].supportsToolCalling
+): Promise<Array<{ id: string; supportsToolCalling: boolean | undefined }>> {
+  const models = await fetchProviderModels(provider)
+  return models.map(model => ({
+    id: model.id,
+    supportsToolCalling: model.capabilities.toolCalling !== 'none',
+  }))
 }
 
 async function providerList(): Promise<string> {
   const config = await loadConfig()
   const entries = await Promise.all(
     PROVIDER_KEYS.map(async provider => {
-      const info = PROVIDERS[provider]
+      const info = getProviderInfo(provider)
       const hasKey = Boolean(config?.apiKeys?.[provider] || process.env[info.envKey])
 
       try {
@@ -331,30 +131,58 @@ async function providerList(): Promise<string> {
   return entries.join('\n\n')
 }
 
-async function runProviderCommand(args: string): Promise<LocalCommandResult> {
+type ProviderCommandRunResult = {
+  result: LocalCommandResult
+  appliedConfig?: ProviderConfig
+}
+
+function getDefaultModelForProvider(provider: ProviderKey): string {
+  return getProviderInfo(provider).defaultModel ?? ''
+}
+
+function applyProviderSelectionToSession(
+  setAppState: ReturnType<typeof useSetAppState>,
+  config: Pick<ProviderConfig, 'model'>,
+): void {
+  if (!config.model) {
+    return
+  }
+
+  setAppState(prev => ({
+    ...prev,
+    mainLoopModel: config.model,
+    mainLoopModelForSession: null,
+  }))
+}
+
+async function runProviderCommand(args: string): Promise<ProviderCommandRunResult> {
   const parts = args.trim() ? args.trim().split(/\s+/) : []
   const [subcommand = 'get', providerArg, ...modelParts] = parts
   const command = subcommand.toLowerCase()
 
   if (command === 'help' || command === '--help' || command === '-h') {
-    return { type: 'text', value: help() }
+    return { result: { type: 'text', value: help() } }
   }
 
   if (command === 'list' || command === '--list' || command === '-l') {
-    return { type: 'text', value: await providerList() }
+    return { result: { type: 'text', value: await providerList() } }
   }
 
   if (command === 'get' || command === '--get' || command === '-g') {
     const config = await loadConfig()
     if (!config) {
       return {
-        type: 'text',
-        value: `No provider configuration found.\n\n${help()}`,
+        result: {
+          type: 'text',
+          value: `No provider configuration found.\n\n${help()}`,
+        },
       }
     }
     return {
-      type: 'text',
-      value: `Current provider: ${config.provider}\nCurrent model: ${config.model}\nSaved API keys: ${Object.keys(config.apiKeys ?? {}).join(', ') || 'none'}\nConfig: ${CONFIG_PATH}`,
+      result: {
+        type: 'text',
+        value: `Current provider: ${config.provider}\nCurrent model: ${config.model}\nSaved API keys: ${Object.keys(config.apiKeys ?? {}).join(', ') || 'none'}\nConfig: ${CONFIG_PATH}`,
+      },
     }
   }
 
@@ -362,8 +190,10 @@ async function runProviderCommand(args: string): Promise<LocalCommandResult> {
     const provider = providerArg?.toLowerCase()
     if (!provider || !isProviderKey(provider)) {
       return {
-        type: 'text',
-        value: `Unknown provider: ${provider ?? '(missing)'}\n\n${help()}`,
+        result: {
+          type: 'text',
+          value: `Unknown provider: ${provider ?? '(missing)'}\n\n${help()}`,
+        },
       }
     }
     const setIndex = modelParts.findIndex(part => part.toLowerCase() === 'set')
@@ -371,8 +201,10 @@ async function runProviderCommand(args: string): Promise<LocalCommandResult> {
     const apiKey = apiKeyParts.join(' ')
     if (!apiKey) {
       return {
-        type: 'text',
-        value: `Missing API key.\n\nUsage: /provider key ${provider} <api-key>`,
+        result: {
+          type: 'text',
+          value: `Missing API key.\n\nUsage: /provider key ${provider} <api-key>`,
+        },
       }
     }
     const setParts = setIndex === -1 ? [] : modelParts.slice(setIndex + 1)
@@ -380,46 +212,64 @@ async function runProviderCommand(args: string): Promise<LocalCommandResult> {
     const setModel = setParts.slice(1).join(' ')
     if (setParts.length > 0 && (!setProvider || !isProviderKey(setProvider))) {
       return {
-        type: 'text',
-        value: `Unknown provider in set: ${setProvider ?? '(missing)'}`,
+        result: {
+          type: 'text',
+          value: `Unknown provider in set: ${setProvider ?? '(missing)'}`,
+        },
       }
     }
 
     const currentConfig = await loadConfig()
-    const nextProvider = setProvider ?? currentConfig?.provider ?? provider
-    await saveConfig({
+    const nextProvider = (setProvider ?? currentConfig?.provider ?? provider) as ProviderKey
+    const nextModel =
+      setModel ||
+      (nextProvider === currentConfig?.provider
+        ? currentConfig?.model
+        : getDefaultModelForProvider(nextProvider)) ||
+      getDefaultModelForProvider(nextProvider)
+    const nextConfig: ProviderConfig = {
       provider: nextProvider,
-      model: setModel || currentConfig?.model || '',
+      model: nextModel,
       providerConfig:
+        getSerializableProviderInfo(nextProvider) ??
         currentConfig?.providerConfig ??
-        PROVIDERS[nextProvider] ??
-        PROVIDERS[provider],
+        getSerializableProviderInfo(provider),
       apiKeys: {
         ...(currentConfig?.apiKeys ?? {}),
         [provider]: apiKey,
       },
-    })
+    }
+    await saveConfig(nextConfig)
+    clearProviderModelsCache(nextProvider)
 
     return {
-      type: 'text',
-      value: setProvider
-        ? `Saved API key for ${provider}\nSet provider to ${nextProvider}\nSet model to ${setModel}\nConfig: ${CONFIG_PATH}`
-        : `Saved API key for ${provider} to ${CONFIG_PATH}`,
+      result: {
+        type: 'text',
+        value: setProvider
+          ? `Saved API key for ${provider}\nSet provider to ${nextProvider}\nSet model to ${nextModel}\nConfig: ${CONFIG_PATH}`
+          : `Saved API key for ${provider} to ${CONFIG_PATH}`,
+      },
+      appliedConfig: setProvider ? nextConfig : undefined,
     }
   }
 
   if (command === 'reset' || command === '--reset' || command === '-r') {
     const currentConfig = await loadConfig()
-    const config = {
+    const defaultProviderInfo = getSerializableProviderInfo('openai')
+    const config: ProviderConfig = {
       provider: 'openai',
-      model: PROVIDERS.openai.defaultModel,
-      providerConfig: PROVIDERS.openai,
+      model: defaultProviderInfo.defaultModel ?? '',
+      providerConfig: defaultProviderInfo,
       apiKeys: currentConfig?.apiKeys,
     }
     await saveConfig(config)
+    clearProviderModelsCache(config.provider)
     return {
-      type: 'text',
-      value: `Reset provider to ${config.provider} (${config.model})\nConfig: ${CONFIG_PATH}`,
+      result: {
+        type: 'text',
+        value: `Reset provider to ${config.provider} (${config.model})\nConfig: ${CONFIG_PATH}`,
+      },
+      appliedConfig: config,
     }
   }
 
@@ -427,8 +277,10 @@ async function runProviderCommand(args: string): Promise<LocalCommandResult> {
     const provider = providerArg?.toLowerCase()
     if (!provider || !isProviderKey(provider)) {
       return {
-        type: 'text',
-        value: `Unknown provider: ${provider ?? '(missing)'}\n\n${help()}`,
+        result: {
+          type: 'text',
+          value: `Unknown provider: ${provider ?? '(missing)'}\n\n${help()}`,
+        },
       }
     }
 
@@ -442,22 +294,28 @@ async function runProviderCommand(args: string): Promise<LocalCommandResult> {
     }
     if (!model) {
       return {
-        type: 'text',
-        value: `No model was provided and ${PROVIDERS[provider].label} did not return models from its API.`,
+        result: {
+          type: 'text',
+          value: `No model was provided and ${getProviderInfo(provider).label} did not return models from its API.`,
+        },
       }
     }
     const currentConfig = await loadConfig()
-    const config = {
+    const config: ProviderConfig = {
       provider,
       model,
-      providerConfig: PROVIDERS[provider],
+      providerConfig: getSerializableProviderInfo(provider),
       apiKeys: currentConfig?.apiKeys,
     }
     await saveConfig(config)
+    clearProviderModelsCache(provider)
 
     return {
-      type: 'text',
-      value: `Set provider to ${provider}\nSet model to ${model}\nConfig: ${CONFIG_PATH}`,
+      result: {
+        type: 'text',
+        value: `Set provider to ${provider}\nSet model to ${model}\nConfig: ${CONFIG_PATH}`,
+      },
+      appliedConfig: config,
     }
   }
 
@@ -465,8 +323,10 @@ async function runProviderCommand(args: string): Promise<LocalCommandResult> {
     const provider = providerArg?.toLowerCase()
     if (!provider || !isProviderKey(provider)) {
       return {
-        type: 'text',
-        value: `Unknown provider: ${provider ?? '(missing)'}\n\n${help()}`,
+        result: {
+          type: 'text',
+          value: `Unknown provider: ${provider ?? '(missing)'}\n\n${help()}`,
+        },
       }
     }
 
@@ -481,20 +341,26 @@ async function runProviderCommand(args: string): Promise<LocalCommandResult> {
       const suffix =
         models.length > 30 ? `\n... and ${models.length - 30} more` : ''
       return {
-        type: 'text',
-        value: `Models from ${PROVIDERS[provider].label}:\n${visible || '(none returned)'}${suffix}`,
+        result: {
+          type: 'text',
+          value: `Models from ${getProviderInfo(provider).label}:\n${visible || '(none returned)'}${suffix}`,
+        },
       }
     } catch (error) {
       return {
-        type: 'text',
-        value: `Failed to fetch models: ${(error as Error).message}`,
+        result: {
+          type: 'text',
+          value: `Failed to fetch models: ${(error as Error).message}`,
+        },
       }
     }
   }
 
   return {
-    type: 'text',
-    value: `Unknown provider command: ${subcommand}\n\n${help()}`,
+    result: {
+      type: 'text',
+      value: `Unknown provider command: ${subcommand}\n\n${help()}`,
+    },
   }
 }
 
@@ -511,6 +377,7 @@ function ProviderPicker({
   const [apiKeyError, setApiKeyError] = React.useState<string | null>(null)
   const [error, setError] = React.useState<string | null>(null)
   const [config, setConfig] = React.useState<ProviderConfig | null>(null)
+  const setAppState = useSetAppState()
 
   React.useEffect(() => {
     void loadConfig().then(setConfig)
@@ -545,19 +412,19 @@ function ProviderPicker({
       ...(trimmedApiKey ? { [provider]: trimmedApiKey } : {}),
     }
 
-    await saveConfig({
+    const providerInfo = getSerializableProviderInfo(provider)
+    const newConfig: ProviderConfig = {
       provider,
       model: selectedModel,
-      providerConfig: PROVIDERS[provider],
+      providerConfig: providerInfo,
       apiKeys: nextApiKeys,
-    })
+    }
+    await saveConfig(newConfig)
+    clearProviderModelsCache(provider)
 
-    setConfig({
-      provider,
-      model: selectedModel,
-      providerConfig: PROVIDERS[provider],
-      apiKeys: nextApiKeys,
-    })
+    setConfig(newConfig)
+
+    applyProviderSelectionToSession(setAppState, newConfig)
 
     onDone(
       `Set provider to ${provider}\nSet model to ${selectedModel}${
@@ -568,7 +435,7 @@ function ProviderPicker({
 
   if (!provider) {
     const options = PROVIDER_KEYS.map(key => {
-      const info = PROVIDERS[key]
+      const info = getProviderInfo(key)
       return {
         label: `${info.label} (${key})`,
         value: key,
@@ -595,7 +462,7 @@ function ProviderPicker({
   }
 
   if (selectedModel) {
-    const info = PROVIDERS[provider]
+    const info = getProviderInfo(provider)
     const hasExistingKey = Boolean(config?.apiKeys?.[provider] || process.env[info.envKey])
 
     return React.createElement(
@@ -665,7 +532,7 @@ function ProviderPicker({
     return React.createElement(Select, {
       options: [
         {
-          label: `Loading models from ${PROVIDERS[provider].label}...`,
+          label: `Loading models from ${getProviderInfo(provider).label}...`,
           value: 'loading',
         },
       ],
@@ -683,11 +550,12 @@ function ProviderPicker({
     visibleOptionCount: 12,
     onChange: async value => {
       const model = String(value)
-      if (PROVIDERS[provider].isLocal) {
+      const info = getProviderInfo(provider)
+      if (info.isLocal) {
         await saveConfig({
           provider,
           model,
-          providerConfig: PROVIDERS[provider],
+          providerConfig: getSerializableProviderInfo(provider),
           apiKeys: config?.apiKeys,
         })
         onDone(`Set provider to ${provider}\nSet model to ${model}`)
@@ -710,9 +578,14 @@ function ProviderCommandRunner({
   args: string
   onDone: LocalJSXCommandOnDone
 }): React.ReactNode {
+  const setAppState = useSetAppState()
+
   React.useEffect(() => {
     void runProviderCommand(args)
-      .then(result => {
+      .then(({ result, appliedConfig }) => {
+        if (appliedConfig) {
+          applyProviderSelectionToSession(setAppState, appliedConfig)
+        }
         if (result.type === 'text') {
           onDone(result.value)
         } else {
@@ -724,7 +597,7 @@ function ProviderCommandRunner({
           display: 'system',
         })
       })
-  }, [args, onDone])
+  }, [args, onDone, setAppState])
 
   return null
 }

@@ -23,6 +23,33 @@ import {
   withStatsCacheLock,
 } from './statsCache.js'
 
+/**
+ * Extract provider ID from model name.
+ * - If model contains "/", the prefix is the provider (e.g., "openai/gpt-5.5" -> "openai")
+ * - Otherwise, use heuristics based on model name patterns
+ */
+function extractProviderFromModel(model: string): string {
+  // Handle provider/model format (e.g., "openai/gpt-5.5", "anthropic/claude-sonnet-4-6")
+  if (model.includes('/')) {
+    return model.split('/')[0]!.toLowerCase()
+  }
+
+  // Heuristic based on model name patterns
+  const lower = model.toLowerCase()
+  if (lower.startsWith('claude-')) return 'anthropic'
+  if (lower.startsWith('gpt-')) return 'openai'
+  if (lower.startsWith('gemini-')) return 'google'
+  if (lower.startsWith('llama') || lower.startsWith('ollama')) return 'ollama'
+  if (lower.startsWith('grok-')) return 'xai'
+  if (lower.startsWith('mistral')) return 'mistral'
+  if (lower.startsWith('mixtral')) return 'mistral'
+  if (lower.startsWith('kimi')) return 'openrouter' // Often via OpenRouter
+  if (lower.startsWith('deepseek')) return 'openrouter' // Often via OpenRouter
+
+  // Default to 'unknown' if can't determine
+  return 'unknown'
+}
+
 export type DailyActivity = {
   date: string // YYYY-MM-DD format
   messageCount: number
@@ -72,6 +99,9 @@ export type ClaudeCodeStats = {
   // Model usage aggregated
   modelUsage: { [modelName: string]: ModelUsage }
 
+  // Provider usage aggregated
+  providerUsage: { [providerId: string]: ModelUsage }
+
   // Time stats
   firstSessionDate: string | null
   lastSessionDate: string | null
@@ -93,6 +123,7 @@ type ProcessedStats = {
   dailyActivity: DailyActivity[]
   dailyModelTokens: DailyModelTokens[]
   modelUsage: { [modelName: string]: ModelUsage }
+  providerUsage: { [providerId: string]: ModelUsage }
   sessionStats: SessionStats[]
   hourCounts: { [hour: number]: number }
   totalMessages: number
@@ -128,6 +159,7 @@ async function processSessionFiles(
   let totalMessages = 0
   let totalSpeculationTimeSavedMs = 0
   const modelUsageAgg: { [modelName: string]: ModelUsage } = {}
+  const providerUsageAgg: { [providerId: string]: ModelUsage } = {}
   const shotDistributionMap = feature('SHOT_STATS')
     ? new Map<number, number>()
     : undefined
@@ -343,6 +375,27 @@ async function processSessionFiles(
               dayTokens[model] = (dayTokens[model] || 0) + totalTokens
               dailyModelTokensMap.set(dateKey, dayTokens)
             }
+
+            // Track provider usage
+            const provider = extractProviderFromModel(model)
+            if (!providerUsageAgg[provider]) {
+              providerUsageAgg[provider] = {
+                inputTokens: 0,
+                outputTokens: 0,
+                cacheReadInputTokens: 0,
+                cacheCreationInputTokens: 0,
+                webSearchRequests: 0,
+                costUSD: 0,
+                contextWindow: 0,
+                maxOutputTokens: 0,
+              }
+            }
+            providerUsageAgg[provider]!.inputTokens += usage.input_tokens || 0
+            providerUsageAgg[provider]!.outputTokens += usage.output_tokens || 0
+            providerUsageAgg[provider]!.cacheReadInputTokens +=
+              usage.cache_read_input_tokens || 0
+            providerUsageAgg[provider]!.cacheCreationInputTokens +=
+              usage.cache_creation_input_tokens || 0
           }
         }
       }
@@ -357,6 +410,7 @@ async function processSessionFiles(
       .map(([date, tokensByModel]) => ({ date, tokensByModel }))
       .sort((a, b) => a.date.localeCompare(b.date)),
     modelUsage: modelUsageAgg,
+    providerUsage: providerUsageAgg,
     sessionStats: sessions,
     hourCounts: Object.fromEntries(hourCounts),
     totalMessages,
@@ -508,6 +562,38 @@ function cacheToStats(
     }
   }
 
+  // Merge provider usage
+  const providerUsage = { ...cache.providerUsage }
+  if (todayStats?.providerUsage) {
+    for (const [provider, usage] of Object.entries(todayStats.providerUsage)) {
+      if (providerUsage[provider]) {
+        providerUsage[provider] = {
+          inputTokens: providerUsage[provider]!.inputTokens + usage.inputTokens,
+          outputTokens: providerUsage[provider]!.outputTokens + usage.outputTokens,
+          cacheReadInputTokens:
+            providerUsage[provider]!.cacheReadInputTokens +
+            usage.cacheReadInputTokens,
+          cacheCreationInputTokens:
+            providerUsage[provider]!.cacheCreationInputTokens +
+            usage.cacheCreationInputTokens,
+          webSearchRequests:
+            providerUsage[provider]!.webSearchRequests + usage.webSearchRequests,
+          costUSD: providerUsage[provider]!.costUSD + usage.costUSD,
+          contextWindow: Math.max(
+            providerUsage[provider]!.contextWindow,
+            usage.contextWindow,
+          ),
+          maxOutputTokens: Math.max(
+            providerUsage[provider]!.maxOutputTokens,
+            usage.maxOutputTokens,
+          ),
+        }
+      } else {
+        providerUsage[provider] = { ...usage }
+      }
+    }
+  }
+
   // Merge hour counts
   const hourCountsMap = new Map<number, number>()
   for (const [hour, count] of Object.entries(cache.hourCounts)) {
@@ -600,6 +686,7 @@ function cacheToStats(
     dailyModelTokens,
     longestSession,
     modelUsage,
+    providerUsage,
     firstSessionDate,
     lastSessionDate,
     peakActivityDay,

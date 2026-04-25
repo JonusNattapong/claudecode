@@ -1,6 +1,6 @@
 {
   "name": "claude-code",
-  "version": "1.0.0",
+  "version": "2.1.120",
   "description": "Official Claude Code CLI — AI-powered coding assistant",
   "main": "src/main.tsx",
   "type": "module",
@@ -60,6 +60,7 @@
     "ai": "^4.0.0",
     "ai-sdk-provider-opencode-sdk": "^3.0.0",
     "asciichart": "^1.5.25",
+    "audio-capture-napi": "^0.0.1",
     "axios": "^1.14.0",
     "bidi-js": "^1.0.3",
     "chalk": "^5.6.2",
