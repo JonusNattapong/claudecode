@@ -1,5 +1,17 @@
 <div align="center">
 
+# ⚖️ Claude Code By Dek1MillionToken — Legal Notice Required
+
+**⚠️ READ LEGAL DISCLAIMER BEFORE USING ⚠️**
+
+Before using this software, you **MUST** read and accept:
+- **[NOTICE.md](NOTICE.md)** — Quick legal summary (required reading)
+- **[LEGAL.md](LEGAL.md)** — Full legal disclaimer and liability terms
+
+This project contains code from Anthropic's **accidental March 31, 2026 npm source disclosure** and operates in a legal gray area. By using this software, you assume all risk of copyright claims and agree to indemnify the maintainers.
+
+---
+
 # Claude Code By Dek1MillionToken
 
 **AI-Powered Coding Assistant with Multi-Provider Support**
@@ -13,13 +25,16 @@
 
 [Getting Started](#getting-started) · [Providers](#supported-providers) · [Commands](#commands) · [Configuration](#configuration) · [Documentation](#documentation)
 
-</div>
+
+
 
 ---
 
 ## What is Claude Code By Dek1MillionToken?
 
 Claude Code By Dek1MillionToken is a fork of Anthropic's Claude Code CLI that adds **unified multi-provider routing**, **provider-specific adapters**, and an **extensible plugin architecture**. Switch between Anthropic Claude, OpenAI GPT, Google Gemini, OpenRouter, local Ollama, and more — all from one terminal interface.
+
+> **Legal Notice**: Please review the [Legal Disclaimer & Attribution](LEGAL.md) for important information about third-party components, licensing, and liability limitations before using this software.
 
 ### Why Dek1MillionToken?
 
@@ -475,9 +490,39 @@ Scopes: `provider`, `command`, `tool`, `ui`, `permissions`, `mcp`, `plugin`, `br
 
 ---
 
+## Legal & Compliance
+
+**⚠️ CRITICAL LEGAL NOTICE**
+
+This project operates under extraordinary legal circumstances:
+
+- **Source Origin**: Code derived from Anthropic's **accidental npm disclosure** (March 31, 2026)
+- **Legal Status**: Proprietary code accidentally made public — copyright enforcement uncertain
+- **Risk**: Anthropic may pursue legal action to enjoin distribution at any time
+- **No Warranty**: Provided AS-IS with NO liability protection for users
+
+**Before using, you MUST read:**
+
+1. **[NOTICE.md](NOTICE.md)** — 2-minute summary of legal risks
+2. **[LEGAL.md](LEGAL.md)** — Complete disclaimer, indemnification, and liability terms
+
+**By using this software, you agree to indemnify the maintainers** and assume all risk of copyright infringement claims.
+
+### Key Takeaways
+
+- ❌ **Not affiliated with Anthropic** — Independent project
+- ⚠️ **No commercial use recommended** — High legal risk
+- 🔴 **May shut down suddenly** — If Anthropic enforces copyrights
+- 📋 **You are liable** — Not the maintainers
+- ⚖️ **Good faith defense** — Based on Anthropic's self-distribution error
+
+---
+
 ## License
 
 Copyright © Anthropic PBC. All rights reserved. See [LICENSE.md](LICENSE.md) for details.
+
+**Important Legal Information:** This project is a fork of Anthropic's Claude Code. By using this software, you accept the [Legal Disclaimer & Attribution](LEGAL.md) which covers third-party components, licensing, warranties, and liability limitations.
 
 ---
 

@@ -1,5 +1,27 @@
 # Changelog
 
+## 2.1.122 (Unreleased)
+
+### Legal & Compliance
+
+- **Added comprehensive legal documentation** addressing Anthropic's accidental source disclosure (March 31, 2026)
+- Created [NOTICE.md](NOTICE.md) — 2-minute required reading on legal status and risks
+- Created [LEGAL.md](LEGAL.md) — Full legal disclaimer covering:
+  - Copyright status of accidentally disclosed proprietary code
+  - Liability limitation and user indemnification
+  - DMCA takedown procedures
+  - Export controls and compliance
+  - Warranty disclaimers (AS-IS basis)
+- Updated [README.md](README.md) with prominent legal notices and compliance section
+- Added [INDEX.md](INDEX.md) for easy navigation of legal documents
+- All users **must review** NOTICE.md and LEGAL.md before using this software
+
+### Developer
+
+- Clarified project origins and legal status in documentation
+
+---
+
 ## 2.1.121
 
 - Fixed ProvidersTab import error in Stats.tsx (removed non-existent tab)
