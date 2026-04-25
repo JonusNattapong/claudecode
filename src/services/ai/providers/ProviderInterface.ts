@@ -13,6 +13,11 @@ export type ProviderId =
   | 'mistral'
   | 'kilocode'
   | 'ollama'
+  | 'openai_browser'
+  | 'openai_headless'
+  | 'gemini_oauth'
+  | 'copilot'
+  | 'deepseek'
 
 export interface ProviderInitOptions {
   apiKey?: string

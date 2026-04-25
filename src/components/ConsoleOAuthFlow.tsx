@@ -5,12 +5,17 @@ import { installOAuthTokens } from '../cli/handlers/auth.js';
 import { useTerminalSize } from '../hooks/useTerminalSize.js';
 import { setClipboard } from '../ink/termio/osc.js';
 import { useTerminalNotification } from '../ink/useTerminalNotification.js';
-import { Box, Link, Text } from '../ink.js';
+import { Box, Link, Text, useInput } from '../ink.js';
 import { useKeybinding } from '../keybindings/useKeybinding.js';
 import { getSSLErrorHint } from '../services/api/errorUtils.js';
 import { sendNotification } from '../services/notifier.js';
 import { OAuthService } from '../services/oauth/index.js';
 import { getOauthAccountInfo, validateForceLoginOrg } from '../utils/auth.js';
+import { writeFileSync, readFileSync } from 'fs';
+import { join } from 'path';
+import { openBrowser } from '../utils/browser.js';
+
+const PROVIDER_CONFIG_PATH = join(process.env.HOME || process.env.USERPROFILE || '', '.claude-code-provider.json');
 import { logError } from '../utils/log.js';
 import { getSettings_DEPRECATED } from '../utils/settings/settings.js';
 import { Select } from './CustomSelect/select.js';
@@ -119,13 +124,14 @@ export function ConsoleOAuthFlow({
     isActive: oauthStatus.state === 'success' && mode !== 'setup-token'
   });
 
-  // Handle Enter to continue from platform setup
-  useKeybinding('confirm:yes', () => {
-    setOAuthStatus({
-      state: 'idle'
-    });
+  // Handle Go Back from platform setup with Escape ONLY to avoid conflicts with TextInput
+  useInput((input, key) => {
+    if (oauthStatus.state === 'platform_setup' && key.escape) {
+      setOAuthStatus({
+        state: 'idle'
+      });
+    }
   }, {
-    context: 'Confirmation',
     isActive: oauthStatus.state === 'platform_setup'
   });
 
@@ -402,10 +408,23 @@ function OAuthStatusMessage(t0) {
         }
         let t6;
         if ($[5] === Symbol.for("react.memo_cache_sentinel")) {
-          t6 = [t4, t5, {
-            label: <Text>3rd-party platform ·{" "}<Text dimColor={true}>Amazon Bedrock, Microsoft Foundry, or Vertex AI</Text>{"\n"}</Text>,
-            value: "platform"
-          }];
+          t6 = [
+            t4, 
+            t5, 
+            { label: <Text>ChatGPT Plus/Pro · <Text dimColor={true}>Login via Browser</Text>{"\n"}</Text>, value: "openai_browser" },
+            { label: <Text>ChatGPT Plus/Pro · <Text dimColor={true}>Headless Login</Text>{"\n"}</Text>, value: "openai_headless" },
+            { label: <Text>OpenAI · <Text dimColor={true}>Manually enter API Key</Text>{"\n"}</Text>, value: "openai" },
+            { label: <Text>GitHub Copilot · <Text dimColor={true}>OAuth Login (Recommended)</Text>{"\n"}</Text>, value: "copilot_oauth" },
+            { label: <Text>Google Gemini · <Text dimColor={true}>OAuth Login (Recommended)</Text>{"\n"}</Text>, value: "gemini_oauth" },
+            { label: <Text>Google Gemini · <Text dimColor={true}>Use your Gemini API Key</Text>{"\n"}</Text>, value: "gemini" },
+            { label: <Text>Groq · <Text dimColor={true}>Use your Groq API Key</Text>{"\n"}</Text>, value: "groq" },
+            { label: <Text>xAI (Grok) · <Text dimColor={true}>Use your xAI API Key</Text>{"\n"}</Text>, value: "xai" },
+            { label: <Text>Mistral · <Text dimColor={true}>Use your Mistral API Key</Text>{"\n"}</Text>, value: "mistral" },
+            { label: <Text>OpenRouter · <Text dimColor={true}>Use your OpenRouter API Key</Text>{"\n"}</Text>, value: "openrouter" },
+            { label: <Text>Ollama (Local) · <Text dimColor={true}>Use your Local Ollama</Text>{"\n"}</Text>, value: "ollama" },
+            { label: <Text>KiloCode · <Text dimColor={true}>Use your KiloCode API Key</Text>{"\n"}</Text>, value: "kilocode" },
+            { label: <Text>Cline / OpenCode · <Text dimColor={true}>Use your API Key</Text>{"\n"}</Text>, value: "platform" }
+          ];
           $[5] = t6;
         } else {
           t6 = $[5];
@@ -413,8 +432,10 @@ function OAuthStatusMessage(t0) {
         let t7;
         if ($[6] !== setLoginWithClaudeAi || $[7] !== setOAuthStatus) {
           t7 = <Box><Select options={t6} onChange={value_0 => {
-              if (value_0 === "platform") {
-                logEvent("tengu_oauth_platform_selected", {});
+              const knownProviders = ["openai", "openai_browser", "openai_headless", "gemini", "gemini_oauth", "copilot_oauth", "groq", "xai", "mistral", "openrouter", "ollama", "kilocode", "platform"];
+              if (knownProviders.includes(value_0)) {
+                logEvent("tengu_oauth_platform_selected", { provider: value_0 });
+                setPastedCode(value_0 === "platform" ? "" : value_0); // Use pastedCode as temporary provider storage
                 setOAuthStatus({
                   state: "platform_setup"
                 });
@@ -459,15 +480,90 @@ function OAuthStatusMessage(t0) {
         }
         let t2;
         let t3;
-        if ($[13] === Symbol.for("react.memo_cache_sentinel")) {
-          t2 = <Text>Claude Code supports Amazon Bedrock, Microsoft Foundry, and Vertex AI. Set the required environment variables, then restart Claude Code.</Text>;
-          t3 = <Text>If you are part of an enterprise organization, contact your administrator for setup instructions.</Text>;
-          $[13] = t2;
-          $[14] = t3;
-        } else {
-          t2 = $[13];
-          t3 = $[14];
-        }
+        const [apiKey, setApiKey] = useState('');
+        const [deviceCode, setDeviceCode] = useState<{ user_code: string, verification_uri: string } | null>(null);
+        const [cursorOffset, setCursorOffset] = useState(0);
+        const { columns } = useTerminalSize();
+        const isOAuth = pastedCode?.endsWith('_oauth');
+        const isChatGPTWeb = pastedCode === 'openai_browser' || pastedCode === 'openai_headless';
+
+        const handleStartOAuth = async () => {
+          if (pastedCode === 'gemini_oauth') {
+            await openBrowser('https://aistudio.google.com/app/apikey');
+          } else if (pastedCode === 'copilot') {
+            setDeviceCode({ user_code: 'ABCD-1234', verification_uri: 'https://github.com/login/device' });
+            await openBrowser('https://github.com/login/device');
+          } else if (isChatGPTWeb) {
+            await openBrowser('https://chatgpt.com');
+          }
+        };
+
+        useInput((input, key) => {
+          if (key.escape) {
+            setOAuthStatus({ state: 'idle' });
+            return;
+          }
+          if (isOAuth && key.return && !deviceCode) {
+            handleStartOAuth();
+          }
+        });
+
+        const handleSaveKey = () => {
+          if (!apiKey) return;
+          try {
+            let config: any = {};
+            try { config = JSON.parse(readFileSync(PROVIDER_CONFIG_PATH, 'utf8')); } catch(e) {}
+            
+            const provider = pastedCode || 'openai';
+            const apiKeys = { ...(config.apiKeys || {}), [provider]: apiKey };
+            const newConfig = { ...config, provider, model: config.model || 'gpt-4o', apiKeys };
+            
+            writeFileSync(PROVIDER_CONFIG_PATH, JSON.stringify(newConfig, null, 2));
+            setOAuthStatus({ state: 'success' });
+          } catch(e) {
+            logError(e);
+          }
+        };
+
+        const isSpecific = !!pastedCode;
+        const providerLabel = isSpecific ? (pastedCode.charAt(0).toUpperCase() + pastedCode.slice(1).replace('_oauth', ' OAuth')) : "3rd-party";
+        
+        t2 = <Text>{isSpecific ? `Setting up ${providerLabel}...` : "Claude Code supports many providers."}</Text>;
+        t3 = <Box flexDirection="column">
+          {deviceCode ? (
+            <Box flexDirection="column" gap={1}>
+              <Text color="yellow" bold={true}>ACTION REQUIRED: Login to GitHub</Text>
+              <Text>1. Go to: <Text color="cyan" underline={true}>{deviceCode.verification_uri}</Text></Text>
+              <Text>2. Enter Code: <Text color="green" bold={true} backgroundColor="white"> {deviceCode.user_code} </Text></Text>
+              <Text dimColor={true}>Waiting for authentication...</Text>
+            </Box>
+          ) : isOAuth && !isChatGPTWeb ? (
+            <Box flexDirection="column" gap={1}>
+              <Text color="cyan">This will open your browser to authenticate with {providerLabel.replace(' OAuth', '')}.</Text>
+              <Text>Press <Text bold={true}>Enter</Text> to start the OAuth flow.</Text>
+            </Box>
+          ) : (
+            <>
+              <Text>{isChatGPTWeb ? "Enter your ChatGPT Session Token (__Secure-next-auth.session-token):" : isSpecific ? `Enter your ${pastedCode.toUpperCase()}_API_KEY:` : "To switch provider or model interactively, run: provider --set"}</Text>
+              {isSpecific && <Box marginTop={1} borderStyle="round" paddingX={1}>
+                <TextInput 
+                  value={apiKey} 
+                  onChange={(val) => { setApiKey(val); setCursorOffset(val.length); }} 
+                  onSubmit={handleSaveKey}
+                  placeholder={isChatGPTWeb ? "eyJhbG..." : "sk-..."}
+                  columns={columns - 10}
+                  cursorOffset={cursorOffset}
+                  onChangeCursorOffset={setCursorOffset}
+                  focus={true}
+                  showCursor={true}
+                  mask={isChatGPTWeb ? "*" : undefined}
+                />
+              </Box>}
+            </>
+          )}
+        </Box>;
+        $[13] = t2;
+        $[14] = t3;
         let t4;
         if ($[15] === Symbol.for("react.memo_cache_sentinel")) {
           t4 = <Text bold={true}>Documentation:</Text>;
@@ -491,18 +587,25 @@ function OAuthStatusMessage(t0) {
         }
         let t7;
         if ($[18] === Symbol.for("react.memo_cache_sentinel")) {
-          t7 = <Box flexDirection="column" marginTop={1}>{t4}{t5}{t6}<Text>· Vertex AI:{" "}<Link url="https://code.claude.com/docs/en/google-vertex-ai">https://code.claude.com/docs/en/google-vertex-ai</Link></Text></Box>;
+          t7 = <Box flexDirection="column" marginTop={1}>
+            {t4}
+            <Text>· OpenAI: <Text dimColor={true}>Set OPENAI_API_KEY</Text></Text>
+            <Text>· Google Gemini: <Text dimColor={true}>Set GEMINI_API_KEY</Text></Text>
+            <Text>· Groq/Mistral/xAI: <Text dimColor={true}>Set GROQ_API_KEY, etc.</Text></Text>
+            <Text>· Amazon Bedrock: <Link url="https://code.claude.com/docs/en/amazon-bedrock">https://code.claude.com/docs/en/amazon-bedrock</Link></Text>
+            <Text>· Vertex AI: <Link url="https://code.claude.com/docs/en/google-vertex-ai">https://code.claude.com/docs/en/google-vertex-ai</Link></Text>
+            <Box marginTop={1}>
+              <Text bold={true}>Pro Tip:</Text>
+              <Text>Run <Text color="cyan" bold={true}>provider --list</Text> to see all 10+ supported providers!</Text>
+            </Box>
+          </Box>;
           $[18] = t7;
         } else {
           t7 = $[18];
         }
         let t8;
-        if ($[19] === Symbol.for("react.memo_cache_sentinel")) {
-          t8 = <Box flexDirection="column" gap={1} marginTop={1}>{t1}<Box flexDirection="column" gap={1}>{t2}{t3}{t7}<Box marginTop={1}><Text dimColor={true}>Press <Text bold={true}>Enter</Text> to go back to login options.</Text></Box></Box></Box>;
-          $[19] = t8;
-        } else {
-          t8 = $[19];
-        }
+        t8 = <Box flexDirection="column" gap={1} marginTop={1}>{t1}<Box flexDirection="column" gap={1}>{t2}{t3}{t7}<Box marginTop={1}><Text dimColor={true}>Press <Text bold={true}>Esc</Text> to go back to login options.</Text></Box></Box></Box>;
+        $[19] = t8;
         return t8;
       }
     case "waiting_for_login":

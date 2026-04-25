@@ -324,6 +324,7 @@ export const DEFAULT_BINDINGS: KeybindingBlock[] = [
       k: 'select:previous',
       'ctrl+n': 'select:next',
       'ctrl+p': 'select:previous',
+      'shift+tab': 'select:previous',
       enter: 'select:accept',
       escape: 'select:cancel',
     },

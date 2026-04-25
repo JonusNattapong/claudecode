@@ -595,6 +595,7 @@ export const REMOTE_SAFE_COMMANDS: Set<Command> = new Set([
   vim, // Toggle vim mode
   cost, // Show session cost (local cost tracking)
   usage, // Show usage info
+  stats, // Show usage statistics
   copy, // Copy last message
   btw, // Quick note
   feedback, // Send feedback

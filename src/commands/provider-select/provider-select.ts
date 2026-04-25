@@ -1,5 +1,6 @@
 import { readFile, writeFile } from 'fs/promises'
 import { join } from 'path'
+import chalk from 'chalk'
 import * as React from 'react'
 import { Select } from '../../components/CustomSelect/select.js'
 import TextInput from '../../components/TextInput.js'
@@ -66,12 +67,12 @@ async function saveConfig(config: ProviderConfig): Promise<void> {
 function help(): string {
   return [
     'Usage:',
-    '  /provider',
-    '  /provider list',
-    '  /provider key <provider> <api-key>',
-    '  /provider set <provider> [model]',
-    '  /provider reset',
-    '  /provider models <provider>',
+    '  /providers',
+    '  /providers list',
+    '  /providers key <provider> <api-key>',
+    '  /providers set <provider> [model]',
+    '  /providers reset',
+    '  /providers models <provider>',
     '',
     `Available providers: ${PROVIDER_KEYS.join(', ')}`,
   ].join('\n')
@@ -203,7 +204,7 @@ async function runProviderCommand(args: string): Promise<ProviderCommandRunResul
       return {
         result: {
           type: 'text',
-          value: `Missing API key.\n\nUsage: /provider key ${provider} <api-key>`,
+          value: `Missing API key.\n\nUsage: /providers key ${provider} <api-key>`,
         },
       }
     }
@@ -440,10 +441,10 @@ function ProviderPicker({
         label: `${info.label} (${key})`,
         value: key,
         description: config?.apiKeys?.[key] || process.env[info.envKey]
-          ? `${info.envKey} found`
+          ? chalk.green(`${info.envKey} - ACTIVE ✔`)
           : info.isLocal
             ? 'local provider'
-            : `missing ${info.envKey}`,
+            : `${info.envKey} - MISSING  𐄂`,
       }
     })
 

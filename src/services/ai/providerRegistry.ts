@@ -4,6 +4,8 @@ import { OpenAICompatibleProvider } from './providers/OpenAICompatibleProvider.j
 import { OpenAIProvider } from './providers/OpenAIProvider.js'
 import { OllamaProvider } from './providers/OllamaProvider.js'
 import { OpenRouterProvider } from './providers/OpenRouterProvider.js'
+import { ChatGPTSessionProvider } from './providers/ChatGPTSessionProvider.js'
+import { CopilotProvider } from './providers/CopilotProvider.js'
 import type { ProviderId, ProviderInterface } from './providers/ProviderInterface.js'
 
 export type ToolCallingSupport = 'native' | 'json-text' | 'none'
@@ -162,7 +164,7 @@ export const PROVIDER_REGISTRY = {
   },
   openai: {
     providerId: 'openai',
-    label: 'OpenAI',
+    label: 'OpenAI (API Key)',
     envKey: 'OPENAI_API_KEY',
     defaultBaseUrl: 'https://api.openai.com/v1',
     modelsUrl: 'https://api.openai.com/v1/models',
@@ -179,6 +181,34 @@ export const PROVIDER_REGISTRY = {
       contextLength: '1M+',
     },
     models: [
+      {
+        id: 'gpt-5.5-pro',
+        label: 'GPT-5.5 Pro (2026-04-23)',
+        tags: ['tools', 'vision', 'native', 'verified', 'latest', 'reasoning'],
+        capabilities: {
+          toolCalling: 'native',
+          vision: true,
+          streaming: 'full',
+          maxContext: 1050000,
+          maxOutput: 128000,
+          reasoning: true,
+          supportsSystemPrompt: true,
+        },
+      },
+      {
+        id: 'gpt-5.5-thinking',
+        label: 'GPT-5.5 Thinking',
+        tags: ['reasoning', 'research'],
+        capabilities: {
+          toolCalling: 'native',
+          vision: false,
+          streaming: 'full',
+          maxContext: 1050000,
+          maxOutput: 128000,
+          reasoning: true,
+          supportsSystemPrompt: true,
+        },
+      },
       {
         id: 'gpt-5.5',
         label: 'GPT-5.5 (2026-04)',
@@ -224,6 +254,124 @@ export const PROVIDER_REGISTRY = {
     ],
     provider: new OpenAIProvider(),
   },
+  openai_browser: {
+    providerId: 'openai_browser',
+    label: 'ChatGPT Plus/Pro (Browser)',
+    envKey: 'CHATGPT_SESSION_TOKEN',
+    defaultBaseUrl: 'https://chatgpt.com/backend-api',
+    defaultModel: 'gpt-4o',
+    capabilities: {
+      chat: true,
+      streaming: 'full',
+      toolCalling: false,
+      vision: true,
+      jsonSchema: false,
+      reasoningEffort: false,
+      contextLength: '32k',
+    },
+    models: [
+      {
+        id: 'gpt-5.5-thinking',
+        label: 'GPT-5.5 Thinking (Web)',
+        capabilities: { toolCalling: 'none', vision: true, streaming: 'full', maxContext: 1050000, reasoning: true, supportsSystemPrompt: true },
+      },
+      {
+        id: 'gpt-5.5',
+        label: 'GPT-5.5 (Web)',
+        capabilities: { toolCalling: 'none', vision: true, streaming: 'full', maxContext: 1050000, reasoning: true, supportsSystemPrompt: true },
+      },
+      {
+        id: 'gpt-4o',
+        label: 'GPT-4o (Web)',
+        capabilities: {
+          toolCalling: 'none',
+          vision: true,
+          streaming: 'full',
+          maxContext: 32768,
+          reasoning: true,
+          supportsSystemPrompt: true,
+        },
+      }
+    ],
+    provider: new ChatGPTSessionProvider(),
+  },
+  openai_headless: {
+    providerId: 'openai_headless',
+    label: 'ChatGPT Plus (Headless)',
+    envKey: 'CHATGPT_SESSION_TOKEN',
+    defaultBaseUrl: 'https://chatgpt.com/backend-api',
+    defaultModel: 'gpt-4o',
+    capabilities: {
+      chat: true,
+      streaming: 'full',
+      toolCalling: false,
+      vision: true,
+      jsonSchema: false,
+      reasoningEffort: false,
+      contextLength: '32k',
+    },
+    models: [
+      {
+        id: 'gpt-5.5-thinking',
+        label: 'GPT-5.5 Thinking (Headless)',
+        capabilities: { toolCalling: 'none', vision: true, streaming: 'full', maxContext: 1050000, reasoning: true, supportsSystemPrompt: true },
+      },
+      {
+        id: 'gpt-5.5',
+        label: 'GPT-5.5 (Headless)',
+        capabilities: { toolCalling: 'none', vision: true, streaming: 'full', maxContext: 1050000, reasoning: true, supportsSystemPrompt: true },
+      },
+      {
+        id: 'gpt-4o',
+        label: 'GPT-4o (Headless)',
+        capabilities: {
+          toolCalling: 'none',
+          vision: true,
+          streaming: 'full',
+          maxContext: 32768,
+          reasoning: true,
+          supportsSystemPrompt: true,
+        },
+      }
+    ],
+    provider: new ChatGPTSessionProvider(),
+  },
+  copilot: {
+    providerId: 'copilot',
+    label: 'GitHub Copilot',
+    envKey: 'GITHUB_COPILOT_TOKEN',
+    defaultBaseUrl: 'https://api.githubcopilot.com',
+    defaultModel: 'gpt-4o',
+    capabilities: {
+      chat: true,
+      streaming: 'full',
+      toolCalling: true,
+      vision: true,
+      jsonSchema: true,
+      reasoningEffort: false,
+      contextLength: '32k',
+    },
+    models: [
+      {
+        id: 'gpt-5.5',
+        label: 'Copilot GPT-5.5 (Latest)',
+        capabilities: { toolCalling: 'native', vision: true, streaming: 'full', maxContext: 1050000, reasoning: true, supportsSystemPrompt: true },
+      },
+      {
+        id: 'gpt-4o',
+        label: 'Copilot GPT-4o',
+        capabilities: {
+          toolCalling: 'native',
+          vision: true,
+          streaming: 'full',
+          maxContext: 32768,
+          reasoning: true,
+          supportsSystemPrompt: true,
+        },
+      }
+    ],
+    provider: new CopilotProvider(),
+  },
   google: {
     providerId: 'google',
     label: 'Google',
@@ -243,6 +391,20 @@ export const PROVIDER_REGISTRY = {
       contextLength: '1M+',
     },
     models: [
+      {
+        id: 'gemini-3.1-flash-lite',
+        label: 'Gemini 3.1 Flash-Lite (2026-03)',
+        tags: ['fast', 'efficient'],
+        capabilities: {
+          toolCalling: 'native',
+          vision: true,
+          streaming: 'partial',
+          maxContext: 1000000,
+          maxOutput: 'varies',
+          reasoning: false,
+          supportsSystemPrompt: true,
+        },
+      },
       {
         id: 'gemini-3.1-flash',
         label: 'Gemini 3.1 Flash (2026-02)',
@@ -299,6 +461,42 @@ export const PROVIDER_REGISTRY = {
           supportsSystemPrompt: true,
         },
       },
+    ],
+    provider: new GoogleProvider(),
+  },
+  gemini_oauth: {
+    providerId: 'gemini_oauth',
+    label: 'Google Gemini (OAuth)',
+    envKey: 'GOOGLE_OAUTH_TOKEN',
+    defaultBaseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai',
+    defaultModel: 'gemini-3.1-flash',
+    capabilities: {
+      chat: true,
+      streaming: 'partial',
+      toolCalling: true,
+      vision: true,
+      jsonSchema: true,
+      reasoningEffort: true,
+      contextLength: '1M+',
+    },
+    models: [
+      {
+        id: 'gemini-3.1-pro',
+        label: 'Gemini 3.1 Pro (OAuth)',
+        capabilities: { toolCalling: 'native', vision: true, streaming: 'partial', maxContext: 1000000, reasoning: true, supportsSystemPrompt: true },
+      },
+      {
+        id: 'gemini-3.1-flash',
+        label: 'Gemini 3.1 Flash (OAuth)',
+        capabilities: {
+          toolCalling: 'native',
+          vision: true,
+          streaming: 'partial',
+          maxContext: 1000000,
+          reasoning: true,
+          supportsSystemPrompt: true,
+        },
+      }
     ],
     provider: new GoogleProvider(),
   },
@@ -402,8 +600,62 @@ export const PROVIDER_REGISTRY = {
       reasoningEffort: true,
       contextLength: 'varies',
     },
-    models: [],
+    models: [
+      { id: 'openai/gpt-5.5-pro', label: 'GPT-5.5 Pro (via OpenRouter)', capabilities: { toolCalling: 'native', vision: true, streaming: 'partial', maxContext: 1050000, reasoning: true, supportsSystemPrompt: true } },
+      { id: 'anthropic/claude-opus-4-7', label: 'Claude 4.7 Opus (via OpenRouter)', capabilities: { toolCalling: 'native', vision: true, streaming: 'partial', maxContext: 1000000, reasoning: true, supportsSystemPrompt: true } },
+      { id: 'deepseek/deepseek-v4-pro', label: 'DeepSeek V4 Pro (via OpenRouter)', capabilities: { toolCalling: 'native', vision: true, streaming: 'partial', maxContext: 1000000, reasoning: true, supportsSystemPrompt: true } },
+    ],
     provider: new OpenRouterProvider(),
+  },
+  deepseek: {
+    providerId: 'openai', // Using OpenAI provider logic for deepseek as it is compatible
+    label: 'DeepSeek',
+    envKey: 'DEEPSEEK_API_KEY',
+    defaultBaseUrl: 'https://api.deepseek.com/v1',
+    modelsUrl: 'https://api.deepseek.com/v1/models',
+    defaultModel: 'deepseek-v4-pro',
+    defaultModelVerified: true,
+    note: 'DeepSeek V4 family. Released April 24, 2026.',
+    capabilities: {
+      chat: true,
+      streaming: 'full',
+      toolCalling: true,
+      vision: true,
+      jsonSchema: true,
+      reasoningEffort: true,
+      contextLength: '1M',
+    },
+    models: [
+      {
+        id: 'deepseek-v4-pro',
+        label: 'DeepSeek V4 Pro (2026-04-24)',
+        tags: ['tools', 'vision', 'latest', 'moe'],
+        capabilities: {
+          toolCalling: 'native',
+          vision: true,
+          streaming: 'full',
+          maxContext: 1000000,
+          maxOutput: 'varies',
+          reasoning: true,
+          supportsSystemPrompt: true,
+        },
+      },
+      {
+        id: 'deepseek-v4-flash',
+        label: 'DeepSeek V4 Flash',
+        tags: ['fast', 'efficient', 'moe'],
+        capabilities: {
+          toolCalling: 'native',
+          vision: true,
+          streaming: 'full',
+          maxContext: 1000000,
+          maxOutput: 'varies',
+          reasoning: true,
+          supportsSystemPrompt: true,
+        },
+      },
+    ],
+    provider: new OpenAIProvider(),
   },
   opencode: {
     providerId: 'opencode',
@@ -510,7 +762,21 @@ export const PROVIDER_REGISTRY = {
       },
       {
         id: 'glm-5.1',
-        label: 'GLM 5.1 (2026-04)',
+        label: 'GLM 5.1 (2026-04-07)',
+        tags: ['tools', 'reasoning', 'latest'],
+        capabilities: {
+          toolCalling: 'native',
+          vision: false,
+          streaming: 'partial',
+          maxContext: 202752,
+          maxOutput: 'varies',
+          reasoning: true,
+          supportsSystemPrompt: true,
+        },
+      },
+      {
+        id: 'glm-5.0',
+        label: 'GLM 5.0',
         tags: ['tools', 'reasoning'],
         capabilities: {
           toolCalling: 'native',
@@ -659,7 +925,10 @@ export const PROVIDER_REGISTRY = {
       reasoningEffort: true,
       contextLength: 'varies',
     },
-    models: [],
+    models: [
+      { id: 'llama-4-70b', label: 'Llama 4 70B (Fast)', capabilities: { toolCalling: 'native', vision: false, streaming: 'partial', maxContext: 128000, reasoning: true, supportsSystemPrompt: true } },
+      { id: 'llama-4-8b', label: 'Llama 4 8B (Instant)', capabilities: { toolCalling: 'native', vision: false, streaming: 'partial', maxContext: 128000, reasoning: true, supportsSystemPrompt: true } },
+    ],
     provider: new OpenAICompatibleProvider(
       'groq',
       'Groq',
@@ -755,6 +1024,20 @@ export const PROVIDER_REGISTRY = {
       contextLength: 'varies',
     },
     models: [
+      {
+        id: 'mistral-large-4',
+        label: 'Mistral Large 4 (2026-04)',
+        tags: ['tools', 'reasoning', 'latest'],
+        capabilities: {
+          toolCalling: 'native',
+          vision: true,
+          streaming: 'full',
+          maxContext: 128000,
+          maxOutput: 'varies',
+          reasoning: true,
+          supportsSystemPrompt: true,
+        },
+      },
       {
         id: 'mistral-small-latest',
         label: 'Mistral Small 4 (2026-03)',
@@ -950,6 +1233,32 @@ export const PROVIDER_REGISTRY = {
       contextLength: 'varies',
     },
     models: [
+      {
+        id: 'llama4:70b',
+        label: 'Llama 4 70B',
+        tags: ['tools', 'local', 'latest'],
+        capabilities: {
+          toolCalling: 'native',
+          vision: false,
+          streaming: 'partial',
+          maxContext: 131072,
+          reasoning: true,
+          supportsSystemPrompt: true,
+        },
+      },
+      {
+        id: 'deepseek-v4',
+        label: 'DeepSeek V4 (Local)',
+        tags: ['moe', 'local'],
+        capabilities: {
+          toolCalling: 'native',
+          vision: false,
+          streaming: 'partial',
+          maxContext: 131072,
+          reasoning: true,
+          supportsSystemPrompt: true,
+        },
+      },
       {
         id: 'llama3.3',
         label: 'Llama 3.3',

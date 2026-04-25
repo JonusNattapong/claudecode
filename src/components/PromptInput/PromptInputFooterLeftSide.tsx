@@ -318,7 +318,7 @@ function ModeIndicator({
     return <Text color="bashBorder">! for bash mode</Text>;
   }
   const currentMode = toolPermissionContext?.mode;
-  const hasActiveMode = !isDefaultMode(currentMode);
+  const hasActiveMode = true; // Always show for visual consistency
   const viewedTask = viewingAgentTaskId ? tasks[viewingAgentTaskId] : undefined;
   const isViewingTeammate = viewSelectionMode === 'viewing-agent' && viewedTask?.type === 'in_process_teammate';
   const isViewingCompletedTeammate = isViewingTeammate && viewedTask != null && viewedTask.status !== 'running';
@@ -345,14 +345,21 @@ function ModeIndicator({
   // the local permission mode shown here doesn't reflect the agent's state.
   // Rendered before the tasks pill so a long pill label (e.g. ultraplan URL)
   // doesn't push the mode indicator off-screen.
-  const modePart = currentMode && hasActiveMode && !getIsRemoteMode() ? <Text color={getModeColor(currentMode)} key="mode">
-        {permissionModeSymbol(currentMode)}{' '}
-        {permissionModeTitle(currentMode).toLowerCase()} on
+  const modePart = (currentMode === 'bypassPermissions' || currentMode === 'dontAsk') ? null : (
+    <Text key={`mode-${currentMode || 'default'}`}>
+        <Text color="ansi:white" dimColor>● </Text>
+        <Text color="ansi:white" bold>{(() => {
+          if (currentMode === 'default') return 'normal';
+          if (currentMode === 'dontAsk' || currentMode === 'bypassPermissions') return 'bypass';
+          return permissionModeTitle(currentMode);
+        })().toLowerCase()}</Text>
+        <Text color="ansi:white" dimColor> on</Text>
         {shouldShowModeHint && <Text dimColor>
             {' '}
             <KeyboardShortcutHint shortcut={modeCycleShortcut} action="cycle" parens />
           </Text>}
-      </Text> : null;
+      </Text>
+  );
 
   // Build parts array - exclude BackgroundTaskStatus when we have teammate pills
   // (teammate pills get their own row)
@@ -467,7 +474,7 @@ function ModeIndicator({
 
   // flexShrink=0 keeps mode + pill at natural width; the remaining parts
   // truncate at the tail as one string inside the Text wrapper.
-  return <Box height={1} overflow="hidden">
+  return <Box flexDirection="row">
       {modePart && <Box flexShrink={0}>
           {modePart}
           {(tasksPart || parts.length > 0) && <Text dimColor> · </Text>}

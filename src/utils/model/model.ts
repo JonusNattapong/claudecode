@@ -30,6 +30,8 @@ import { LIGHTNING_BOLT } from '../../constants/figures.js'
 import { isModelAllowed } from './modelAllowlist.js'
 import { type ModelAlias, isModelAlias } from './aliases.js'
 import { capitalize } from '../stringUtils.js'
+import { getAntModelOverrideConfig, resolveAntModel } from './antModels.js'
+import { PROVIDER_REGISTRY } from '../../services/ai/providerRegistry.js'
 
 export type ModelShortName = string
 export type ModelName = string
@@ -46,6 +48,28 @@ export function isNonCustomOpusModel(model: ModelName): boolean {
     model === getModelStrings().opus45 ||
     model === getModelStrings().opus46
   )
+}
+
+export function getProviderConfig(): { provider?: string; model?: string; apiKeys?: Record<string, string> } | null {
+  try {
+    const configPath = join(process.env.HOME || process.env.USERPROFILE || '', '.claude-code-provider.json')
+    const configData = readFileSync(configPath, 'utf8')
+    return JSON.parse(configData)
+  } catch {
+    return null
+  }
+}
+
+export function getActiveProviderKeyStatus(): 'valid' | 'missing' | 'not-required' {
+  const config = getProviderConfig()
+  if (!config?.provider) return 'missing'
+
+  const registryEntry = (PROVIDER_REGISTRY as any)[config.provider]
+  if (!registryEntry) return 'missing'
+  if (registryEntry.isLocal) return 'not-required'
+
+  const hasKey = Boolean(config.apiKeys?.[config.provider] || (registryEntry.envKey && process.env[registryEntry.envKey]))
+  return hasKey ? 'valid' : 'missing'
 }
 
 /**
@@ -70,18 +94,8 @@ export function getUserSpecifiedModelSetting(): ModelSetting | undefined {
   } else {
     const settings = getSettings_DEPRECATED() || {}
     
-    // Load provider config if exists (created by /provider command)
-    let providerConfigModel: string | undefined
-    try {
-      const configPath = join(process.env.HOME || process.env.USERPROFILE || '', '.claude-code-provider.json')
-      const configData = readFileSync(configPath, 'utf8')
-      const config = JSON.parse(configData)
-      if (config.model) {
-        providerConfigModel = config.model
-      }
-    } catch {
-      // No provider config, ignore error
-    }
+    const providerConfig = getProviderConfig()
+    const providerConfigModel = providerConfig?.model
 
     specifiedModel = process.env.ANTHROPIC_MODEL || providerConfigModel || settings.model || undefined
   }
@@ -414,6 +428,16 @@ export function renderModelName(model: ModelName): string {
   if (publicName) {
     return publicName
   }
+
+  // Check if we have a provider label to prefix
+  const providerConfig = getProviderConfig()
+  if (providerConfig?.provider) {
+    const registryEntry = PROVIDER_REGISTRY[providerConfig.provider as keyof typeof PROVIDER_REGISTRY]
+    if (registryEntry) {
+      return `${registryEntry.label}: ${model}`
+    }
+  }
+
   if (process.env.USER_TYPE === 'ant') {
     const resolved = parseUserSpecifiedModel(model)
     const antModel = resolveAntModel(model)

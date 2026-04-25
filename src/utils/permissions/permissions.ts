@@ -500,21 +500,9 @@ export const hasPermissionsToUseTool: CanUseToolFn = async (
     return result
   }
 
-  // Apply dontAsk mode transformation: convert 'ask' to 'deny'
-  // This is done at the end so it can't be bypassed by early returns
   if (result.behavior === 'ask') {
     const appState = context.getAppState()
 
-    if (appState.toolPermissionContext.mode === 'dontAsk') {
-      return {
-        behavior: 'deny',
-        decisionReason: {
-          type: 'mode',
-          mode: 'dontAsk',
-        },
-        message: DONT_ASK_REJECT_MESSAGE(tool.name),
-      }
-    }
     // Apply auto mode: use AI classifier instead of prompting user
     // Check this BEFORE shouldAvoidPermissionPrompts so classifiers work in headless mode
     if (
@@ -1267,6 +1255,8 @@ async function hasPermissionsToUseToolInner(
   // - Plan mode when the user originally started with bypass mode (isBypassPermissionsModeAvailable)
   const shouldBypassPermissions =
     appState.toolPermissionContext.mode === 'bypassPermissions' ||
+    appState.toolPermissionContext.mode === 'dontAsk' ||
+    appState.toolPermissionContext.mode === 'yolo' ||
     (appState.toolPermissionContext.mode === 'plan' &&
       appState.toolPermissionContext.isBypassPermissionsModeAvailable)
   if (shouldBypassPermissions) {

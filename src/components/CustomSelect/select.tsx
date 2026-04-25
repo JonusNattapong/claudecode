@@ -11,6 +11,7 @@ import { SelectInputOption } from './select-input-option.js';
 import { SelectOption } from './select-option.js';
 import { useSelectInput } from './use-select-input.js';
 import { useSelectState } from './use-select-state.js';
+import { useRegisterKeybindingContext } from '../../keybindings/KeybindingContext.js';
 
 // Extract text content from ReactNode for width calculation
 function getTextContent(node: ReactNode): string {
@@ -219,6 +220,8 @@ export function Select(t0) {
   const layout = t4 === undefined ? "compact" : t4;
   const disableSelection = t5 === undefined ? false : t5;
   const inlineDescriptions = t6 === undefined ? false : t6;
+  // Register Select as an active context so its keybindings take precedence over Chat
+  useRegisterKeybindingContext('Select', !isDisabled);
   const [imagesSelected, setImagesSelected] = useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   let t7;

@@ -77,6 +77,13 @@ const PERMISSION_MODE_CONFIG: Partial<
     color: 'error',
     external: 'dontAsk',
   },
+  yolo: {
+    title: 'YOLO Mode',
+    shortTitle: 'YOLO',
+    symbol: '⚡️',
+    color: 'error',
+    external: 'yolo',
+  },
   ...(feature('TRANSCRIPT_CLASSIFIER')
     ? {
         auto: {

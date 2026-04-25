@@ -15,6 +15,7 @@ import type {
   BetaToolResultBlockParam,
   BetaToolUnion,
   BetaUsage,
+  BetaUsage as Usage,
   BetaMessageParam as MessageParam,
 } from '@anthropic-ai/sdk/resources/beta/messages/messages.mjs'
 import type { TextBlockParam } from '@anthropic-ai/sdk/resources/index.mjs'
@@ -374,7 +375,13 @@ async function callOpenAICompatibleProvider({
           ? { tool_choice: openAIToolChoiceValue }
           : {}),
       })
-      return createAssistantMessageFromOpenAIResponse(response, tools)
+      const assistantMessage = createAssistantMessageFromOpenAIResponse(response, tools)
+      const openAIUsage = extractOpenAIUsage(response)
+      if (openAIUsage) {
+        const costUSD = calculateUSDCost(resolvedModel, openAIUsage)
+        addToTotalSessionCost(costUSD, openAIUsage, resolvedModel)
+      }
+      return assistantMessage
     }
 
     if (client?.responses?.create) {
@@ -384,7 +391,13 @@ async function callOpenAICompatibleProvider({
         max_output_tokens: maxTokens,
         temperature,
       })
-      return createAssistantMessageFromOpenAIResponse(response, tools)
+      const assistantMessage = createAssistantMessageFromOpenAIResponse(response, tools)
+      const openAIUsage = extractOpenAIUsage(response)
+      if (openAIUsage) {
+        const costUSD = calculateUSDCost(resolvedModel, openAIUsage)
+        addToTotalSessionCost(costUSD, openAIUsage, resolvedModel)
+      }
+      return assistantMessage
     }
 
     throw new Error(
@@ -440,7 +453,16 @@ async function callOpenAICompatibleProvider({
   }
 
   const data = await response.json()
-  return createAssistantMessageFromOpenAIResponse(data, tools)
+  const assistantMessage = createAssistantMessageFromOpenAIResponse(data, tools)
+
+  // Track cost for non-Anthropic providers
+  const openAIUsage = extractOpenAIUsage(data)
+  if (openAIUsage) {
+    const costUSD = calculateUSDCost(resolvedModel, openAIUsage)
+    addToTotalSessionCost(costUSD, openAIUsage, resolvedModel)
+  }
+
+  return assistantMessage
 }
 
 async function loadProviderConfig(): Promise<ProviderConfig | null> {
@@ -1535,12 +1557,30 @@ function parseTextJSONToolCalls(text: string): TextToolCall[] {
   return []
 }
 
+function extractOpenAIUsage(response: any): Usage | undefined {
+  const usage = response?.usage
+  if (!usage || typeof usage !== 'object') return undefined
+
+  const promptTokens = usage.prompt_tokens ?? usage.inputTokens ?? 0
+  const completionTokens = usage.completion_tokens ?? usage.outputTokens ?? 0
+
+  if (!promptTokens && !completionTokens) return undefined
+
+  return {
+    input_tokens: Number(promptTokens) || 0,
+    output_tokens: Number(completionTokens) || 0,
+    cache_creation_input_tokens: null,
+    cache_read_input_tokens: null,
+  }
+}
+
 function createAssistantMessageFromOpenAIResponse(
   response: any,
   tools: BetaToolUnion[],
 ): AssistantMessage {
   const choice = response?.choices?.[0]
   const message = choice?.message ?? choice
+  const usage = extractOpenAIUsage(response)
 
   // Try parsing tool calls using toolCallParser
   const parsedCalls = parseToolCalls(message)
@@ -1554,6 +1594,7 @@ function createAssistantMessageFromOpenAIResponse(
     if (toolUseBlocks.length > 0) {
       return createAssistantMessage({
         content: toolUseBlocks,
+        usage,
       })
     }
   }
@@ -1566,6 +1607,7 @@ function createAssistantMessageFromOpenAIResponse(
   if (nativeToolCalls.length > 0) {
     return createAssistantMessage({
       content: nativeToolCalls,
+      usage,
     })
   }
 
@@ -1575,7 +1617,7 @@ function createAssistantMessageFromOpenAIResponse(
       .map((item: any) => String(item?.text ?? ''))
       .join('')
     if (outputText.trim().length > 0) {
-      return createAssistantMessage({ content: outputText })
+      return createAssistantMessage({ content: outputText, usage })
     }
   }
 
@@ -1597,6 +1639,7 @@ function createAssistantMessageFromOpenAIResponse(
       content: finishReason
         ? `Provider returned an empty response (finish_reason: ${finishReason}).`
         : 'Provider returned an empty response.',
+      usage,
     })
   }
 
@@ -1608,10 +1651,11 @@ function createAssistantMessageFromOpenAIResponse(
   if (textJSONToolCalls.length > 0) {
     return createAssistantMessage({
       content: textJSONToolCalls,
+      usage,
     })
   }
 
-  return createAssistantMessage({ content })
+  return createAssistantMessage({ content, usage })
 }
 
 /**

@@ -20,13 +20,16 @@ import { getSettingsWithAllErrors } from './settings/allErrors.js';
 import { getEnabledSettingSources, getSettingSourceDisplayNameCapitalized } from './settings/constants.js';
 import { getManagedFileSettingsPresence, getPolicySettingsOrigin, getSettingsForSource } from './settings/settings.js';
 import type { ThemeName } from './theme.js';
+import { readFileSync } from 'fs';
+import { join } from 'path';
+import { PROVIDER_REGISTRY } from '../services/ai/providerRegistry.js';
 export type Property = {
   label?: string;
   value: React.ReactNode | Array<string>;
 };
 export type Diagnostic = React.ReactNode;
 export function buildSandboxProperties(): Property[] {
-  if ("external" !== 'ant') {
+  if (("external" as any) !== 'ant') {
     return [];
   }
   const isSandboxed = SandboxManager.isSandboxingEnabled();
@@ -237,9 +240,41 @@ export function buildAccountProperties(): Property[] {
   }
   return properties;
 }
+
+const PROVIDER_CONFIG_PATH = join(
+  process.env.HOME || process.env.USERPROFILE || '',
+  '.claude-code-provider.json'
+);
+
+function getProviderConfig() {
+  try {
+    return JSON.parse(readFileSync(PROVIDER_CONFIG_PATH, 'utf8'));
+  } catch {
+    return null;
+  }
+}
+
 export function buildAPIProviderProperties(): Property[] {
+  const providerConfig = getProviderConfig();
   const apiProvider = getAPIProvider();
   const properties: Property[] = [];
+
+  if (providerConfig?.provider && PROVIDER_REGISTRY[providerConfig.provider as keyof typeof PROVIDER_REGISTRY]) {
+    const registryEntry = PROVIDER_REGISTRY[providerConfig.provider as keyof typeof PROVIDER_REGISTRY];
+    properties.push({
+      label: 'API provider',
+      value: registryEntry.label
+    });
+
+    if (registryEntry.defaultBaseUrl) {
+      properties.push({
+        label: 'Provider base URL',
+        value: registryEntry.defaultBaseUrl
+      });
+    }
+    return properties;
+  }
+
   if (apiProvider !== 'firstParty') {
     const providerLabel = {
       bedrock: 'AWS Bedrock',

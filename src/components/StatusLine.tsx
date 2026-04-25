@@ -1,4 +1,5 @@
 import { feature } from 'bun:bundle';
+import chalk from 'chalk';
 import * as React from 'react';
 import { memo, useCallback, useEffect, useRef } from 'react';
 import { logEvent } from 'src/services/analytics/index.js';
@@ -25,13 +26,18 @@ import { getLastAssistantMessage } from '../utils/messages.js';
 import { getRuntimeMainLoopModel, type ModelName, renderModelName } from '../utils/model/model.js';
 import { getCurrentSessionTitle } from '../utils/sessionStorage.js';
 import { doesMostRecentAssistantMessageExceed200k, getCurrentUsage } from '../utils/tokens.js';
+import { roughTokenCountEstimationForMessages } from '../services/tokenEstimation.js';
 import { getCurrentWorktreeSession } from '../utils/worktree.js';
 import { isVimModeEnabled } from './PromptInput/utils.js';
+import { getTotalCost, getTotalDuration } from '../cost-tracker.js';
+import { getBranch } from '../utils/git.js';
+import { getSessionId } from '../bootstrap/state.js';
 export function statusLineShouldDisplay(settings: ReadonlySettings): boolean {
   // Assistant mode: statusline fields (model, permission mode, cwd) reflect the
   // REPL/daemon process, not what the agent child is actually running. Hide it.
   if (feature('KAIROS') && getKairosActive()) return false;
-  return settings?.statusLine !== undefined;
+  // Always show statusline (either custom or default)
+  return true;
 }
 function buildStatusLineCommandInput(permissionMode: PermissionMode, exceeds200kTokens: boolean, settings: ReadonlySettings, messages: Message[], addedDirs: string[], mainLoopModel: ModelName, vimMode?: VimMode): StatusLineCommandInput {
   const agentType = getMainThreadAgentType();
@@ -153,6 +159,17 @@ function StatusLineInner({
   // re-reads settings.json on every call, so another session's /model write
   // would leak into this session's statusline (anthropics/claude-code#37596).
   const mainLoopModel = useMainLoopModel();
+  const [currentBranch, setCurrentBranch] = React.useState<string | null>(null);
+  const mcpCount = useAppState(s => s.mcp.clients.length) as number;
+  const thinkingEnabled = useAppState(s => s.thinkingEnabled);
+  const [currentTime, setCurrentTime] = React.useState(new Date());
+
+  React.useEffect(() => {
+    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+
 
   // Keep latest values in refs for stable callback access
   const settingsRef = useRef(settings);
@@ -206,6 +223,8 @@ function StatusLineInner({
         previousStateRef.current.messageId = currentMessageId;
         previousStateRef.current.exceeds200kTokens = exceeds200kTokens;
       }
+      const branch = await getBranch();
+      setCurrentBranch(branch);
       const statusInput = buildStatusLineCommandInput(permissionModeRef.current, exceeds200kTokens, settingsRef.current, msgs, Array.from(addedDirsRef.current.keys()), mainLoopModelRef.current, vimModeRef.current);
       const text = await executeStatusLineCommand(statusInput, controller.signal, undefined, logResult);
       if (!controller.signal.aborted) {
@@ -306,15 +325,187 @@ function StatusLineInner({
   // Get padding from settings or default to 0
   const paddingX = settings?.statusLine?.padding ?? 0;
 
+  // Build default statusline if no custom statusline is configured
+  const defaultStatusLine = !statusLineText ? (() => {
+    const runtimeModel = getRuntimeMainLoopModel({
+      permissionMode,
+      mainLoopModel,
+      exceeds200kTokens: previousStateRef.current.exceeds200kTokens
+    });
+    const currentUsage = getCurrentUsage(messagesRef.current);
+
+    // Use API usage if available, otherwise estimate from messages
+    let inputTokens = currentUsage?.input_tokens ?? 0;
+    let outputTokens = currentUsage?.output_tokens ?? 0;
+
+    if (!currentUsage && messagesRef.current.length > 0) {
+      // Fallback: estimate tokens from message content when API doesn't provide usage
+      const estimatedTokens = roughTokenCountEstimationForMessages(messagesRef.current);
+      // Rough split: input ≈ 70%, output ≈ 30% of total conversation
+      inputTokens = Math.round(estimatedTokens * 0.7);
+      outputTokens = Math.round(estimatedTokens * 0.3);
+    }
+
+    // Build usage object for context percentage calculation
+    const usageForContext = currentUsage ?? {
+      input_tokens: inputTokens,
+      output_tokens: outputTokens,
+      cache_creation_input_tokens: 0,
+      cache_read_input_tokens: 0,
+    };
+
+    const contextWindowSize = getContextWindowForModel(runtimeModel, getSdkBetas());
+    const contextPercentages = calculateContextPercentages(usageForContext, contextWindowSize);
+    const cwd = getCwd();
+    const projectName = cwd.split(/[/\\]/).pop() || cwd;
+
+    // Get additional info
+    const gitBranch = currentBranch;
+    const sessionId = getSessionId();
+    const cost = getTotalCost();
+    const duration = getTotalDuration();
+
+    // Format duration as HH:MM:SS
+    const formatDuration = (ms: number): string => {
+      const seconds = Math.floor(ms / 1000);
+      const minutes = Math.floor(seconds / 60);
+      const hours = Math.floor(minutes / 60);
+      if (hours > 0) {
+        return `${hours}h ${minutes % 60}m`;
+      }
+      return `${minutes}m ${seconds % 60}s`;
+    };
+
+    // Format cost
+    const formatCost = (usd: number): string => {
+      if (usd < 0.01) return `<$0.01`;
+      return `$${usd.toFixed(2)}`;
+    };
+
+    // Progress bar width (20 chars)
+    const progressBarWidth = 20;
+    const usedPercentage = contextPercentages.used ?? 0;
+    const filledWidth = Math.floor((usedPercentage / 100) * progressBarWidth);
+    const emptyWidth = progressBarWidth - filledWidth;
+    const progressBar = '█'.repeat(filledWidth) + '░'.repeat(emptyWidth);
+
+    // Dynamic color based on usage
+    const getProgressColor = (pct: number) => {
+      if (pct < 50) return chalk.green;
+      if (pct < 80) return chalk.yellow;
+      return chalk.red;
+    };
+    const color = getProgressColor(usedPercentage);
+
+    const renderModeIndicator = () => {
+      switch (permissionMode) {
+        case 'bypassPermissions':
+        case 'dontAsk':
+        case 'yolo':
+          return <Ansi>{chalk.bgRed.white.bold(' YOLO ')}</Ansi>;
+        case 'acceptEdits':
+          return <Ansi>{chalk.bgBlue.white.bold(' ACCEPT ')}</Ansi>;
+        case 'plan':
+          return <Ansi>{chalk.bgCyan.black.bold(' PLAN ')}</Ansi>;
+        case 'auto':
+          return <Ansi>{chalk.bgYellow.black.bold(' AUTO ')}</Ansi>;
+        default:
+          return null;
+      }
+    };
+
+    const modeIndicator = renderModeIndicator();
+
+    const renderProgressBar = (percentage: number) => {
+      const width = 10;
+      const filled = Math.round((percentage / 100) * width);
+      return chalk.white('█'.repeat(filled)) + chalk.gray.dim('.'.repeat(width - filled));
+    };
+
+    const timeStrLong = `${currentTime.getHours().toString().padStart(2, '0')}:${currentTime.getMinutes().toString().padStart(2, '0')}:${currentTime.getSeconds().toString().padStart(2, '0')}`;
+
+    return (
+      <Box flexDirection="column" gap={0} marginTop={0}>
+        {/* Row 1: Core Identity & Context */}
+        <Box gap={0} marginBottom={0} flexWrap="nowrap">
+          <Text>
+            <Ansi>{thinkingEnabled ? (currentTime.getSeconds() % 2 === 0 ? chalk.white.bold('● ') : chalk.gray.dim('● ')) : chalk.gray.dim('● ')}</Ansi>
+            <Ansi>{chalk.gray.dim('PROJECT ')}</Ansi>
+            <Ansi>{chalk.white.bold(`${projectName} `)}</Ansi>
+            <Ansi>{chalk.gray.dim('|')}</Ansi>
+            <Ansi>{chalk.gray.dim(' MODEL ')}</Ansi>
+            <Ansi>{chalk.white.bold(`${renderModelName(runtimeModel)} `)}</Ansi>
+            <Ansi>{chalk.gray.dim('|')}</Ansi>
+            <Ansi>{chalk.gray.dim(' CTX ')}</Ansi>
+            <Ansi>{`${renderProgressBar(usedPercentage)} ${chalk.white(`${usedPercentage.toFixed(0)}% `)}`}</Ansi>
+            <Ansi>{chalk.gray.dim('|')}</Ansi>
+            <Ansi>{chalk.gray.dim(' TIME ')}</Ansi>
+            <Ansi>{chalk.white.bold(`${timeStrLong} `)}</Ansi>
+          </Text>
+        </Box>
+
+        <Box gap={0} marginTop={0} flexWrap="nowrap">
+          <Text>
+            <Ansi>{chalk.gray.dim('● ')}</Ansi>
+            {permissionMode !== 'bypassPermissions' && permissionMode !== 'dontAsk' && (
+              <>
+                <Ansi>{chalk.gray.dim('MODE ')}</Ansi>
+                {(() => {
+                  switch (permissionMode) {
+                    case 'acceptEdits': return <Ansi>{chalk.white.bold('ACCEPT ')}</Ansi>;
+                    case 'plan': return <Ansi>{chalk.white.bold('PLAN ')}</Ansi>;
+                    case 'auto': return <Ansi>{chalk.white.bold('AUTO ')}</Ansi>;
+                    default: return <Ansi>{chalk.gray.bold('NORMAL ')}</Ansi>;
+                  }
+                })()}
+                <Ansi>{chalk.gray.dim('| ')}</Ansi>
+              </>
+            )}
+            <Ansi>{chalk.gray.dim('DEFAULT ')}</Ansi>
+            {(() => {
+              const defaultMode = settings?.permissions?.defaultMode;
+              switch (defaultMode) {
+                case 'bypassPermissions':
+                case 'dontAsk':
+                case 'yolo': return <Ansi>{chalk.white.bold('YOLO ')}</Ansi>;
+                case 'acceptEdits': return <Ansi>{chalk.white.bold('ACCEPT ')}</Ansi>;
+                case 'plan': return <Ansi>{chalk.white.bold('PLAN ')}</Ansi>;
+                case 'auto': return <Ansi>{chalk.white.bold('AUTO ')}</Ansi>;
+                case 'default': return <Ansi>{chalk.gray.bold('NORMAL ')}</Ansi>;
+                default: return <Ansi>{chalk.gray.bold('NORMAL ')}</Ansi>;
+              }
+            })()}
+            <Ansi>{chalk.gray.dim('| ')}</Ansi>
+            <Ansi>{chalk.gray.dim('BRANCH ')}</Ansi>
+            <Ansi>{chalk.white.bold(`${gitBranch || 'none'} `)}</Ansi>
+            <Ansi>{chalk.gray.dim('| ')}</Ansi>
+            <Ansi>{chalk.gray.dim('TOKENS ')}</Ansi>
+            <Ansi>{chalk.white(`↓${inputTokens.toLocaleString()} `)}</Ansi>
+            <Ansi>{chalk.white(`↑${outputTokens.toLocaleString()} `)}</Ansi>
+            <Ansi>{chalk.gray.dim('| ')}</Ansi>
+            <Ansi>{chalk.gray.dim('COST ')}</Ansi>
+            <Ansi>{chalk.white.bold(`${formatCost(cost)} `)}</Ansi>
+            <Ansi>{chalk.gray(`${formatDuration(duration)} `)}</Ansi>
+          </Text>
+        </Box>
+      </Box>
+    );
+  })() : null;
+
   // StatusLine must have stable height in fullscreen — the footer is
   // flexShrink:0 so a 0→1 row change when the command finishes steals
   // a row from ScrollBox and shifts content. Reserve the row while loading
   // (same trick as PromptInputFooterLeftSide).
-  return <Box paddingX={paddingX} gap={2}>
-      {statusLineText ? <Text dimColor wrap="truncate">
-          <Ansi>{statusLineText}</Ansi>
-        </Text> : isFullscreenEnvEnabled() ? <Text> </Text> : null}
-    </Box>;
+  return (
+    <Box paddingX={paddingX} flexDirection="column" gap={0} marginTop={0}>
+      {statusLineText && (
+        <Box paddingLeft={1} marginBottom={0} justifyContent="flex-start">
+          <Ansi>{chalk.gray.dim(statusLineText)}</Ansi>
+        </Box>
+      )}
+      {defaultStatusLine || (isFullscreenEnvEnabled() ? <Text> </Text> : null)}
+    </Box>
+  );
 }
 
 // Parent (PromptInputFooter) re-renders on every setMessages, but StatusLine's
