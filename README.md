@@ -20,7 +20,7 @@ This project contains code from Anthropic's **accidental March 31, 2026 npm sour
 
 **AI-Powered Coding Assistant with Multi-Provider Support**
 
-[![Version](https://img.shields.io/badge/version-2.1.120-blue.svg)](https://github.com/JonusNattapong/ClaudeCode/releases)
+[![Version](https://img.shields.io/badge/version-2.1.121-blue.svg)](https://github.com/JunusNattapong/ClaudeCode/releases)
 [![License](https://img.shields.io/badge/license-Proprietary-red.svg)](LICENSE.md)
 [![Bun](https://img.shields.io/badge/runtime-Bun%20%7C%20Node.js-ffdf00.svg)](https://bun.sh)
 [![TypeScript](https://img.shields.io/badge/lang-TypeScript-3178c6.svg)](https://www.typescriptlang.org/)
@@ -57,20 +57,16 @@ Claude Code By Dek1MillionToken is a fork of Anthropic's Claude Code CLI that ad
 |----------|--------|---------|-------------|-----------|
 | **Anthropic** | Claude Opus 4.7, Sonnet 4.6, Haiku 4.5 | `ANTHROPIC_API_KEY` | Native | Full SSE |
 | **OpenAI** | GPT-5.5, GPT-5.5 Pro | `OPENAI_API_KEY` | Native | Full SSE |
-| **OpenRouter** | 100+ models | `OPENROUTER_API_KEY` | Native | Full SSE |
-| **KiloCode** | 500+ models via gateway | `KILOCODE_API_KEY` | Native | Full SSE |
-| **Ollama** | Local models (Llama, Mistral, etc.) | None required | JSON-text | Partial |
-| **Groq** | Llama 3.3, Mixtral | `GROQ_API_KEY` | Native | Full |
-| **xAI** | Grok 4, Grok 4.20 | `XAI_API_KEY` | Native | Full |
-| **Mistral** | Mistral Large, Small | `MISTRAL_API_KEY` | Native | Full |
-| **Cline** | Cline API | `CLINE_API_KEY` | Native | Full |
-| **OpenCode** | OpenCode AI Gateway | `OPENCODE_API_KEY` | Native | Full |
-| **DeepSeek** | DeepSeek V4 Pro/Flash | `DEEPSEEK_API_KEY` | Native | Full |
-| **GitHub Copilot** | GPT-5.5, GPT-4o | `COPILOT_GITHUB_TOKEN` | Native | Full |
-
-**Note**: Google (Gemini) and ChatGPT Browser providers have been removed due to authentication complexity. Use OpenAI API or other providers instead.
-
-**Enterprise deployments**: AWS Bedrock, Google Vertex AI, Azure Foundry are also supported via environment variables.
+| **DeepSeek** | DeepSeek V4 Pro, V4 Flash | `DEEPSEEK_API_KEY` | Native | Full SSE |
+| **OpenRouter** | 100+ models | `OPENROUTER_API_KEY` | Native | Partial |
+| **OpenCode** | Claude, GPT, Gemini, Kimi, GLM, MiniMax | `OPENCODE_API_KEY` | Native | Partial |
+| **Cline** | Claude, GPT, Gemini, MiniMax | `CLINE_API_KEY` | Native | Partial |
+| **Groq** | Llama 4, Mixtral | `GROQ_API_KEY` | Native | Partial |
+| **xAI** | Grok 4, 4.20, 4.3 | `XAI_API_KEY` | Native | Partial |
+| **Mistral** | Mistral Large 4, Small 4 | `MISTRAL_API_KEY` | Native | Partial |
+| **KiloCode** | 500+ models | `KILOCODE_API_KEY` | Native | Partial |
+| **Ollama** | Local models (Llama, DeepSeek) | None required | Native | Partial |
+| **Copilot** | GPT-5.5, GPT-4o | GitHub CLI | Native | Full |
 
 ---
 
@@ -119,13 +115,21 @@ https://github.com/user-attachments/assets/f7d84050-a61c-4b20-a988-edaa93a4deb8
 ### Set API Keys
 
 ```bash
-# Choose one or more providers
+# Core providers
 export ANTHROPIC_API_KEY="sk-ant-..."      # Anthropic Claude
 export OPENAI_API_KEY="sk-..."             # OpenAI GPT
-export OPENROUTER_API_KEY="sk-or-..."      # OpenRouter
-export KILOCODE_API_KEY="kilo-..."         # KiloCode
-export DEEPSEEK_API_KEY="sk-..."           # DeepSeek
-export COPILOT_GITHUB_TOKEN="ghp_..."      # GitHub Copilot (use gh auth login)
+export DEEPSEEK_API_KEY="sk-..."          # DeepSeek
+
+# Gateways & Aggregators
+export OPENROUTER_API_KEY="sk-or-..."     # OpenRouter (100+ models)
+export KILOCODE_API_KEY="kilo-..."       # KiloCode (500+ models)
+export OPENCODE_API_KEY="oc-..."         # OpenCode
+export CLINE_API_KEY="cline-..."         # Cline API
+
+# Specialized providers
+export GROQ_API_KEY="gpro..."            # Groq
+export XAI_API_KEY="xai-..."             # xAI Grok
+export MISTRAL_API_KEY="mistral-..."      # Mistral
 
 # Ollama: no API key needed, just run Ollama locally
 # Ensure Ollama is running on http://localhost:11434
