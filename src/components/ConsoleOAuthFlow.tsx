@@ -25,6 +25,7 @@ import { Spinner } from './Spinner.js';
 import TextInput from './TextInput.js';
 type Props = {
   onDone(): void;
+  onCancel?(): void;
   startingMessage?: string;
   mode?: 'login' | 'setup-token';
   forceLoginMethod?: 'claudeai' | 'console';
@@ -59,6 +60,7 @@ type OAuthStatus = {
 const PASTE_HERE_MSG = 'Paste code here if prompted > ';
 export function ConsoleOAuthFlow({
   onDone,
+  onCancel,
   startingMessage,
   mode = 'login',
   forceLoginMethod: forceLoginMethodProp
@@ -332,7 +334,7 @@ export function ConsoleOAuthFlow({
             </Box>
           </Box>}
       <Box paddingLeft={1} flexDirection="column" gap={1}>
-        <OAuthStatusMessage oauthStatus={oauthStatus} mode={mode} startingMessage={startingMessage} forcedMethodMessage={forcedMethodMessage} showPastePrompt={showPastePrompt} pastedCode={pastedCode} setPastedCode={setPastedCode} cursorOffset={cursorOffset} setCursorOffset={setCursorOffset} textInputColumns={textInputColumns} handleSubmitCode={handleSubmitCode} setOAuthStatus={setOAuthStatus} setLoginWithClaudeAi={setLoginWithClaudeAi} />
+        <OAuthStatusMessage oauthStatus={oauthStatus} mode={mode} startingMessage={startingMessage} forcedMethodMessage={forcedMethodMessage} showPastePrompt={showPastePrompt} pastedCode={pastedCode} setPastedCode={setPastedCode} cursorOffset={cursorOffset} setCursorOffset={setCursorOffset} textInputColumns={textInputColumns} handleSubmitCode={handleSubmitCode} setOAuthStatus={setOAuthStatus} setLoginWithClaudeAi={setLoginWithClaudeAi} onCancel={onCancel} />
       </Box>
     </Box>;
 }
@@ -350,6 +352,7 @@ type OAuthStatusMessageProps = {
   handleSubmitCode: (value: string, url: string) => void;
   setOAuthStatus: (status: OAuthStatus) => void;
   setLoginWithClaudeAi: (value: boolean) => void;
+  onCancel?: () => void;
 };
 function OAuthStatusMessage(t0) {
   const $ = _c(51);
@@ -366,7 +369,8 @@ function OAuthStatusMessage(t0) {
     textInputColumns,
     handleSubmitCode,
     setOAuthStatus,
-    setLoginWithClaudeAi
+    setLoginWithClaudeAi,
+    onCancel
   } = t0;
   switch (oauthStatus.state) {
     case "idle":
@@ -412,8 +416,7 @@ function OAuthStatusMessage(t0) {
           t6 = [
             t4, 
             t5, 
-            { label: <Text>ChatGPT Plus/Pro · <Text dimColor={true}>Login via Browser</Text>{"\n"}</Text>, value: "openai_browser" },
-            { label: <Text>ChatGPT Plus/Pro · <Text dimColor={true}>Headless Login</Text>{"\n"}</Text>, value: "openai_headless" },
+            { label: <Text>Anthropic Console · <Text dimColor={true}>Manually enter API Key</Text>{"\n"}</Text>, value: "anthropic" },
             { label: <Text>OpenAI · <Text dimColor={true}>Manually enter API Key</Text>{"\n"}</Text>, value: "openai" },
             { label: <Text>GitHub Copilot · <Text dimColor={true}>OAuth Login (Recommended)</Text>{"\n"}</Text>, value: "copilot_oauth" },
             { label: <Text>Google Gemini · <Text dimColor={true}>OAuth Login (Recommended)</Text>{"\n"}</Text>, value: "gemini_oauth" },
@@ -432,8 +435,8 @@ function OAuthStatusMessage(t0) {
         }
         let t7;
         if ($[6] !== setLoginWithClaudeAi || $[7] !== setOAuthStatus) {
-          t7 = <Box><Select options={t6} onChange={value_0 => {
-              const knownProviders = ["openai", "openai_browser", "openai_headless", "gemini", "gemini_oauth", "copilot_oauth", "groq", "xai", "mistral", "openrouter", "ollama", "kilocode", "platform"];
+          t7 = <Box><Select options={t6} onCancel={onCancel} onChange={value_0 => {
+              const knownProviders = ["anthropic", "openai", "gemini", "gemini_oauth", "copilot_oauth", "groq", "xai", "mistral", "openrouter", "ollama", "kilocode", "platform"];
               if (knownProviders.includes(value_0)) {
                 logEvent("tengu_oauth_platform_selected", { provider: value_0 });
                 setPastedCode(value_0 === "platform" ? "" : value_0); // Use pastedCode as temporary provider storage
@@ -486,7 +489,7 @@ function OAuthStatusMessage(t0) {
         const [cursorOffset, setCursorOffset] = useState(0);
         const { columns } = useTerminalSize();
         const isOAuth = pastedCode?.endsWith('_oauth');
-        const isChatGPTWeb = pastedCode === 'openai_browser' || pastedCode === 'openai_headless';
+        const isChatGPTWeb = false; // Deprecated options removed
 
         const handleStartOAuth = async () => {
           if (pastedCode === 'gemini_oauth') {
@@ -527,7 +530,7 @@ function OAuthStatusMessage(t0) {
         };
 
         const isSpecific = !!pastedCode;
-        const providerLabel = isSpecific ? (pastedCode.charAt(0).toUpperCase() + pastedCode.slice(1).replace('_oauth', ' OAuth')) : "3rd-party";
+        const providerLabel = isSpecific ? (pastedCode === 'anthropic' ? 'Anthropic' : pastedCode.charAt(0).toUpperCase() + pastedCode.slice(1).replace('_oauth', ' OAuth')) : "3rd-party";
         
         t2 = <Text>{isSpecific ? `Setting up ${providerLabel}...` : "Claude Code supports many providers."}</Text>;
         t3 = <Box flexDirection="column">

@@ -80,7 +80,7 @@ export function Login(props) {
   }
   let t2;
   if ($[6] !== props.startingMessage || $[7] !== t1) {
-    t2 = <ConsoleOAuthFlow onDone={t1} startingMessage={props.startingMessage} />;
+    t2 = <ConsoleOAuthFlow onDone={t1} onCancel={t0} startingMessage={props.startingMessage} />;
     $[6] = props.startingMessage;
     $[7] = t1;
     $[8] = t2;

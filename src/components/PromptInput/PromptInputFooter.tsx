@@ -138,6 +138,13 @@ function PromptInputFooter({
   return <>
       <Box flexDirection={isNarrow ? 'column' : 'row'} justifyContent={isNarrow ? 'flex-start' : 'space-between'} paddingLeft={0} paddingRight={2} gap={isNarrow ? 0 : 1}>
         <Box flexDirection="column" flexShrink={isNarrow ? 0 : 1}>
+          {mode === 'prompt' && !isShort && !exitMessage.show && !isPasting && statusLineShouldDisplay(settings) && (
+            <StatusLine
+              messagesRef={messagesRef}
+              lastAssistantMessageId={lastAssistantMessageId}
+              vimMode={vimMode}
+            />
+          )}
           {!isFullscreen && (
             <Notifications
               apiKeyStatus={apiKeyStatus}
@@ -152,13 +159,6 @@ function PromptInputFooter({
               mcpClients={mcpClients}
               isInputWrapped={isInputWrapped}
               isNarrow={isNarrow}
-            />
-          )}
-          {mode === 'prompt' && !isShort && !exitMessage.show && !isPasting && statusLineShouldDisplay(settings) && (
-            <StatusLine
-              messagesRef={messagesRef}
-              lastAssistantMessageId={lastAssistantMessageId}
-              vimMode={vimMode}
             />
           )}
           <PromptInputFooterLeftSide
