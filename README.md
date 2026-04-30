@@ -1,6 +1,6 @@
 <div align="center">
 
-# Claude Code: Agentic AI Research Framework
+# Claude Code: Agentic Coding
 
 > **An Experimental Study on Multi-Provider Agentic Architectures**
 
@@ -11,39 +11,97 @@
 
 </div>
 
-Before using this research framework, you **MUST** read:
-
-- **[RESEARCH_MISSION.md](RESEARCH_MISSION.md)** — Our academic goals and methodology
-- **[NOTICE.md](docs/NOTICE.md)** — The Unfiltered Truth about source liberation
-- **[LEGAL.md](docs/LEGAL.md)** — The Code Manifesto and user sovereignty
+> **CRITICAL LEGAL NOTICE**: Before using this research framework, you **MUST** read:
+> - **[NOTICE.md](docs/NOTICE.md)** — 2-minute summary of legal risks
+> - **[LEGAL.md](docs/LEGAL.md)** — Complete disclaimer & liability terms
+> - **[RESEARCH_MISSION.md](RESEARCH_MISSION.md)** — Academic goals and methodology
 
 ---
 
-## 🧪 Research & Education Mission
+## Table of Contents
 
-This project is an **academic fork** of the proprietary Claude Code CLI, serving as a case study for the **[RESEARCH_MISSION.md](RESEARCH_MISSION.md)**. We are exploring the boundaries of how different LLMs (Large Language Models) can be orchestrated to perform complex software engineering tasks.
+- [Quick Start](#quick-start)
+- [What is Claude Code](#what-is-claude-code-by-dek1milliontoken)
+- [Supported Providers](#supported-providers)
+- [Installation](#installation)
+- [Commands](#commands)
+- [Built-in Tools](#built-in-tools)
+- [Configuration](#configuration)
+- [Plugin System](#plugin-system)
+- [Security](#security)
+- [Project Structure](#project-structure)
+- [Development](#development)
+- [Technology Stack](#technology-stack)
+- [Documentation](#documentation)
+- [Legal & Compliance](#legal--compliance)
+- [License & Links](#license--links)
+- [Research Mission](#-research--education-mission)
 
-### Key Research Areas
+---
 
-- **Provider Interoperability**: How models like GPT-4o, Gemini 1.5 Pro, and Groq Llama-3 handle tool-use calls designed for Claude.
-- **Architectural Analysis**: A deep-dive into high-performance TUI and Agentic logic.
-- **Fair Use Study**: Exploring the legal and technical implications of accidentally disclosed source code in the modern AI era.
+## Quick Start
+
+### Prerequisites
+
+- [Bun](https://bun.sh/) 1.0+ (recommended) or [Node.js](https://nodejs.org/) 18+
+- Git
+
+### Install & Run
+
+```bash
+# Clone and install
+git clone https://github.com/JonusNattapong/ClaudeCode.git
+cd ClaudeCode
+bun install
+
+# Start a session
+bun run src/main.tsx session
+
+# Or with specific provider
+bun run src/main.tsx session --provider openai --model gpt-4o
+```
+
+### Set API Keys
+
+```bash
+# Core providers
+export ANTHROPIC_API_KEY="sk-ant-..."      # Anthropic Claude
+export OPENAI_API_KEY="sk-..."             # OpenAI GPT
+export DEEPSEEK_API_KEY="sk-..."          # DeepSeek
+
+# Gateways & Aggregators
+export OPENROUTER_API_KEY="sk-or-..."     # OpenRouter (100+ models)
+export KILOCODE_API_KEY="kilo-..."       # KiloCode (500+ models)
+export OPENCODE_API_KEY="oc-..."         # OpenCode
+
+# Specialized providers
+export GROQ_API_KEY="gpro..."            # Groq
+export XAI_API_KEY="xai-..."             # xAI Grok
+export MISTRAL_API_KEY="mistral-..."      # Mistral
+
+# Ollama: no API key needed (run on http://localhost:11434)
+```
+
+---
 
 ## What is Claude Code By Dek1MillionToken?
 
-Claude Code By Dek1MillionToken is a research-focused evolution of the Claude Code CLI that adds **unified multi-provider routing**, **provider-specific adapters**, and an **extensible plugin architecture**.
- Switch between Anthropic Claude, OpenAI GPT, Google Gemini, OpenRouter, local Ollama, and more — all from one terminal interface.
+A research-focused evolution of the Claude Code CLI with **unified multi-provider routing**, **provider-specific adapters**, and an **extensible plugin architecture**.
 
-> **Legal Notice**: Please review the [Legal Disclaimer & Attribution](docs/LEGAL.md) for important information about third-party components, licensing, and liability limitations before using this software.
+Switch between Anthropic Claude, OpenAI GPT, Google Gemini, OpenRouter, local Ollama, and more — all from one terminal interface.
 
 ### Why Claude Code By Dek1MillionToken?
 
-- **One CLI, every provider** — No more switching tools for different AI models
-- **Provider-native adapters** — Each provider gets optimized handling, not just OpenAI-compatible wrappers
-- **Real-time model discovery** — Fetches available models from provider APIs with 5-minute cache
-- **Unified normalizers** — Tool calls, token usage, and errors are normalized across all providers
-- **40+ built-in tools** — File ops, shell execution, web search, MCP, LSP, git, and more
-- **Plugin system** — Extend with custom commands, skills, and lifecycle hooks
+| Feature | Benefit |
+|---------|---------|
+| **One CLI, every provider** | No more switching tools for different AI models |
+| **Provider-native adapters** | Each provider gets optimized handling, not just OpenAI-compatible wrappers |
+| **Real-time model discovery** | Fetches available models from provider APIs with 5-minute cache |
+| **Unified normalizers** | Tool calls, token usage, and errors are normalized across all providers |
+| **40+ built-in tools** | File ops, shell execution, web search, MCP, LSP, git, and more |
+| **Plugin system** | Extend with custom commands, skills, and lifecycle hooks |
+
+> **Legal Notice**: Please review the [Legal Disclaimer & Attribution](docs/LEGAL.md) for important information about third-party components, licensing, and liability limitations before using this software.
 
 ---
 
@@ -66,14 +124,9 @@ Claude Code By Dek1MillionToken is a research-focused evolution of the Claude Co
 
 ---
 
-## Getting Started
+## Installation
 
-### Prerequisites
-
-- [Bun](https://bun.sh/) 1.0+ (recommended) or [Node.js](https://nodejs.org/) 18+
-- Git
-
-### Install
+### Standard Install
 
 ```bash
 # Clone the repository
@@ -87,12 +140,9 @@ bun install
 bun run build
 ```
 
-### Run
+### Run Options
 
 ```bash
-# Start a session
-bun run src/main.tsx session
-
 # Development mode (auto-rebuild on changes)
 bun run dev
 
@@ -102,40 +152,15 @@ bun run src/main.tsx session --provider anthropic --model claude-sonnet-4
 bun run src/main.tsx session --provider ollama --model llama3
 ```
 
-### Video
-
-Preview (inline):
+### Video Preview
 
 <https://github.com/user-attachments/assets/f7d84050-a61c-4b20-a988-edaa93a4deb8>
-
-### Set API Keys
-
-```bash
-# Core providers
-export ANTHROPIC_API_KEY="sk-ant-..."      # Anthropic Claude
-export OPENAI_API_KEY="sk-..."             # OpenAI GPT
-export DEEPSEEK_API_KEY="sk-..."          # DeepSeek
-
-# Gateways & Aggregators
-export OPENROUTER_API_KEY="sk-or-..."     # OpenRouter (100+ models)
-export KILOCODE_API_KEY="kilo-..."       # KiloCode (500+ models)
-export OPENCODE_API_KEY="oc-..."         # OpenCode
-export CLINE_API_KEY="cline-..."         # Cline API
-
-# Specialized providers
-export GROQ_API_KEY="gpro..."            # Groq
-export XAI_API_KEY="xai-..."             # xAI Grok
-export MISTRAL_API_KEY="mistral-..."      # Mistral
-
-# Ollama: no API key needed, just run Ollama locally
-# Ensure Ollama is running on http://localhost:11434
-```
 
 ---
 
 ## Commands
 
-Claude Code provides 100+ slash commands. Type `/` in the prompt to explore.
+100+ slash commands available. Type `/` in the prompt to explore.
 
 ### Session & Model
 
@@ -352,13 +377,15 @@ my-plugin/
 
 ## Security
 
-- **Sandboxed execution** — Bash/PowerShell commands run in platform-specific sandboxes (Linux: PID namespace + seccomp-bpf, macOS: Seatbelt, Windows: Job objects)
-- **Multi-layer permissions** — Policy -> Project -> User -> Environment -> Code
-- **Encrypted credentials** — API keys stored in system keychain (macOS Keychain, Windows Credential Manager, Linux Secret Service)
-- **Audit trail** — All actions logged in session transcript
-- **No secret logging** — API keys are redacted from all logs
-- **Network restrictions** — Configurable allowed/denied domains
-- **MCP OAuth** — Full OAuth 2.1 flow with PKCE
+| Feature | Implementation |
+|---------|---------------|
+| **Sandboxed execution** | Bash/PowerShell run in platform-specific sandboxes (Linux: PID namespace + seccomp-bpf, macOS: Seatbelt, Windows: Job objects) |
+| **Multi-layer permissions** | Policy -> Project -> User -> Environment -> Code |
+| **Encrypted credentials** | API keys stored in system keychain (macOS Keychain, Windows Credential Manager, Linux Secret Service) |
+| **Audit trail** | All actions logged in session transcript |
+| **No secret logging** | API keys are redacted from all logs |
+| **Network restrictions** | Configurable allowed/denied domains |
+| **MCP OAuth** | Full OAuth 2.1 flow with PKCE |
 
 ---
 
@@ -371,7 +398,7 @@ ClaudeCode/
 │   ├── cli/                        # App.tsx, transports, handlers
 │   ├── commands/                   # 100+ slash commands
 │   │   ├── model/                  # /model
-│   │   ├── provider-select-        # /provider
+│   │   ├── provider-select/        # /provider
 │   │   ├── buddy/                  # /buddy
 │   │   ├── config/                 # /config
 │   │   ├── mcp/                    # /mcp
@@ -561,18 +588,24 @@ This project operates under extraordinary legal circumstances:
 
 ---
 
-## License
+## License & Links
 
-Copyright © Anthropic PBC. All rights reserved. See [LICENSE.md](LICENSE.md) for details.
+Copyright  Anthropic PBC. All rights reserved. See [LICENSE.md](LICENSE.md) for details.
 
-### Final Note on Freedom
-
-This project is a fork of Anthropic's Claude Code. By using this software, you accept the [Legal Disclaimer & Attribution](docs/LEGAL.md) which covers third-party components, licensing, warranties, and liability limitations.
-
----
-
-## Links
+> **Final Note on Freedom**: This project is a fork of Anthropic's Claude Code. By using this software, you accept the [Legal Disclaimer & Attribution](docs/LEGAL.md) which covers third-party components, licensing, warranties, and liability limitations.
 
 - **GitHub**: [https://github.com/JonusNattapong/ClaudeCode](https://github.com/JonusNattapong/ClaudeCode)
 - **Issues**: [https://github.com/JonusNattapong/ClaudeCode/issues](https://github.com/JonusNattapong/ClaudeCode/issues)
 - **Releases**: [https://github.com/JonusNattapong/ClaudeCode/releases](https://github.com/JonusNattapong/ClaudeCode/releases)
+
+---
+
+## Research & Education Mission
+
+This project is an **academic fork** of the proprietary Claude Code CLI, serving as a case study for the **[RESEARCH_MISSION.md](RESEARCH_MISSION.md)**. We are exploring the boundaries of how different LLMs (Large Language Models) can be orchestrated to perform complex software engineering tasks.
+
+### Key Research Areas
+
+- **Provider Interoperability**: How models like GPT-4o, Gemini 1.5 Pro, and Groq Llama-3 handle tool-use calls designed for Claude.
+- **Architectural Analysis**: A deep-dive into high-performance TUI and Agentic logic.
+- **Fair Use Study**: Exploring the legal and technical implications of accidentally disclosed source code in the modern AI era.

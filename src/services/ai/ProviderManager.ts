@@ -11,13 +11,15 @@ import { getClaudeConfigHomeDir } from '../../utils/envUtils.js'
 import { existsSync, renameSync, mkdirSync } from 'fs'
 
 const LEGACY_PROVIDER_CONFIG_PATH = join(process.env.HOME || process.env.USERPROFILE || '', '.claude-code-provider.json')
-export const PROVIDER_CONFIG_PATH = join(getClaudeConfigHomeDir(), '.provider.json')
+const PREVIOUS_PROVIDER_CONFIG_PATH = join(getClaudeConfigHomeDir(), '.provider.json')
+export const PROVIDER_CONFIG_PATH = join(getClaudeConfigHomeDir(), 'provider.json')
 
 /**
  * Migrates the legacy provider config to the new location if it exists.
  */
 function migrateLegacyConfig(): void {
   try {
+    // 1. Migrate from absolute legacy path (~/.claude-code-provider.json)
     if (existsSync(LEGACY_PROVIDER_CONFIG_PATH) && !existsSync(PROVIDER_CONFIG_PATH)) {
       const targetDir = getClaudeConfigHomeDir()
       if (!existsSync(targetDir)) {
@@ -25,6 +27,12 @@ function migrateLegacyConfig(): void {
       }
       renameSync(LEGACY_PROVIDER_CONFIG_PATH, PROVIDER_CONFIG_PATH)
       console.log(`[ProviderManager] Migrated provider config from ${LEGACY_PROVIDER_CONFIG_PATH} to ${PROVIDER_CONFIG_PATH}`)
+    }
+
+    // 2. Migrate from previous dot-file path (~/.claude/.provider.json)
+    if (existsSync(PREVIOUS_PROVIDER_CONFIG_PATH) && !existsSync(PROVIDER_CONFIG_PATH)) {
+      renameSync(PREVIOUS_PROVIDER_CONFIG_PATH, PROVIDER_CONFIG_PATH)
+      console.log(`[ProviderManager] Migrated provider config from ${PREVIOUS_PROVIDER_CONFIG_PATH} to ${PROVIDER_CONFIG_PATH}`)
     }
   } catch (error) {
     // Silently fail on migration errors, we'll just use the new path
