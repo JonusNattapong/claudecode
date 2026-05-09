@@ -51,7 +51,18 @@
       "Bash(docker exec:*)",
       "Bash(npx drizzle-kit:*)",
       "Bash(bunx tsc:*)",
-      "Bash(netstat -ano)"
+      "Bash(netstat -ano)",
+      "Bash(pnpm tsc:*)",
+      "Bash(find . -type f -name *kanban* -not -path */node_modules/* -not -path */.git/*)",
+      "Bash(find . -type d -name *kanban* -not -path */node_modules/* -not -path */.git/*)",
+      "Bash(grep -n \"req.method === ''GET''\" src/utils/kanban/server.ts)",
+      "Bash(for i:*)",
+      "Bash(do echo:*)",
+      "TaskUpdate",
+      "Bash(python -c \":*)",
+      "Bash(grep -n \"case ''workers''\\\\|case ''worker''\" src/commands/kanban/kanban.ts)",
+      "Bash(python:*)",
+      "Bash(grep -n \"parseKanbanArgs\\\\|type.*worker\\\\|type.*fail\\\\|type.*heartbeat\\\\|case ''''worker''''\" src/commands/kanban/kanban.ts)"
     ]
   },
   "outputStyle": "Explanatory",

@@ -23,6 +23,12 @@ import { addEvidenceToTask, generateArtifact, readKanbanBoard, writeKanbanBoard 
 export type WorkerOptions = {
   workerId: string
   projectId?: string
+  /** If true, ask an LLM endpoint to process/summarize the task instead of relying on shell commands. */
+  llm?: boolean
+  /** Optional LLM endpoint. Defaults to KANBAN_LLM_ENDPOINT, then Anthropic Messages API when ANTHROPIC_API_KEY is set. */
+  llmEndpoint?: string
+  /** Optional LLM model. Defaults to KANBAN_LLM_MODEL or claude-3-5-haiku-latest. */
+  llmModel?: string
   /** Shell command to run for the task. Overrides task.metadata.command. */
   cmd?: string
   /** Shell command to verify the task result. Overrides task.metadata.verifyCommand. */
@@ -70,10 +76,167 @@ type CommandResult = {
   exitCode: number
 }
 
+type LlmTaskResult = {
+  summary: string
+  content: string
+  passed: boolean
+  raw?: unknown
+}
+
 // ─── Defaults ─────────────────────────────────────────────
 
 const DEFAULT_TIMEOUT_MS = 5 * 60 * 1000 // 5 minutes
 const DEFAULT_OUTPUT_LIMIT = 5000
+
+function extractJsonObject(text: string): Record<string, unknown> | null {
+  const match = text.match(/\{[\s\S]*\}/)
+  if (!match) return null
+  try {
+    return JSON.parse(match[0]) as Record<string, unknown>
+  } catch {
+    return null
+  }
+}
+
+function normalizeLlmTaskResult(raw: unknown, fallbackSummary: string): LlmTaskResult {
+  if (typeof raw === 'string') {
+    const parsed = extractJsonObject(raw)
+    if (parsed) return normalizeLlmTaskResult(parsed, fallbackSummary)
+    return { summary: fallbackSummary, content: raw, passed: true, raw }
+  }
+
+  if (raw && typeof raw === 'object') {
+    const data = raw as Record<string, unknown>
+    const summary = typeof data.summary === 'string' && data.summary.trim()
+      ? data.summary.trim()
+      : fallbackSummary
+    const contentCandidate = data.content ?? data.result ?? data.output ?? data.markdown ?? data.body
+    const content = typeof contentCandidate === 'string' && contentCandidate.trim()
+      ? contentCandidate.trim()
+      : JSON.stringify(raw, null, 2)
+    return {
+      summary,
+      content,
+      passed: data.passed === false ? false : true,
+      raw,
+    }
+  }
+
+  return { summary: fallbackSummary, content: String(raw ?? ''), passed: true, raw }
+}
+
+function buildLlmTaskPrompt(task: KanbanTask, workerId: string): string {
+  return [
+    'You are a Kanban runtime worker. Process the task and return only JSON.',
+    'Do not claim you edited files or ran commands unless evidence is present in the task.',
+    'Return keys: summary, content, passed.',
+    'summary: one short sentence.',
+    'content: concise implementation notes, plan, risks, or result for the artifact.',
+    'passed: false only if the task cannot be processed.',
+    '',
+    `Worker: ${workerId}`,
+    `Task ID: ${task.id}`,
+    `Title: ${task.title}`,
+    task.body ? `Description: ${task.body}` : '',
+    task.priority ? `Priority: ${task.priority}` : '',
+    task.tags?.length ? `Tags: ${task.tags.join(', ')}` : '',
+    task.files?.length ? `Files: ${task.files.join(', ')}` : '',
+    task.validation?.length ? `Validation: ${task.validation.join(', ')}` : '',
+    task.notes ? `Notes: ${task.notes}` : '',
+  ].filter(Boolean).join('\n')
+}
+
+async function callGenericLlmEndpoint(
+  endpoint: string,
+  task: KanbanTask,
+  options: WorkerOptions,
+  timeoutMs: number,
+): Promise<LlmTaskResult> {
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), timeoutMs)
+  try {
+    const headers: Record<string, string> = { 'content-type': 'application/json' }
+    const apiKey = process.env.KANBAN_LLM_API_KEY
+    if (apiKey) headers.authorization = `Bearer ${apiKey}`
+
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers,
+      signal: controller.signal,
+      body: JSON.stringify({
+        workerId: options.workerId,
+        model: options.llmModel ?? process.env.KANBAN_LLM_MODEL,
+        task,
+        prompt: buildLlmTaskPrompt(task, options.workerId),
+      }),
+    })
+    const text = await response.text()
+    if (!response.ok) {
+      throw new Error(`LLM endpoint failed: ${response.status} ${text.slice(0, 240)}`)
+    }
+    const parsed = text.trim().startsWith('{') ? JSON.parse(text) : text
+    return normalizeLlmTaskResult(parsed, 'LLM endpoint completed task')
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
+async function callAnthropicForTask(
+  task: KanbanTask,
+  options: WorkerOptions,
+  timeoutMs: number,
+): Promise<LlmTaskResult> {
+  const apiKey = process.env.ANTHROPIC_API_KEY
+  if (!apiKey) {
+    throw new Error('LLM mode requires KANBAN_LLM_ENDPOINT or ANTHROPIC_API_KEY')
+  }
+
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), timeoutMs)
+  try {
+    const model = options.llmModel ?? process.env.KANBAN_LLM_MODEL ?? 'claude-3-5-haiku-latest'
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      signal: controller.signal,
+      headers: {
+        'content-type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
+        model,
+        max_tokens: 1400,
+        temperature: 0,
+        messages: [{ role: 'user', content: buildLlmTaskPrompt(task, options.workerId) }],
+      }),
+    })
+    const data = await response.json() as { content?: Array<{ text?: string }> }
+    if (!response.ok) {
+      throw new Error(`Anthropic worker failed: ${response.status} ${JSON.stringify(data).slice(0, 240)}`)
+    }
+    const text = data.content?.map(part => part.text ?? '').join('\n') ?? ''
+    return normalizeLlmTaskResult(extractJsonObject(text) ?? text, 'LLM completed task')
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
+async function executeLlmTask(
+  rootDir: string,
+  task: KanbanTask,
+  options: WorkerOptions,
+  timeoutMs: number,
+): Promise<LlmTaskResult> {
+  const endpoint = options.llmEndpoint
+    ?? (typeof task.metadata?.llmEndpoint === 'string' ? task.metadata.llmEndpoint : undefined)
+    ?? process.env.KANBAN_LLM_ENDPOINT
+  await appendWorkerEvent(rootDir, task.id, options.workerId, 'command_started', endpoint ? `Calling LLM endpoint: ${endpoint}` : 'Calling Anthropic LLM worker')
+  const result = endpoint
+    ? await callGenericLlmEndpoint(endpoint, task, options, timeoutMs)
+    : await callAnthropicForTask(task, options, timeoutMs)
+  await appendWorkerEvent(rootDir, task.id, options.workerId, result.passed ? 'command_completed' : 'command_failed', result.summary)
+  return result
+}
 
 // ─── Logging ─────────────────────────────────────────────
 
@@ -283,6 +446,7 @@ export async function processTask(
 ): Promise<WorkerResult> {
   const cmd = options.cmd ?? (task.metadata?.command as string | undefined)
   const verifyCmd = options.verifyCmd ?? (task.metadata?.verifyCommand as string | undefined)
+  const shouldRunLlm = options.llm === true || task.metadata?.llm === true || typeof task.metadata?.llmEndpoint === 'string'
   const expectedFiles = task.metadata?.expectedFiles as string[] | undefined
   const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS
   const outputLimit = options.outputLimit ?? DEFAULT_OUTPUT_LIMIT
@@ -304,6 +468,54 @@ export async function processTask(
 
   try {
     const evidenceInputs: Array<{ command: string; output: string; passed: boolean }> = []
+
+    if (shouldRunLlm) {
+      workerLog(options, `[${task.id}] llm start`)
+      let llmResult: LlmTaskResult
+      try {
+        llmResult = await executeLlmTask(rootDir, task, options, timeoutMs)
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error)
+        const failedEvidence = [{
+          command: options.llmEndpoint ?? process.env.KANBAN_LLM_ENDPOINT ?? 'anthropic:messages',
+          output: message,
+          passed: false,
+        }]
+        const { task: failedTask } = await failWithEvidence(rootDir, task.id, `LLM worker failed: ${message}`, failedEvidence)
+        await appendWorkerEvent(rootDir, task.id, options.workerId, 'worker_failed', `Task failed: ${message}`)
+        return {
+          taskId: failedTask.id,
+          title: failedTask.title,
+          status: 'failed',
+          summary: message,
+          evidenceCount: failedEvidence.length,
+        }
+      }
+      evidenceInputs.push({
+        command: options.llmEndpoint ?? process.env.KANBAN_LLM_ENDPOINT ?? 'anthropic:messages',
+        output: llmResult.content,
+        passed: llmResult.passed,
+      })
+
+      await generateArtifact(task.id, `LLM result v${Date.now().toString(36).slice(-6)}`, rootDir, {
+        content: llmResult.content,
+        type: 'output',
+        createdBy: options.workerId,
+      })
+
+      if (!llmResult.passed) {
+        workerLog(options, `[${task.id}] llm failed`)
+        const { task: failedTask } = await failWithEvidence(rootDir, task.id, llmResult.summary, evidenceInputs)
+        await appendWorkerEvent(rootDir, task.id, options.workerId, 'worker_failed', `Task failed: ${llmResult.summary}`)
+        return {
+          taskId: failedTask.id,
+          title: failedTask.title,
+          status: 'failed',
+          summary: llmResult.summary,
+          evidenceCount: evidenceInputs.length,
+        }
+      }
+    }
 
     // Run the main command
     if (cmd || options.commandArgv) {

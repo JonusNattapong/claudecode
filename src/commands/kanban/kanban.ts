@@ -114,6 +114,7 @@ const HELP = `Usage:
 /kanban conflicts
 /kanban files
 /kanban open
+/kanban server
 /kanban export
 /kanban retry <id>
 /kanban fail <id> "reason"
@@ -126,7 +127,7 @@ const HELP = `Usage:
 /kanban reclaim <taskId> [workerId]
 /kanban next
 /kanban claim-next --worker <id>
-/kanban worker --worker <id> [--once|--loop] [--statuses <s>] [--allowBlocked] [--cmd "<cmd>"] [--cmd-argv <json>] [--verify "<cmd>"] [--project <id>] [--max-tasks <n>] [--poll-ms <ms>] [--heartbeat-ms <ms>] [--timeout-ms <ms>] [--output-limit <n>] [--verbose] [--quiet] [--dry-run]
+/kanban worker --worker <id> [--once|--loop] [--statuses <s>] [--allowBlocked] [--llm] [--llm-endpoint <url>] [--llm-model <model>] [--cmd "<cmd>"] [--cmd-argv <json>] [--verify "<cmd>"] [--project <id>] [--max-tasks <n>] [--poll-ms <ms>] [--heartbeat-ms <ms>] [--timeout-ms <ms>] [--output-limit <n>] [--verbose] [--quiet] [--dry-run]
 /kanban workers
 /kanban artifact list <taskId>
 /kanban artifact current <taskId>
@@ -393,6 +394,7 @@ export function parseKanbanArgs(args: string): ParsedKanbanCommand {
     case 'show':
       return parseIdCommand(tokens, 'show')
     case 'open':
+    case 'server':
       return { type: 'open' }
     case 'create':
     case 'add':
@@ -550,8 +552,8 @@ export function parseKanbanArgs(args: string): ParsedKanbanCommand {
       }
       // Existing worker-run command (--worker ...)
       let workerId = '', cmd = '', verifyCmd = '', statusesRaw = ''
-      let once = false, loop = false, dryRun = false, verbose = false, quiet = false, allowBlocked = false
-      let projectId: string | undefined, cmdArgvRaw: string | undefined
+      let once = false, loop = false, dryRun = false, verbose = false, quiet = false, allowBlocked = false, llm = false
+      let projectId: string | undefined, cmdArgvRaw: string | undefined, llmEndpoint: string | undefined, llmModel: string | undefined
       let maxTasks = 1, pollMs = 30000, heartbeatMs = 30000
       let timeoutMs = 300000, outputLimit = 5000
       let leaseMinutes = 0
@@ -563,6 +565,9 @@ export function parseKanbanArgs(args: string): ParsedKanbanCommand {
           case '--project': projectId = readFlagValue(tokens, i, tokens[i]); i++; break
           case '--statuses': statusesRaw = readFlagValue(tokens, i, tokens[i]); i++; break
           case '--allowBlocked': allowBlocked = true; break
+          case '--llm': llm = true; break
+          case '--llm-endpoint': llmEndpoint = readFlagValue(tokens, i, tokens[i]); llm = true; i++; break
+          case '--llm-model': llmModel = readFlagValue(tokens, i, tokens[i]); llm = true; i++; break
           case '--cmd': cmd = readFlagValue(tokens, i, tokens[i]); i++; break
           case '--cmd-argv': cmdArgvRaw = readFlagValue(tokens, i, tokens[i]); i++; break
           case '--verify': verifyCmd = readFlagValue(tokens, i, tokens[i]); i++; break
@@ -585,7 +590,7 @@ export function parseKanbanArgs(args: string): ParsedKanbanCommand {
       const statuses: Array<'ready' | 'todo'> | undefined = statusesRaw
         ? statusesRaw.split(',').map(s => s.trim() as 'ready' | 'todo')
         : undefined
-      return { type: 'worker', workerId, options: { workerId, projectId, cmd, verifyCmd, maxTasks, pollMs, heartbeatMs, dryRun, verbose, quiet, commandArgv, timeoutMs, outputLimit, statuses, allowBlocked, leaseMinutes: leaseMinutes || undefined } }
+      return { type: 'worker', workerId, options: { workerId, projectId, llm, llmEndpoint, llmModel, cmd, verifyCmd, maxTasks, pollMs, heartbeatMs, dryRun, verbose, quiet, commandArgv, timeoutMs, outputLimit, statuses, allowBlocked, leaseMinutes: leaseMinutes || undefined } }
     }
     case 'workers': {
       return { type: 'workers' }

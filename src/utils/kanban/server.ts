@@ -40,6 +40,7 @@ import {
 } from './store.js'
 import { detectZombieTasks, listZombieTasks, listStaleTasks } from './store.js'
 import { claimNextTask } from './agentRuntime.js'
+import { runKanbanWorker } from './worker.js'
 import {
   listWorkers,
   getWorker,
@@ -59,6 +60,50 @@ type ServerOptions = {
   rootDir?: string
 }
 
+type AssistantDraft = {
+  title: string
+  body?: string
+  status?: KanbanTaskInput['status']
+  priority?: KanbanTaskInput['priority']
+  assignee?: string
+  owner?: string
+  tags?: string[]
+}
+
+type AssistantDraftResult = {
+  draft: AssistantDraft
+  source: 'anthropic' | 'heuristic'
+  warning?: string
+}
+
+type AssistantCommandResult = {
+  ok: boolean
+  action: string
+  message: string
+  task?: unknown
+  tasks?: unknown[]
+  worker?: unknown
+  workers?: unknown[]
+  examples?: string[]
+}
+
+const COMMAND_STATUSES = ['triage', 'todo', 'ready', 'running', 'blocked', 'done', 'archived'] as const
+const COMMAND_EXAMPLES = [
+  'list tasks',
+  'create task fix Kanban drag drop high @worker-a #dashboard',
+  'สร้างงานแก้ dashboard high @worker-a #ui',
+  'move KB-xxx ready',
+  'claim KB-xxx for worker-a',
+  'claim next for worker-a',
+  'complete KB-xxx finished dashboard fix',
+  'block KB-xxx waiting for API key',
+  'retry KB-xxx',
+  'archive KB-xxx',
+  'register worker worker-a',
+  'run worker worker-a llm',
+  'list workers',
+]
+
 function parseJsonBody(body: string | null): unknown {
   if (!body) return undefined
   try {
@@ -70,6 +115,185 @@ function parseJsonBody(body: string | null): unknown {
 
 function createJsonResponse(status: number, body: unknown): ApiResponse {
   return { status, body }
+}
+
+function inferAssistantPriority(text: string): KanbanTaskInput['priority'] {
+  const v = text.toLowerCase()
+  if (/\b(urgent|critical|blocker|p0|ด่วนมาก|วิกฤต)\b/u.test(v)) return 'urgent'
+  if (/\b(high|p1|important|ด่วน|สำคัญ|สูง)\b/u.test(v)) return 'high'
+  if (/\b(low|p3|later|ต่ำ|ไม่รีบ)\b/u.test(v)) return 'low'
+  return 'normal'
+}
+
+function inferAssistantStatus(text: string): KanbanTaskInput['status'] {
+  const v = text.toLowerCase()
+  if (/\b(triage|investigate|สำรวจ|ตรวจสอบ)\b/u.test(v)) return 'triage'
+  if (/\b(ready|พร้อม)\b/u.test(v)) return 'ready'
+  if (/\b(running|in progress|กำลังทำ)\b/u.test(v)) return 'running'
+  if (/\b(blocked|ติด|รอ)\b/u.test(v)) return 'blocked'
+  if (/\b(done|complete|เสร็จ)\b/u.test(v)) return 'done'
+  return 'todo'
+}
+
+function cleanAssistantTitle(line: string): string {
+  return line
+    .replace(/^\s*(please|todo|task|create task|add task|ช่วย|ทำ|เพิ่ม)[:\- ]+/iu, '')
+    .replace(/[@#][\p{L}\p{N}_.-]+/gu, '')
+    .replace(/\b(urgent|critical|blocker|high|low|normal|priority|p[0-3])\b/giu, '')
+    .replace(/[,;:|]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+function heuristicDraft(prompt: string): AssistantDraft {
+  const lines = prompt.split(/\r?\n/).map(line => line.trim()).filter(Boolean)
+  const first = cleanAssistantTitle(lines[0] ?? prompt)
+  const assignee = prompt.match(/@([\p{L}\p{N}_.-]+)/u)?.[1]
+  const tags = [...prompt.matchAll(/#([\p{L}\p{N}_.-]+)/gu)].map(match => match[1])
+
+  return {
+    title: (first || prompt).slice(0, 96),
+    body: prompt,
+    status: inferAssistantStatus(prompt),
+    priority: inferAssistantPriority(prompt),
+    assignee,
+    tags: tags.length > 0 ? tags : undefined,
+    owner: 'ai-orchestrator',
+  }
+}
+
+function normalizeAssistantDraft(draft: Partial<AssistantDraft>, prompt: string): AssistantDraft {
+  const fallback = heuristicDraft(prompt)
+  const status = draft.status && ['triage', 'todo', 'ready', 'running', 'blocked', 'done', 'archived'].includes(draft.status)
+    ? draft.status
+    : fallback.status
+  const priority = draft.priority && ['low', 'normal', 'high', 'urgent'].includes(draft.priority)
+    ? draft.priority
+    : fallback.priority
+
+  return {
+    title: typeof draft.title === 'string' && draft.title.trim() ? draft.title.trim().slice(0, 120) : fallback.title,
+    body: typeof draft.body === 'string' && draft.body.trim() ? draft.body.trim() : fallback.body,
+    status,
+    priority,
+    assignee: typeof draft.assignee === 'string' && draft.assignee.trim() ? draft.assignee.trim().replace(/^@/, '') : fallback.assignee,
+    owner: typeof draft.owner === 'string' && draft.owner.trim() ? draft.owner.trim() : fallback.owner,
+    tags: Array.isArray(draft.tags)
+      ? draft.tags.map(tag => String(tag).trim().replace(/^#/, '')).filter(Boolean).slice(0, 8)
+      : fallback.tags,
+  }
+}
+
+function extractJsonObject(text: string): Record<string, unknown> | null {
+  const match = text.match(/\{[\s\S]*\}/)
+  if (!match) return null
+  try {
+    return JSON.parse(match[0]) as Record<string, unknown>
+  } catch {
+    return null
+  }
+}
+
+function extractCommandTaskId(text: string): string | undefined {
+  return text.match(/\b(KB-[A-Z0-9-]+)\b/i)?.[1]
+}
+
+function extractCommandWorkerId(text: string, fallback?: string): string | undefined {
+  const patterns = [
+    /\b(?:for|to|by|worker|agent|ให้)\s+@?([A-Za-z0-9_.-]+)\b/i,
+    /@([A-Za-z0-9_.-]+)/,
+  ]
+  for (const pattern of patterns) {
+    const match = text.match(pattern)
+    const workerId = match?.[1]?.trim()
+    if (workerId && !/^KB-/i.test(workerId) && !COMMAND_STATUSES.includes(workerId as any)) {
+      return workerId
+    }
+  }
+  return fallback
+}
+
+function extractCommandStatus(text: string): KanbanTaskInput['status'] | undefined {
+  const lower = text.toLowerCase()
+  const aliases: Array<[KanbanTaskInput['status'], RegExp]> = [
+    ['triage', /\b(triage|investigate|สำรวจ|ตรวจสอบ)\b/u],
+    ['todo', /\b(todo|to-do|backlog|ต้องทำ)\b/u],
+    ['ready', /\b(ready|พร้อม)\b/u],
+    ['running', /\b(running|in progress|doing|กำลังทำ)\b/u],
+    ['blocked', /\b(blocked|block|ติด|บล็อก|รอ)\b/u],
+    ['done', /\b(done|complete|completed|finished|เสร็จ|จบ)\b/u],
+    ['archived', /\b(archived|archive|เก็บ)\b/u],
+  ]
+  return aliases.find(([, pattern]) => pattern.test(lower))?.[0]
+}
+
+function stripCommandPrefix(text: string, words: string[]): string {
+  let output = text
+  for (const word of words) {
+    output = output.replace(new RegExp(`\\b${word}\\b`, 'iu'), '')
+  }
+  output = output
+    .replace(/\bKB-[A-Z0-9-]+\b/iu, '')
+    .replace(/\b(?:worker|agent|ให้)\s+@?[A-Za-z0-9_.-]+\b/iu, '')
+    .replace(/\b(?:triage|todo|to-do|ready|running|in progress|doing|blocked|block|done|complete|completed|finished|archived|archive)\b/iu, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+  return output
+}
+
+async function draftTaskWithAnthropic(prompt: string): Promise<AssistantDraft | null> {
+  const apiKey = process.env.ANTHROPIC_API_KEY
+  if (!apiKey) return null
+
+  const model = process.env.KANBAN_ASSISTANT_MODEL || 'claude-3-5-haiku-latest'
+  const response = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+    },
+    body: JSON.stringify({
+      model,
+      max_tokens: 700,
+      temperature: 0,
+      system: [
+        'You convert a user request into one Kanban task.',
+        'Return only JSON with keys: title, body, status, priority, assignee, owner, tags.',
+        'status must be one of triage,todo,ready,running,blocked,done.',
+        'priority must be one of low,normal,high,urgent.',
+        'tags must be an array of short strings without #.',
+      ].join(' '),
+      messages: [{ role: 'user', content: prompt }],
+    }),
+  })
+
+  if (!response.ok) {
+    const errorText = await response.text().catch(() => response.statusText)
+    throw new Error(`Anthropic draft failed: ${response.status} ${errorText.slice(0, 240)}`)
+  }
+
+  const data = await response.json() as {
+    content?: Array<{ type?: string; text?: string }>
+  }
+  const text = data.content?.map(part => part.text ?? '').join('\n') ?? ''
+  const parsed = extractJsonObject(text)
+  return parsed ? normalizeAssistantDraft(parsed as Partial<AssistantDraft>, prompt) : null
+}
+
+async function draftTaskFromAssistant(prompt: string): Promise<AssistantDraftResult> {
+  try {
+    const llmDraft = await draftTaskWithAnthropic(prompt)
+    if (llmDraft) return { draft: llmDraft, source: 'anthropic' }
+  } catch (error) {
+    return {
+      draft: heuristicDraft(prompt),
+      source: 'heuristic',
+      warning: error instanceof Error ? error.message : String(error),
+    }
+  }
+
+  return { draft: heuristicDraft(prompt), source: 'heuristic' }
 }
 
 function createServerHandlers(rootDir: string) {
@@ -93,6 +317,327 @@ function createServerHandlers(rootDir: string) {
       try {
         const { task } = await addKanbanTask(input, rootDir)
         return createJsonResponse(201, { task })
+      } catch (error) {
+        return createJsonResponse(400, { error: error instanceof Error ? error.message : String(error) })
+      }
+    },
+
+    async handleAssistantDraft(body: unknown): Promise<ApiResponse> {
+      if (!body || typeof body !== 'object') {
+        return createJsonResponse(400, { error: 'Invalid request body' })
+      }
+      const { prompt } = body as { prompt?: string }
+      if (!prompt || typeof prompt !== 'string') {
+        return createJsonResponse(400, { error: 'prompt is required' })
+      }
+      const result = await draftTaskFromAssistant(prompt)
+      return createJsonResponse(200, result)
+    },
+
+    async handleAssistantCreate(body: unknown): Promise<ApiResponse> {
+      if (!body || typeof body !== 'object') {
+        return createJsonResponse(400, { error: 'Invalid request body' })
+      }
+      const {
+        prompt,
+        draft,
+        dispatch,
+        workerId,
+        claimedBy,
+        projectId,
+      } = body as {
+        prompt?: string
+        draft?: AssistantDraft
+        dispatch?: boolean
+        workerId?: string
+        claimedBy?: string
+        projectId?: string
+      }
+
+      const finalDraft = draft
+        ? normalizeAssistantDraft(draft, prompt || draft.body || draft.title || '')
+        : prompt
+          ? (await draftTaskFromAssistant(prompt)).draft
+          : null
+
+      if (!finalDraft?.title) {
+        return createJsonResponse(400, { error: 'draft.title or prompt is required' })
+      }
+
+      const input: KanbanTaskInput = {
+        title: finalDraft.title,
+        body: finalDraft.body,
+        status: finalDraft.status,
+        priority: finalDraft.priority,
+        assignee: finalDraft.assignee,
+        owner: finalDraft.owner,
+        tags: finalDraft.tags,
+        projectId,
+      }
+
+      try {
+        const { task } = await addKanbanTask(input, rootDir)
+        if (dispatch && workerId) {
+          const claimed = await claimKanbanTask(task.id, workerId, claimedBy || workerId, rootDir)
+          return createJsonResponse(201, { task: claimed.task, dispatched: true })
+        }
+        return createJsonResponse(201, { task, dispatched: false })
+      } catch (error) {
+        return createJsonResponse(400, { error: error instanceof Error ? error.message : String(error) })
+      }
+    },
+
+    async handleAssistantCommand(body: unknown): Promise<ApiResponse> {
+      if (!body || typeof body !== 'object') {
+        return createJsonResponse(400, { error: 'Invalid request body' })
+      }
+      const { prompt, workerId: bodyWorkerId, projectId } = body as {
+        prompt?: string
+        workerId?: string
+        projectId?: string
+      }
+      if (!prompt || typeof prompt !== 'string' || !prompt.trim()) {
+        return createJsonResponse(400, { error: 'prompt is required' })
+      }
+
+      const text = prompt.trim()
+      const lower = text.toLowerCase()
+      const taskId = extractCommandTaskId(text)
+      const workerId = extractCommandWorkerId(text, bodyWorkerId)
+      const status = extractCommandStatus(text)
+
+      try {
+        let result: AssistantCommandResult
+
+        if (/\b(help|examples|คำสั่ง|ช่วย)\b/u.test(lower)) {
+          result = {
+            ok: true,
+            action: 'help',
+            message: 'Supported Kanban chat commands are listed in examples.',
+            examples: COMMAND_EXAMPLES,
+          }
+        } else if (/\b(workers?|agents?)\b/i.test(text) && /\b(list|show|ดู|รายการ)\b/u.test(lower)) {
+          const workers = await listWorkers(rootDir)
+          result = {
+            ok: true,
+            action: 'list_workers',
+            message: workers.length ? `Found ${workers.length} worker(s).` : 'No workers registered yet.',
+            workers,
+          }
+        } else if (/\b(run|start|process|ทำงาน|เริ่ม)\b/u.test(lower) && /\b(worker|agent)\b/i.test(text) && /\b(llm|ai)\b/i.test(text)) {
+          if (!workerId) {
+            return createJsonResponse(400, { error: 'worker id is required', examples: ['run worker worker-a llm'] })
+          }
+          if (!process.env.KANBAN_LLM_ENDPOINT && !process.env.ANTHROPIC_API_KEY) {
+            return createJsonResponse(400, { error: 'LLM worker requires KANBAN_LLM_ENDPOINT or ANTHROPIC_API_KEY before it can claim a task' })
+          }
+          const results = []
+          for await (const workerResult of runKanbanWorker(rootDir, {
+            workerId,
+            projectId,
+            llm: true,
+            maxTasks: 1,
+            pollMs: undefined,
+            quiet: true,
+            timeoutMs: 120000,
+          })) {
+            results.push(workerResult)
+          }
+          result = {
+            ok: true,
+            action: 'run_worker_llm',
+            message: results[0]?.taskId
+              ? `LLM worker ${workerId} processed ${results[0].taskId}: ${results[0].status}.`
+              : `LLM worker ${workerId} found no claimable task.`,
+            tasks: results,
+          }
+        } else if (/\b(register|add|เพิ่ม|ลงทะเบียน)\b/u.test(lower) && /\b(worker|agent)\b/i.test(text)) {
+          const registerId = workerId || text.match(/\b(?:worker|agent)\s+@?([A-Za-z0-9_.-]+)\b/i)?.[1]
+          if (!registerId) {
+            return createJsonResponse(400, { error: 'worker id is required', examples: ['register worker worker-a'] })
+          }
+          const worker = await registerWorker(rootDir, {
+            id: registerId,
+            name: registerId,
+            status: 'idle',
+            projectId,
+            metadata: { source: 'assistant-command' },
+          })
+          result = {
+            ok: true,
+            action: 'register_worker',
+            message: `Registered worker ${registerId}.`,
+            worker,
+          }
+        } else if (/\b(claim|จอง|รับงาน)\b/u.test(lower) && /\bnext\b/i.test(text)) {
+          if (!workerId) {
+            return createJsonResponse(400, { error: 'worker id is required', examples: ['claim next for worker-a'] })
+          }
+          const claimed = await claimNextTask(rootDir, workerId, {
+            claimedBy: workerId,
+            projectId,
+            allowBlocked: /\bblocked|ติด|รอ\b/u.test(lower),
+          })
+          result = claimed
+            ? {
+                ok: true,
+                action: 'claim_next',
+                message: `Claimed next task ${claimed.task.id} for ${workerId}.`,
+                task: claimed.task,
+              }
+            : {
+                ok: true,
+                action: 'claim_next',
+                message: 'No claimable task found.',
+                task: null,
+              }
+        } else if (/\b(list|show|ดู|รายการ)\b/u.test(lower) && /\b(tasks?|งาน)\b/u.test(lower)) {
+          const tasks = (await listKanbanTasks(rootDir))
+            .filter(task => !projectId || task.projectId === projectId || !task.projectId)
+            .filter(task => !status || task.status === status)
+          result = {
+            ok: true,
+            action: 'list_tasks',
+            message: tasks.length ? `Found ${tasks.length} task(s).` : 'No matching tasks.',
+            tasks,
+          }
+        } else if (
+          !taskId &&
+          (
+            /\b(create|add|new)\s+(task|todo|work|card)\b/i.test(text) ||
+            /\b(task|todo|work|card)\s*[:\-]/i.test(text) ||
+            /\b(สร้างงาน|เพิ่มงาน|งานใหม่|ทำการ์ด|เพิ่มการ์ด)\b/u.test(lower)
+          )
+        ) {
+          const promptForTask = text
+            .replace(/\b(create|add|new)\s+(task|todo|work|card)\b[:\- ]*/iu, '')
+            .replace(/\b(task|todo|work|card)\s*[:\-]\s*/iu, '')
+            .replace(/\b(สร้างงาน|เพิ่มงาน|งานใหม่|ทำการ์ด|เพิ่มการ์ด)\b[:\- ]*/u, '')
+            .trim() || text
+          const draftResult = await draftTaskFromAssistant(promptForTask)
+          const draft = draftResult.draft
+          const input: KanbanTaskInput = {
+            title: draft.title,
+            body: draft.body,
+            status: draft.status,
+            priority: draft.priority,
+            assignee: draft.assignee,
+            owner: draft.owner,
+            tags: draft.tags,
+            projectId,
+          }
+          const { task } = await addKanbanTask(input, rootDir)
+          let finalTask = task
+          const dispatchWorker = workerId || draft.assignee
+          if (dispatchWorker && /\b(claim|dispatch|assign|ส่งให้|จองให้|ให้ worker|ให้ agent)\b/iu.test(text)) {
+            finalTask = (await claimKanbanTask(task.id, dispatchWorker, dispatchWorker, rootDir)).task
+          }
+          result = {
+            ok: true,
+            action: 'create_task',
+            message: `Created ${finalTask.id}: ${finalTask.title}`,
+            task: finalTask,
+          }
+        } else if (/\b(move|ย้าย)\b/u.test(lower) && taskId && status) {
+          const { task } = status === 'blocked'
+            ? await blockKanbanTask(taskId, stripCommandPrefix(text, ['move', 'ย้าย']) || 'Blocked by assistant command', rootDir)
+            : await moveKanbanTask(taskId, status as any, rootDir)
+          result = {
+            ok: true,
+            action: 'move_task',
+            message: `Moved ${task.id} to ${task.status}.`,
+            task,
+          }
+        } else if (/\b(claim|จอง|รับงาน)\b/u.test(lower) && taskId) {
+          if (!workerId) {
+            return createJsonResponse(400, { error: 'worker id is required', examples: ['claim KB-xxx for worker-a'] })
+          }
+          const { task } = await claimKanbanTask(taskId, workerId, workerId, rootDir)
+          result = {
+            ok: true,
+            action: 'claim_task',
+            message: `Claimed ${task.id} for ${workerId}.`,
+            task,
+          }
+        } else if (/\b(release|ปล่อย)\b/u.test(lower) && taskId) {
+          let releaseWorker = workerId
+          if (!releaseWorker) {
+            const board = await readKanbanBoard(rootDir)
+            releaseWorker = board.tasks.find(task => task.id === taskId)?.lease?.workerId
+          }
+          if (!releaseWorker) {
+            return createJsonResponse(400, { error: 'worker id is required or task must have an active lease' })
+          }
+          const { task } = await releaseKanbanTask(taskId, releaseWorker, rootDir)
+          result = {
+            ok: true,
+            action: 'release_task',
+            message: `Released ${task.id} from ${releaseWorker}.`,
+            task,
+          }
+        } else if (/\b(complete|done|finish|finished|ปิดงาน|เสร็จ|จบ)\b/u.test(lower) && taskId) {
+          const summary = stripCommandPrefix(text, ['complete', 'done', 'finish', 'finished', 'ปิดงาน', 'เสร็จ', 'จบ'])
+          const { task } = await completeKanbanTask(taskId, summary || 'Completed by assistant command', {
+            source: 'assistant-command',
+          }, rootDir)
+          result = {
+            ok: true,
+            action: 'complete_task',
+            message: `Completed ${task.id}.`,
+            task,
+          }
+        } else if (/\b(unblock|ปลดบล็อก|แก้บล็อก)\b/u.test(lower) && taskId) {
+          const { task } = await unblockKanbanTask(taskId, rootDir)
+          result = {
+            ok: true,
+            action: 'unblock_task',
+            message: `Unblocked ${task.id}.`,
+            task,
+          }
+        } else if (/\b(block|blocked|ติด|บล็อก)\b/u.test(lower) && taskId) {
+          const reason = stripCommandPrefix(text, ['block', 'blocked', 'ติด', 'บล็อก']) || 'Blocked by assistant command'
+          const { task } = await blockKanbanTask(taskId, reason, rootDir)
+          result = {
+            ok: true,
+            action: 'block_task',
+            message: `Blocked ${task.id}: ${reason}`,
+            task,
+          }
+        } else if (/\b(fail|failed|พัง|ล้มเหลว)\b/u.test(lower) && taskId) {
+          const reason = stripCommandPrefix(text, ['fail', 'failed', 'พัง', 'ล้มเหลว']) || 'Failed by assistant command'
+          const { task } = await failKanbanTask(taskId, reason, workerId, rootDir)
+          result = {
+            ok: true,
+            action: 'fail_task',
+            message: `Failed ${task.id}: ${reason}`,
+            task,
+          }
+        } else if (/\b(retry|ลองใหม่|ทำใหม่)\b/u.test(lower) && taskId) {
+          const { task } = await retryKanbanTask(taskId, workerId, rootDir)
+          result = {
+            ok: true,
+            action: 'retry_task',
+            message: `Retried ${task.id}.`,
+            task,
+          }
+        } else if (/\b(archive|archived|เก็บ)\b/u.test(lower) && taskId) {
+          const { task } = await archiveKanbanTask(taskId, rootDir, workerId || 'assistant-command')
+          result = {
+            ok: true,
+            action: 'archive_task',
+            message: `Archived ${task.id}.`,
+            task,
+          }
+        } else {
+          result = {
+            ok: false,
+            action: 'unsupported',
+            message: 'I can only run whitelisted Kanban commands from chat.',
+            examples: COMMAND_EXAMPLES,
+          }
+        }
+
+        return createJsonResponse(result.ok ? 200 : 422, result)
       } catch (error) {
         return createJsonResponse(400, { error: error instanceof Error ? error.message : String(error) })
       }
@@ -703,6 +1248,12 @@ function parseUrl(url: string): { path: string; id?: string; subPath?: string; p
     if (parts[1] === 'board') {
       return { path: 'api/board', parts }
     }
+    if (parts[1] === 'assistant') {
+      if (parts[2] === 'draft') return { path: 'api/assistant/draft', parts }
+      if (parts[2] === 'create') return { path: 'api/assistant/create', parts }
+      if (parts[2] === 'command') return { path: 'api/assistant/command', parts }
+      return { path: 'api/assistant', parts }
+    }
     if (parts[1] === 'zombies') {
       if (parts.length >= 3 && parts[2] === 'reclaim') {
         return { path: 'api/zombies/reclaim', parts }
@@ -788,77 +1339,104 @@ function renderDashboard(): string {
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Kanban Dashboard — OpenFinch</title>
 <style>
-:root{--bg:#f5f5f5;--card-bg:#fff;--text:#333;--text-muted:#6c757d;--col-bg:#e9ecef;--col-title:#495057;--border:#ced4da;--tab-bg:#e9ecef;--tab-active:#fff;--shadow:rgba(0,0,0,0.1);--danger:#dc3545;--success:#28a745;--warning:#ffc107;--info:#17a2b8}
-@media(prefers-color-scheme:dark){:root{--bg:#1a1d23;--card-bg:#2d3139;--text:#e1e4e8;--text-muted:#8b949e;--col-bg:#21252b;--col-title:#c9d1d9;--border:#40444f;--tab-bg:#21252b;--tab-active:#2d3139;--shadow:rgba(0,0,0,0.3)}}
+:root{--bg:#050608;--panel:#111319;--panel-2:#181b24;--card-bg:#080a0e;--text:#f4f1e8;--text-muted:#8e98a7;--col-bg:#080a0f;--col-title:#c7d2e5;--border:#222838;--border-strong:#3a4358;--tab-bg:#111319;--tab-active:#1b202b;--accent:#ffb21a;--accent-soft:#2d2110;--accent-rgb:255,178,26;--blue:#1b5cff;--blue-soft:#0e1c45;--danger:#ff6d2d;--success:#ffd36a;--warning:#ff9f1a;--info:#2d78ff;--shadow:rgba(0,0,0,0.5);--mono:"SFMono-Regular","Cascadia Code","Liberation Mono",Consolas,monospace}
 *{box-sizing:border-box}
-body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--text);padding:20px;margin:0}
-h1{font-size:20px;margin:0 0 5px 0;display:inline-block}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--text);padding:0;margin:0;min-height:100vh}
+body:before{content:"";position:fixed;inset:0;pointer-events:none;background:linear-gradient(180deg,rgba(var(--accent-rgb),0.055),transparent 190px),linear-gradient(90deg,rgba(45,120,255,0.045),transparent 38%,rgba(255,178,26,0.035)),radial-gradient(circle at 20% 0%,rgba(255,255,255,0.035),transparent 320px)}
+.app-shell{position:relative;min-height:100vh;padding:18px 20px 22px}
+.topbar{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:14px;border-bottom:1px solid var(--border);padding-bottom:12px}
+.brand{display:flex;align-items:center;gap:10px;min-width:230px}
+.brand-mark{display:grid;place-items:center;width:28px;height:28px;border-radius:7px;border:1px solid var(--border-strong);background:var(--panel-2);color:var(--accent);font-family:var(--mono);font-size:15px;font-weight:700}
+.brand-copy{display:flex;flex-direction:column;gap:1px}
+.brand-kicker{font-family:var(--mono);font-size:10px;line-height:1;color:var(--text-muted);text-transform:uppercase}
+h1{font-size:18px;line-height:1.2;margin:0;font-weight:650;letter-spacing:0}
+.status-pill{display:flex;align-items:center;gap:7px;color:var(--text-muted);font-family:var(--mono);font-size:11px;white-space:nowrap}
 
 /* Toolbar & Filter Bar */
-#toolbar{display:flex;gap:10px;align-items:center;margin-bottom:8px;flex-wrap:wrap;font-size:13px}
+#toolbar{display:flex;gap:8px;align-items:center;justify-content:flex-end;flex-wrap:wrap;font-size:12px}
 #toolbar label{color:var(--text-muted)}
-#toolbar select,#toolbar input{padding:4px 8px;border-radius:4px;border:1px solid var(--border);background:var(--card-bg);color:var(--text);font-size:12px}
-#filterBar{display:flex;gap:6px;align-items:center;margin-bottom:10px;flex-wrap:wrap;font-size:12px}
-#filterBar input,#filterBar select{padding:3px 6px;border-radius:3px;border:1px solid var(--border);background:var(--card-bg);color:var(--text);font-size:11px}
+#toolbar select,#toolbar input{height:30px;padding:4px 9px;border-radius:6px;border:1px solid var(--border);background:var(--panel);color:var(--text);font-size:12px;outline:none}
+#toolbar select:focus,#toolbar input:focus,#filterBar input:focus,#filterBar select:focus,.modal-box input:focus,.modal-box select:focus,.modal-box textarea:focus{border-color:var(--accent);box-shadow:0 0 0 2px rgba(var(--accent-rgb),0.18)}
+.command-strip{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
+#filterBar{display:flex;gap:6px;align-items:center;flex-wrap:wrap;font-size:12px}
+#filterBar input,#filterBar select{height:30px;padding:3px 8px;border-radius:6px;border:1px solid var(--border);background:var(--panel);color:var(--text);font-size:11px;outline:none}
 #filterBar label{color:var(--text-muted);font-size:11px}
-.newTaskBtn{padding:4px 12px;border-radius:4px;border:1px solid var(--success);background:var(--success);color:#fff;cursor:pointer;font-size:12px;font-weight:600}
-.newTaskBtn:hover{opacity:0.9}
+.newTaskBtn{height:30px;padding:4px 12px;border-radius:6px;border:1px solid var(--accent);background:var(--accent);color:#171512;cursor:pointer;font-size:12px;font-weight:700}
+.newTaskBtn:hover{filter:brightness(1.07)}
+button{font-family:inherit}
 
 /* Tabs */
-#navTabs{display:flex;gap:2px;margin-bottom:12px;flex-wrap:wrap}
-#navTabs button{padding:6px 14px;border:1px solid var(--border);border-radius:6px 6px 0 0;background:var(--tab-bg);color:var(--text);cursor:pointer;font-size:12px;white-space:nowrap}
-#navTabs button.active{background:var(--tab-active);border-bottom-color:var(--tab-active);font-weight:600}
-#navTabs button:hover{background:var(--card-bg)}
+#navTabs{display:flex;gap:4px;margin-bottom:12px;flex-wrap:wrap;border-bottom:1px solid var(--border);padding-bottom:8px}
+#navTabs button{padding:6px 11px;border:1px solid transparent;border-radius:6px;background:transparent;color:var(--text-muted);cursor:pointer;font-size:12px;white-space:nowrap}
+#navTabs button.active{background:var(--tab-active);border-color:var(--border-strong);color:var(--text);font-weight:650}
+#navTabs button:hover{background:var(--panel);color:var(--text)}
 
 /* View containers */
 .view{display:none}
 .view.active{display:block}
+#statusView{position:relative}
+.link-layer{position:absolute;inset:0;z-index:1;pointer-events:none;overflow:visible}
+.link-layer path{fill:none;stroke:var(--accent);stroke-width:1.25;stroke-linecap:round;filter:drop-shadow(0 0 5px rgba(var(--accent-rgb),0.75));opacity:0.72}
 
 /* Columns */
-.columns{display:flex;gap:12px;overflow-x:auto;padding-bottom:8px}
-.column{background:var(--col-bg);border-radius:8px;padding:10px;min-width:220px;flex:1}
-.column h2{font-size:13px;margin:0 0 8px 0;color:var(--col-title)}
-.task-card{background:var(--card-bg);border-radius:6px;padding:10px;margin-bottom:8px;box-shadow:0 1px 3px var(--shadow);font-size:12px;border-left:3px solid transparent}
+.columns{position:relative;z-index:2;display:grid;grid-template-columns:repeat(6,minmax(220px,1fr));gap:10px;overflow-x:auto;padding-bottom:10px;align-items:start}
+.column{background:linear-gradient(180deg,rgba(255,255,255,0.025),transparent 36px),var(--col-bg);border:1px solid var(--border);border-radius:2px;padding:8px;min-width:220px;min-height:calc(100vh - 250px);box-shadow:inset 0 0 0 1px rgba(255,255,255,0.02),0 16px 30px var(--shadow)}
+.column h2{font-family:var(--mono);font-size:10px;margin:-2px -4px 9px;padding:4px 6px;color:var(--col-title);text-transform:uppercase;font-weight:700;text-align:center;border-bottom:1px solid rgba(255,255,255,0.05);letter-spacing:0}
+.task-card{position:relative;background:linear-gradient(180deg,rgba(255,255,255,0.025),transparent 38px),var(--card-bg);border:1px solid var(--border);border-radius:2px;padding:8px;margin-bottom:8px;box-shadow:0 0 0 1px rgba(255,255,255,0.025),0 0 14px rgba(255,178,26,0.08);font-family:var(--mono);font-size:11px;border-left:3px solid transparent}
+.task-card:after{content:"";position:absolute;left:8px;right:8px;bottom:6px;height:2px;background:linear-gradient(90deg,transparent,var(--accent),transparent);opacity:0.45}
+.task-card.status-running{border-color:rgba(45,120,255,0.75);border-left-color:var(--blue);box-shadow:0 0 0 1px rgba(45,120,255,0.18),0 0 18px rgba(45,120,255,0.36)}
+.task-card.status-done{border-color:rgba(var(--accent-rgb),0.72);border-left-color:var(--accent);box-shadow:0 0 0 1px rgba(var(--accent-rgb),0.16),0 0 18px rgba(var(--accent-rgb),0.32)}
+.task-card.status-blocked{border-color:rgba(255,109,45,0.72);border-left-color:var(--danger);box-shadow:0 0 0 1px rgba(255,109,45,0.16),0 0 18px rgba(255,109,45,0.32)}
+.task-card.status-ready{border-color:rgba(244,241,232,0.68);border-left-color:#f4f1e8;box-shadow:0 0 0 1px rgba(244,241,232,0.12),0 0 14px rgba(244,241,232,0.16)}
+.task-card.dragging{opacity:0.45}
+.column.drag-over{border-color:var(--accent);box-shadow:inset 0 0 0 1px rgba(var(--accent-rgb),0.45),0 0 24px rgba(var(--accent-rgb),0.18)}
 .task-card.prio-urgent{border-left-color:var(--danger)}
 .task-card.prio-high{border-left-color:var(--warning)}
-.task-card.prio-normal{border-left-color:var(--info)}
+.task-card.prio-normal{border-left-color:var(--accent)}
 .task-card.blocked{opacity:0.85}
 .task-card.done{opacity:0.55}
-.task-card .ttl{font-weight:600;margin-bottom:4px;cursor:pointer}
-.task-card .ttl:hover{text-decoration:underline}
+.task-card .ttl{font-weight:700;margin-bottom:5px;cursor:pointer;color:var(--text);text-transform:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.task-card .ttl:hover{color:var(--accent)}
 .task-card .meta{color:var(--text-muted);font-size:11px;line-height:1.5}
-.task-card .meta .tag{display:inline-block;background:var(--col-bg);padding:1px 5px;border-radius:3px;margin:1px 2px 1px 0;font-size:10px}
-.task-card .actions{margin-top:6px;display:flex;flex-wrap:wrap;gap:3px}
-.task-card .actions button{padding:2px 7px;font-size:10px;border:1px solid var(--border);border-radius:3px;background:var(--col-bg);color:var(--text);cursor:pointer}
-.task-card .actions button:hover{background:var(--card-bg)}
-.task-card .actions .editBtn{border-color:var(--info);color:var(--info)}
+.task-card .meta .tag{display:inline-block;background:var(--panel-2);border:1px solid var(--border);padding:1px 5px;border-radius:4px;margin:1px 2px 1px 0;font-size:10px}
+.card-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:-8px -8px 7px;padding:3px 7px;background:linear-gradient(90deg,var(--accent),rgba(var(--accent-rgb),0.58));color:#050608;font-size:9px;font-weight:800;text-transform:uppercase}
+.status-running .card-head{background:linear-gradient(90deg,var(--blue),#2f7bff);color:#dfeaff}
+.status-ready .card-head{background:linear-gradient(90deg,#f4f1e8,#aeb8c6);color:#050608}
+.status-blocked .card-head{background:linear-gradient(90deg,#b84912,var(--danger));color:#050608}
+.card-id{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.card-status{letter-spacing:0}
+.signal{height:34px;margin:6px 0 7px;border:1px solid rgba(255,255,255,0.08);background:#030405;display:grid;grid-template-columns:repeat(8,1fr);align-items:end;gap:2px;padding:4px 6px;position:relative;overflow:hidden}
+.signal:before{content:"";position:absolute;inset:0;background:linear-gradient(90deg,rgba(255,255,255,0.045) 1px,transparent 1px),linear-gradient(180deg,rgba(255,255,255,0.045) 1px,transparent 1px);background-size:25% 50%;opacity:0.7}
+.bar{position:relative;z-index:1;min-height:3px;background:linear-gradient(180deg,#fff7b3,var(--accent));box-shadow:0 0 8px rgba(var(--accent-rgb),0.7)}
+.status-running .bar{background:linear-gradient(180deg,#7fb0ff,var(--blue));box-shadow:0 0 8px rgba(45,120,255,0.75)}
+.dot{position:absolute;width:4px;height:4px;border-radius:50%;background:#fff7b3;box-shadow:0 0 8px rgba(var(--accent-rgb),0.9);z-index:2}
+.status-running .dot{background:#dce9ff;box-shadow:0 0 8px rgba(45,120,255,0.9)}
+.task-card .actions{margin-top:7px;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:3px}
+.task-card .actions button,.zombie-card .actions button,.verify-card .actions button{padding:3px 5px;font-size:10px;border:1px solid var(--border);border-radius:4px;background:var(--panel);color:var(--text-muted);cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.task-card .actions button:hover,.zombie-card .actions button:hover,.verify-card .actions button:hover{border-color:var(--border-strong);color:var(--text);background:var(--panel-2)}
+.task-card .actions .editBtn{border-color:rgba(var(--accent-rgb),0.45);color:var(--accent)}
 
 /* Agent Board */
 .agent-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px}
-.agent-card{background:var(--col-bg);border-radius:8px;padding:12px}
+.agent-card,.dep-group{background:var(--col-bg);border:1px solid var(--border);border-radius:8px;padding:12px}
 .agent-card h3{font-size:14px;margin:0 0 4px 0;color:var(--col-title)}
 .agent-card .stats{font-size:11px;color:var(--text-muted);margin-bottom:8px}
-.agent-card .a-task{background:var(--card-bg);border-radius:4px;padding:8px;margin-bottom:4px;font-size:12px}
-.agent-card .a-task .status-badge{display:inline-block;padding:1px 5px;border-radius:3px;font-size:10px;margin-right:4px}
-.agent-card .a-task .status-badge.running{background:#cce5ff;color:#004085}
-.agent-card .a-task .status-badge.stale{background:#fff3cd;color:#856404}
-.agent-card .a-task .status-badge.zombie{background:#f8d7da;color:#721c24}
-@media(prefers-color-scheme:dark){
-  .agent-card .a-task .status-badge.running{background:#1e3a5f;color:#58a6ff}
-  .agent-card .a-task .status-badge.stale{background:#3b2f0f;color:#d29922}
-  .agent-card .a-task .status-badge.zombie{background:#3d1111;color:#f85149}
-}
+.agent-card .a-task{background:var(--card-bg);border:1px solid var(--border);border-radius:6px;padding:8px;margin-bottom:4px;font-size:12px}
+.agent-card .a-task .status-badge{display:inline-block;padding:1px 5px;border-radius:4px;font-size:10px;margin-right:4px}
+.agent-card .a-task .status-badge.running{background:#1e2d46;color:#94bfff}
+.agent-card .a-task .status-badge.stale{background:#3b2f0f;color:#d8a657}
+.agent-card .a-task .status-badge.zombie{background:#3d1515;color:#ff8f8f}
 
 /* Zombie Monitor */
 .zombie-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(350px,1fr));gap:10px}
-.zombie-card{background:var(--card-bg);border-radius:6px;padding:12px;border-left:3px solid var(--danger);box-shadow:0 1px 3px var(--shadow)}
+.zombie-card{background:var(--card-bg);border:1px solid var(--border);border-radius:7px;padding:12px;border-left:3px solid var(--danger);box-shadow:0 1px 3px var(--shadow)}
 .zombie-card h4{margin:0 0 4px 0;font-size:13px}
 .zombie-card .z-meta{font-size:11px;color:var(--text-muted);line-height:1.5}
 .zombie-card .actions{margin-top:6px;display:flex;gap:4px;flex-wrap:wrap}
 
 /* Verification Review */
 .verify-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(380px,1fr));gap:10px}
-.verify-card{background:var(--card-bg);border-radius:6px;padding:12px;border-left:3px solid var(--warning);box-shadow:0 1px 3px var(--shadow)}
+.verify-card{background:var(--card-bg);border:1px solid var(--border);border-radius:7px;padding:12px;border-left:3px solid var(--warning);box-shadow:0 1px 3px var(--shadow)}
 .verify-card.passed{border-left-color:var(--success)}
 .verify-card.failed{border-left-color:var(--danger)}
 .verify-card h4{margin:0 0 4px 0;font-size:13px}
@@ -867,14 +1445,14 @@ h1{font-size:20px;margin:0 0 5px 0;display:inline-block}
 .verify-card .actions{margin-top:6px;display:flex;gap:4px;flex-wrap:wrap}
 
 /* Event Timeline Modal */
-#eventModal{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:100}
+#eventModal{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.62);z-index:100}
 #eventModal.open{display:flex;align-items:center;justify-content:center}
-#eventModal .modal-content{background:var(--card-bg);border-radius:8px;padding:20px;max-width:700px;width:90%;max-height:80vh;overflow-y:auto}
+#eventModal .modal-content{background:var(--card-bg);border:1px solid var(--border-strong);border-radius:8px;padding:20px;max-width:700px;width:90%;max-height:80vh;overflow-y:auto}
 #eventModal .modal-content h3{margin:0 0 10px 0}
 #eventModal .close-btn{float:right;cursor:pointer;font-size:18px;color:var(--text-muted)}
-#artifactModal{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:100}
+#artifactModal{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.62);z-index:100}
 #artifactModal.open{display:flex;align-items:center;justify-content:center}
-#artifactModal .modal-content{background:var(--card-bg);border-radius:8px;padding:20px;max-width:800px;width:90%;max-height:80vh;overflow-y:auto}
+#artifactModal .modal-content{background:var(--card-bg);border:1px solid var(--border-strong);border-radius:8px;padding:20px;max-width:800px;width:90%;max-height:80vh;overflow-y:auto}
 #artifactModal .modal-content h3{margin:0 0 10px 0}
 #artifactModal .artifact-card{padding:8px;margin:4px 0;border:1px solid var(--border);border-radius:4px}
 #artifactModal .artifact-card.current{border-color:var(--accent);background:rgba(var(--accent-rgb),0.08)}
@@ -932,70 +1510,92 @@ h1{font-size:20px;margin:0 0 5px 0;display:inline-block}
 
 /* Dependency View */
 .dep-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:10px}
-.dep-card{background:var(--card-bg);border-radius:6px;padding:12px;box-shadow:0 1px 3px var(--shadow);font-size:12px}
+.dep-card{background:var(--card-bg);border:1px solid var(--border);border-radius:7px;padding:12px;box-shadow:0 1px 3px var(--shadow);font-size:12px}
 .dep-card h4{margin:0 0 4px 0;font-size:13px}
 .dep-card .dep-row{margin:3px 0;font-size:11px;color:var(--text-muted)}
 .dep-card .dep-row .dep-done{color:var(--success)}
 .dep-card .dep-row .dep-pending{color:var(--warning)}
 .dep-card .dep-row .dep-missing{color:var(--danger)}
 .dep-card .dep-row .dep-blocked{color:var(--danger)}
-.dep-group{background:var(--col-bg);border-radius:6px;padding:10px;margin-bottom:12px}
+.dep-group{margin-bottom:12px}
 .dep-group h3{font-size:13px;margin:0 0 6px 0;color:var(--col-title)}
 
 /* Priority badges */
-.badge-priority{display:inline-block;padding:1px 5px;border-radius:3px;font-size:10px;margin-right:3px;font-weight:600}
-.badge-urgent{background:#dc3545;color:#fff}
-.badge-high{background:#ffc107;color:#000}
-.badge-normal{background:#17a2b8;color:#fff}
-.badge-low{background:#6c757d;color:#fff}
+.badge-priority{display:inline-block;padding:1px 5px;border-radius:4px;font-size:10px;margin-right:3px;font-weight:650}
+.badge-urgent{background:#4c1717;color:#ff9b9b}
+.badge-high{background:#453417;color:#ffd38d}
+.badge-normal{background:var(--accent-soft);color:#ffb088}
+.badge-low{background:#30343a;color:#b7c0ce}
 
 /* Modals */
-.modal-overlay{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:200}
+.modal-overlay{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.62);z-index:200}
 .modal-overlay.open{display:flex;align-items:center;justify-content:center}
-.modal-box{background:var(--card-bg);border-radius:8px;padding:20px;max-width:500px;width:90%;max-height:80vh;overflow-y:auto;box-shadow:0 4px 20px var(--shadow)}
+.modal-box{background:var(--card-bg);border:1px solid var(--border-strong);border-radius:8px;padding:20px;max-width:500px;width:90%;max-height:80vh;overflow-y:auto;box-shadow:0 16px 36px var(--shadow)}
 .modal-box h3{margin:0 0 12px 0}
 .modal-box .close-btn{float:right;cursor:pointer;font-size:18px;color:var(--text-muted)}
 .modal-box label{display:block;font-size:12px;color:var(--text-muted);margin:8px 0 2px}
-.modal-box input,.modal-box select,.modal-box textarea{width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:4px;background:var(--bg);color:var(--text);font-size:12px;box-sizing:border-box}
+.modal-box input,.modal-box select,.modal-box textarea{width:100%;padding:7px 9px;border:1px solid var(--border);border-radius:6px;background:var(--panel);color:var(--text);font-size:12px;box-sizing:border-box;outline:none}
+.new-task-dialog{max-width:720px;padding:0;overflow:hidden}
+.chat-head{display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);padding:14px 16px}
+.chat-title{display:flex;align-items:center;gap:10px}
+.chat-avatar{display:grid;place-items:center;width:26px;height:26px;border-radius:7px;border:1px solid var(--border-strong);background:var(--panel-2);color:var(--accent);font-family:var(--mono);font-weight:700;font-size:13px}
+.chat-title h3{margin:0;font-size:14px}
+.chat-body{display:grid;gap:10px;padding:14px 16px}
+.chat-msg{max-width:92%;border:1px solid var(--border);border-radius:8px;padding:10px 11px;font-size:13px;line-height:1.45}
+.chat-msg.assistant{background:var(--panel);color:var(--text)}
+.chat-msg.user{justify-self:end;background:var(--accent-soft);border-color:rgba(var(--accent-rgb),0.35)}
+.chat-composer{display:flex;gap:8px;align-items:flex-end}
+.chat-composer textarea{min-height:96px;line-height:1.45;font-size:13px}
+.chat-composer button{height:34px;padding:0 12px;border-radius:6px;border:1px solid var(--border-strong);background:var(--panel-2);color:var(--text);cursor:pointer;font-weight:650}
+.chat-composer button:hover{border-color:var(--accent);color:var(--accent)}
+.task-draft{display:grid;grid-template-columns:1.2fr 0.8fr 0.8fr;gap:8px}
+.task-draft .wide{grid-column:1/-1}
+.task-draft label{margin-top:0}
+.task-draft input,.task-draft select{height:32px}
+.task-create-row{display:flex;justify-content:flex-end;padding:0 16px 16px}
+.nt-hidden{display:none}
+@media(max-width:760px){.task-draft{grid-template-columns:1fr}.chat-composer{flex-direction:column;align-items:stretch}.chat-composer button{width:100%}}
 
 /* Worker Monitor */
 .worker-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:10px}
-.worker-card{background:var(--card-bg);border-radius:6px;padding:14px;box-shadow:0 1px 3px var(--shadow);font-size:12px}
+.worker-card{background:var(--card-bg);border:1px solid var(--border);border-radius:7px;padding:14px;box-shadow:0 1px 3px var(--shadow);font-size:12px}
 .worker-card h4{margin:0 0 8px 0;font-size:14px}
 .worker-card .w-meta{font-size:11px;color:var(--text-muted);line-height:1.7}
 .worker-card .w-status{display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600;text-transform:uppercase}
-.worker-card .w-status.idle{background:#d4edda;color:#155724}
-.worker-card .w-status.running{background:#cce5ff;color:#004085}
-.worker-card .w-status.stale{background:#fff3cd;color:#856404}
-.worker-card .w-status.offline{background:#f8d7da;color:#721c24}
+.worker-card .w-status.idle{background:#173421;color:#80d99a}
+.worker-card .w-status.running{background:#1e2d46;color:#94bfff}
+.worker-card .w-status.stale{background:#3b2f0f;color:#d8a657}
+.worker-card .w-status.offline{background:#3d1515;color:#ff8f8f}
 .worker-card .actions{margin-top:8px;display:flex;gap:4px;flex-wrap:wrap}
-.worker-card .actions button{padding:3px 8px;border-radius:4px;border:1px solid var(--border);background:var(--tab-bg);color:var(--text);cursor:pointer;font-size:11px}
-.worker-card .actions button:hover{background:var(--card-bg)}
+.worker-card .actions button{padding:3px 8px;border-radius:5px;border:1px solid var(--border);background:var(--panel);color:var(--text-muted);cursor:pointer;font-size:11px}
+.worker-card .actions button:hover{background:var(--panel-2);color:var(--text)}
 .worker-card.stale-card{border-left:3px solid var(--warning)}
 .worker-card.offline-card{border-left:3px solid var(--danger)}
-@media(prefers-color-scheme:dark){
-  .worker-card .w-status.idle{background:#0b3b1e;color:#3fb950}
-  .worker-card .w-status.running{background:#0d3b66;color:#58a6ff}
-  .worker-card .w-status.stale{background:#3b2f0f;color:#d29922}
-  .worker-card .w-status.offline{background:#3d1111;color:#f85149}
-}
 .modal-box textarea{min-height:60px;resize:vertical}
-.modal-box button.submit{padding:6px 16px;border:none;border-radius:4px;background:var(--success);color:#fff;cursor:pointer;font-size:12px;font-weight:600;margin-top:10px}
+.modal-box button.submit{padding:7px 16px;border:none;border-radius:6px;background:var(--accent);color:#171512;cursor:pointer;font-size:12px;font-weight:700;margin-top:10px}
 .modal-box button.submit:hover{opacity:0.9}
 
 /* Empty state */
-.empty-state{padding:30px;text-align:center;color:var(--text-muted);font-size:14px}
+.empty-state{padding:30px;text-align:center;color:var(--text-muted);font-size:13px;border:1px dashed var(--border);border-radius:8px;background:rgba(255,255,255,0.015)}
 
 /* SSE indicator */
-#sseStatus{display:inline-block;width:8px;height:8px;border-radius:50%;margin-left:8px;vertical-align:middle}
+#sseStatus{display:inline-block;width:8px;height:8px;border-radius:50%;vertical-align:middle;box-shadow:0 0 12px currentColor}
 #sseStatus.connected{background:var(--success)}
 #sseStatus.disconnected{background:var(--danger)}
+@media(max-width:1300px){.columns{grid-template-columns:repeat(6,220px)}}
+@media(max-width:760px){.app-shell{padding:14px}.topbar{align-items:flex-start;flex-direction:column}.command-strip{align-items:flex-start;flex-direction:column}.columns{grid-template-columns:repeat(6,220px);gap:8px}.column{min-width:220px}}
 </style>
 </head>
 <body>
-<h1>Kanban Dashboard</h1><span id="sseStatus" class="disconnected" title="Real-time status"></span>
-<div id="toolbar"></div>
-<div id="filterBar"></div>
+<div class="app-shell">
+<div class="topbar">
+  <div class="brand"><div class="brand-mark">cc</div><div class="brand-copy"><span class="brand-kicker">Claude Code</span><h1>Kanban Dashboard</h1></div></div>
+  <div class="status-pill"><span id="sseStatus" class="disconnected" title="Real-time status"></span><span>live board</span></div>
+</div>
+<div class="command-strip">
+  <div id="filterBar"></div>
+  <div id="toolbar"></div>
+</div>
 <div id="navTabs">
   <button class="active" onclick="switchView('status')">Status Board</button>
   <button onclick="switchView('agent')">Agent Board</button>
@@ -1004,12 +1604,13 @@ h1{font-size:20px;margin:0 0 5px 0;display:inline-block}
   <button onclick="switchView('verify')">Verification Review</button>
   <button onclick="switchView('dep')">Dependencies</button>
 </div>
-<div id="statusView" class="view active"><div class="columns" id="columns"></div></div>
+<div id="statusView" class="view active"><svg class="link-layer" id="dependencyLinks"></svg><div class="columns" id="columns"></div></div>
 <div id="agentView" class="view"><div id="agentBoardContent"></div></div>
 <div id="zombieView" class="view"><div id="zombieBoardContent"></div></div>
 <div id="workerView" class="view"><div id="workerBoardContent"></div></div>
 <div id="verifyView" class="view"><div id="verifyBoardContent"></div></div>
 <div id="depView" class="view"><div id="depBoardContent"></div></div>
+</div>
 
 <!-- Event Timeline Modal -->
 <div id="eventModal"><div class="modal-content"><span class="close-btn" onclick="closeEventModal()">&times;</span><h3 id="eventModalTitle">Event Timeline</h3><div id="eventTimelineContent"></div></div></div>
@@ -1018,15 +1619,23 @@ h1{font-size:20px;margin:0 0 5px 0;display:inline-block}
 <div id="artifactModal"><div class="modal-content"><span class="close-btn" onclick="closeArtifactModal()">&times;</span><h3 id="artifactModalTitle">Artifacts</h3><div id="artifactViewerContent"></div></div></div>
 
 <!-- New Task Modal -->
-<div id="newTaskModal" class="modal-overlay"><div class="modal-box"><span class="close-btn" onclick="closeNewTaskModal()">&times;</span><h3>New Task</h3>
-<label>Title</label><input id="ntTitle" placeholder="Task title" required>
-<label>Description</label><textarea id="ntBody" placeholder="Notes / description"></textarea>
-<label>Status</label><select id="ntStatus"><option value="triage">Triage</option><option value="todo" selected>Todo</option><option value="ready">Ready</option><option value="running">Running</option><option value="blocked">Blocked</option><option value="done">Done</option></select>
-<label>Priority</label><select id="ntPriority"><option value="">--</option><option value="low">Low</option><option value="normal" selected>Normal</option><option value="high">High</option><option value="urgent">Urgent</option></select>
-<label>Owner</label><input id="ntOwner" placeholder="Owner name">
-<label>Assignee</label><input id="ntAssignee" placeholder="Assignee name">
-<label>Tags (comma separated)</label><input id="ntTags" placeholder="tag1, tag2, tag3">
-<button class="submit" onclick="submitNewTask()">Create Task</button>
+<div id="newTaskModal" class="modal-overlay"><div class="modal-box new-task-dialog">
+<div class="chat-head"><div class="chat-title"><div class="chat-avatar">cc</div><h3>Claude Code</h3></div><span class="close-btn" onclick="closeNewTaskModal()">&times;</span></div>
+<div class="chat-body">
+<div class="chat-msg assistant" id="ntAssistantMsg">What should we track next?</div>
+<div class="chat-composer"><textarea id="ntPrompt" placeholder="Fix Kanban drag and drop, high priority, @agent-a, #dashboard"></textarea><button onclick="draftTaskFromChat()">Draft</button><button onclick="runKanbanCommandFromChat()">Run</button></div>
+<div class="task-draft">
+<label class="wide">Title<input id="ntTitle" placeholder="Task title" required></label>
+<label class="wide">Description<textarea id="ntBody" placeholder="Notes / description"></textarea></label>
+<label>Status<select id="ntStatus"><option value="triage">Triage</option><option value="todo" selected>Todo</option><option value="ready">Ready</option><option value="running">Running</option><option value="blocked">Blocked</option><option value="done">Done</option></select></label>
+<label>Priority<select id="ntPriority"><option value="">--</option><option value="low">Low</option><option value="normal" selected>Normal</option><option value="high">High</option><option value="urgent">Urgent</option></select></label>
+<label>Assignee<input id="ntAssignee" placeholder="@agent"></label>
+<label class="wide">Tags<input id="ntTags" placeholder="dashboard, bug"></label>
+<label class="wide"><input type="checkbox" id="ntDispatch"> Claim task for assignee/worker immediately</label>
+<input class="nt-hidden" id="ntOwner" placeholder="Owner name">
+</div>
+</div>
+<div class="task-create-row"><button class="submit" onclick="submitNewTask()">Create Task</button></div>
 </div></div>
 
 <!-- Edit Task Modal -->
@@ -1049,6 +1658,7 @@ const WS_KEY='kanban:workspaceId',PROJ_KEY='kanban:projectId',FILTER_KEY='kanban
 let savedWs=localStorage.getItem(WS_KEY)||'',savedProj=localStorage.getItem(PROJ_KEY)||'';
 let currentView='status';
 let filters=JSON.parse(localStorage.getItem(FILTER_KEY)||'{}');
+window.__tasks={};
 if(!filters.hideArchived&&filters.hideArchived!==false)filters.hideArchived=true;
 
 // ─── SSE ────────────────────────────────────────────────
@@ -1065,13 +1675,16 @@ async function fetchProjects(){try{const r=await fetch('/api/projects');if(!r.ok
 async function fetchBoard(){const r=await fetch("/api/tasks");if(!r.ok){alert("No board found. Create one with /kanban init");return null}const d=await r.json();return d.tasks||[]}
 async function fetchZombies(){try{const r=await fetch("/api/zombies");if(!r.ok)return[];const d=await r.json();return d.zombies||[]}catch{return[]}}
 async function fetchTaskEvents(id){try{const r=await fetch("/api/tasks/"+id+"/events");if(!r.ok)return[];const d=await r.json();return d.events||[]}catch{return[]}}
-async function apiPost(url,body){await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body||{})})}
-async function apiPatch(url,body){await fetch(url,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(body||{})})}
+async function apiPost(url,body){const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body||{})});if(!r.ok){let msg=r.statusText;try{const e=await r.json();msg=e.error||msg}catch{}throw new Error(msg)}return r}
+async function apiPatch(url,body){const r=await fetch(url,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(body||{})});if(!r.ok){let msg=r.statusText;try{const e=await r.json();msg=e.error||msg}catch{}throw new Error(msg)}return r}
 
 // ─── Utility ────────────────────────────────────────────
 function esc(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")}
 function age(ts){if(!ts)return'';const s=Math.floor((Date.now()-new Date(ts).getTime())/1000);if(s<60)return s+"s";const m=Math.floor(s/60);if(m<60)return m+"m "+s%60+"s";const h=Math.floor(m/60);return h+"h "+m%60+"m"}
 function prioBadge(p){if(p==='urgent')return'<span class="badge-priority badge-urgent">urgent</span>';if(p==='high')return'<span class="badge-priority badge-high">high</span>';if(p==='normal')return'<span class="badge-priority badge-normal">normal</span>';if(p==='low')return'<span class="badge-priority badge-low">low</span>';return''}
+function taskRef(id){return 'window.__tasks[\\''+String(id).replace(/\\\\/g,'\\\\\\\\').replace(/'/g,"\\\\'")+'\\']'}
+function q(s){return String(s).replace(/\\\\/g,'\\\\\\\\').replace(/'/g,"\\\\'")}
+function dataTaskSelector(id){return '[data-task-id="'+(window.CSS&&CSS.escape?CSS.escape(id):String(id).replace(/"/g,'\\\\\\"'))+'"]'}
 
 // ─── Filters ────────────────────────────────────────────
 function saveFilters(){localStorage.setItem(FILTER_KEY,JSON.stringify(filters))}
@@ -1142,9 +1755,84 @@ function onWsChange(){savedWs=document.getElementById('wsSelect').value;savedPro
 function onProjChange(){savedProj=document.getElementById('projSelect').value;localStorage.setItem(PROJ_KEY,savedProj);renderAll()}
 
 // ─── New Task Modal ─────────────────────────────────────
-function showNewTaskModal(){document.getElementById('newTaskModal').classList.add('open');if(savedProj)document.getElementById('ntProjectId')&&(document.getElementById('ntProjectId').value=savedProj)}
+function showNewTaskModal(){document.getElementById('newTaskModal').classList.add('open');if(savedProj)document.getElementById('ntProjectId')&&(document.getElementById('ntProjectId').value=savedProj);setTimeout(()=>document.getElementById('ntPrompt').focus(),0)}
 function closeNewTaskModal(){document.getElementById('newTaskModal').classList.remove('open')}
+function inferPriority(text){
+  const v=text.toLowerCase();
+  if(/\\b(urgent|critical|blocker|p0|ด่วนมาก|วิกฤต)\\b/.test(v))return'urgent';
+  if(/\\b(high|p1|important|ด่วน|สำคัญ|สูง)\\b/.test(v))return'high';
+  if(/\\b(low|p3|later|ต่ำ|ไม่รีบ)\\b/.test(v))return'low';
+  return'normal'
+}
+function inferStatus(text){
+  const v=text.toLowerCase();
+  if(/\\b(triage|investigate|สำรวจ|ตรวจสอบ)\\b/.test(v))return'triage';
+  if(/\\b(ready|พร้อม)\\b/.test(v))return'ready';
+  if(/\\b(running|in progress|กำลังทำ)\\b/.test(v))return'running';
+  if(/\\b(blocked|ติด|รอ)\\b/.test(v))return'blocked';
+  if(/\\b(done|complete|เสร็จ)\\b/.test(v))return'done';
+  return'todo'
+}
+function cleanTitle(line){
+  return line
+    .replace(/^\\s*(please|todo|task|create task|add task|ช่วย|ทำ|เพิ่ม)[:\\- ]+/i,'')
+    .replace(/[@#][\\p{L}\\p{N}_.-]+/gu,'')
+    .replace(/\\b(urgent|critical|blocker|high|low|normal|priority|p[0-3])\\b/gi,'')
+    .replace(/[,;:|]+/g,' ')
+    .replace(/\\s+/g,' ')
+    .trim()
+}
+async function draftTaskFromChat(){
+  const prompt=document.getElementById('ntPrompt').value.trim();
+  if(!prompt)return;
+  document.getElementById('ntAssistantMsg').textContent='Drafting with Kanban assistant...';
+  let draft=null,source='local',warning='';
+  try{
+    const r=await apiPost('/api/assistant/draft',{prompt});
+    const d=await r.json();
+    draft=d.draft;source=d.source||source;warning=d.warning||'';
+  }catch(e){
+    warning=e.message||String(e);
+  }
+  if(!draft){
+    const lines=prompt.split(/\\r?\\n/).map(l=>l.trim()).filter(Boolean);
+    const first=cleanTitle(lines[0]||prompt);
+    const assignee=(prompt.match(/@([\\p{L}\\p{N}_.-]+)/u)||[])[1]||'';
+    const tags=[...prompt.matchAll(/#([\\p{L}\\p{N}_.-]+)/gu)].map(m=>m[1]);
+    draft={title:(first||prompt).slice(0,96),body:prompt,status:inferStatus(prompt),priority:inferPriority(prompt),assignee,tags};
+  }
+  document.getElementById('ntTitle').value=draft.title||'';
+  document.getElementById('ntBody').value=draft.body||prompt;
+  document.getElementById('ntStatus').value=draft.status||'todo';
+  document.getElementById('ntPriority').value=draft.priority||'normal';
+  document.getElementById('ntAssignee').value=(draft.assignee||'').replace(/^@/,'');
+  document.getElementById('ntOwner').value=draft.owner||'ai-orchestrator';
+  document.getElementById('ntTags').value=(draft.tags||[]).join(', ');
+  document.getElementById('ntAssistantMsg').textContent='Draft ready via '+source+': '+(draft.title||'Untitled')+(warning?' (fallback: '+warning.slice(0,90)+')':'');
+}
+async function runKanbanCommandFromChat(){
+  const prompt=document.getElementById('ntPrompt').value.trim();
+  if(!prompt)return;
+  const assignee=document.getElementById('ntAssignee').value.trim()||undefined;
+  const msg=document.getElementById('ntAssistantMsg');
+  msg.textContent='Running Kanban command...';
+  try{
+    const r=await fetch('/api/assistant/command',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prompt,workerId:assignee,projectId:savedProj||undefined})});
+    const d=await r.json().catch(()=>({}));
+    if(!r.ok)throw new Error(d.error||d.message||r.statusText);
+    let extra='';
+    if(d.task)extra=' ['+(d.task.id||'task')+']';
+    else if(d.tasks)extra=' ('+d.tasks.length+' tasks)';
+    else if(d.workers)extra=' ('+d.workers.length+' workers)';
+    if(d.examples&&d.examples.length)extra+=' Examples: '+d.examples.slice(0,3).join(' | ');
+    msg.textContent=(d.message||'Command completed')+extra;
+    renderAll();
+  }catch(e){
+    msg.textContent='Command failed: '+(e.message||String(e));
+  }
+}
 async function submitNewTask(){
+  if(!document.getElementById('ntTitle').value.trim()&&document.getElementById('ntPrompt').value.trim())await draftTaskFromChat();
   const title=document.getElementById('ntTitle').value.trim();if(!title)return alert('Title is required');
   const body=document.getElementById('ntBody').value.trim()||undefined;
   const status=document.getElementById('ntStatus').value;
@@ -1153,9 +1841,9 @@ async function submitNewTask(){
   const assignee=document.getElementById('ntAssignee').value.trim()||undefined;
   const tagsStr=document.getElementById('ntTags').value.trim();
   const tags=tagsStr?tagsStr.split(',').map(t=>t.trim()).filter(Boolean):undefined;
-  const input={title,body,status,priority,owner,assignee,tags};
-  if(savedProj)input.projectId=savedProj;
-  try{await apiPost('/api/tasks',input);closeNewTaskModal();document.getElementById('ntTitle').value='';document.getElementById('ntBody').value='';document.getElementById('ntOwner').value='';document.getElementById('ntAssignee').value='';document.getElementById('ntTags').value='';renderAll()}
+  const draft={title,body,status,priority,owner,assignee,tags};
+  const dispatch=document.getElementById('ntDispatch').checked;
+  try{await apiPost('/api/assistant/create',{draft,dispatch,workerId:assignee,claimedBy:assignee,projectId:savedProj||undefined});closeNewTaskModal();document.getElementById('ntPrompt').value='';document.getElementById('ntTitle').value='';document.getElementById('ntBody').value='';document.getElementById('ntOwner').value='';document.getElementById('ntAssignee').value='';document.getElementById('ntTags').value='';document.getElementById('ntDispatch').checked=false;document.getElementById('ntAssistantMsg').textContent='What should we track next?';renderAll()}
   catch(e){alert('Failed to create task: '+e.message)}
 }
 
@@ -1170,6 +1858,7 @@ function showEditTaskModal(t){
   document.getElementById('etAssignee').value=t.assignee||'';
   document.getElementById('etTags').value=(t.tags||[]).join(', ');
   document.getElementById('etBlockedReason').value=t.blockedReason||'';
+  document.getElementById('etStatus').dataset.originalStatus=t.status;
   document.getElementById('editTaskModal').classList.add('open');
 }
 function closeEditTaskModal(){document.getElementById('editTaskModal').classList.remove('open')}
@@ -1186,7 +1875,7 @@ async function submitEditTask(){
   const blockedReason=document.getElementById('etBlockedReason').value.trim()||undefined;
   const update={title,body,priority,owner,assignee,tags,blockedReason};
   try{
-    if(status!==document.getElementById('etStatus').defaultValue){await apiPost('/api/tasks/'+id+'/move',{status});}
+    if(status!==document.getElementById('etStatus').dataset.originalStatus){await apiPost('/api/tasks/'+id+'/move',{status});}
     await apiPatch('/api/tasks/'+id,update);closeEditTaskModal();renderAll()
   }catch(e){alert('Failed to save: '+e.message)}
 }
@@ -1195,28 +1884,27 @@ async function submitEditTask(){
 const COLUMNS=["triage","todo","ready","running","blocked","done"];
 function taskActions(t){
   let b='<div class="actions">';
-  b+='<button class="editBtn" onclick="showEditTaskModal(window.__task_'+t.id+')">Edit</button>';
-  b+='<button onclick="moveTaskPrompt(\''+t.id+'\')">Move</button>';
-  b+='<button onclick="blockTask(\''+t.id+'\')">Block</button>';
-  if(t.status==='ready'||t.status==='todo')b+='<button onclick="claimTask(\''+t.id+'\')">Claim</button>';
-  if(t.lease){b+='<button onclick="heartbeatTask(\''+t.id+'\')">HB</button>';b+='<button onclick="releaseTask(\''+t.id+'\')">Release</button>';b+='<button onclick="reclaimTask(\''+t.id+'\')">Reclaim</button>'}
-  if(t.retry&&t.retry.lastError)b+='<button onclick="retryBtn(\''+t.id+'\')">Retry</button>';
-  if(t.status==='running'||t.status==='blocked')b+='<button onclick="failTask(\''+t.id+'\')">Fail</button>';
-  if(t.status!=='done'&&t.status!=='archived')b+='<button onclick="completeTask(\''+t.id+'\')">Done</button>';
-  b+='<button onclick="archiveTask(\''+t.id+'\')">Archive</button>';
-  b+='<button onclick="showEventTimeline(\''+t.id+'\')">Events</button>';
-  if(t.artifacts&&t.artifacts.length>0)b+='<button onclick="viewArtifacts(\''+t.id+'\')">Artifacts ('+t.artifacts.length+')</button>';
-  else b+='<button onclick="viewArtifacts(\''+t.id+'\')">Artifacts</button>';
+  b+='<button class="editBtn" onclick="showEditTaskModal('+taskRef(t.id)+')">Edit</button>';
+  b+='<button onclick="moveTaskPrompt(\\''+q(t.id)+'\\')">Move</button>';
+  if(t.status!=='blocked')b+='<button onclick="blockTask(\\''+q(t.id)+'\\')">Block</button>';
+  if(t.status==='ready'||t.status==='todo')b+='<button onclick="claimTask(\\''+q(t.id)+'\\')">Claim</button>';
+  if(t.lease){b+='<button onclick="releaseTask(\\''+q(t.id)+'\\')">Release</button>';b+='<button onclick="reclaimTask(\\''+q(t.id)+'\\')">Reclaim</button>'}
+  if(t.retry&&t.retry.lastError)b+='<button onclick="retryBtn(\\''+q(t.id)+'\\')">Retry</button>';
+  if(t.status==='running'||t.status==='blocked')b+='<button onclick="failTask(\\''+q(t.id)+'\\')">Fail</button>';
+  if(t.status!=='done'&&t.status!=='archived')b+='<button onclick="completeTask(\\''+q(t.id)+'\\')">Done</button>';
+  b+='<button onclick="archiveTask(\\''+q(t.id)+'\\')">Archive</button>';
+  b+='<button onclick="showEventTimeline(\\''+q(t.id)+'\\')">Events</button>';
+  if(t.artifacts&&t.artifacts.length>0)b+='<button onclick="viewArtifacts(\\''+q(t.id)+'\\')">Art '+t.artifacts.length+'</button>';
   b+='</div>';
   return b;
 }
 function taskMeta(t){
   let m='';
-  if(t.assignee)m+=' <b>@</b>'+esc(t.assignee);
-  if(t.owner)m+=' <b>~</b>'+esc(t.owner);
+  if(t.assignee)m+='<span><b>@</b>'+esc(t.assignee)+'</span>';
+  if(t.owner)m+=' <span><b>~</b>'+esc(t.owner)+'</span>';
   if(t.priority)m+=' '+prioBadge(t.priority);
   if(t.tags&&t.tags.length)m+=' '+t.tags.map(tg=>'<span class="tag">'+esc(tg)+'</span>').join('');
-  if(t.body&&t.body.length>80)m+='<br>'+esc(t.body.slice(0,80))+'...';
+  if(t.body&&t.body.length>58)m+='<br>'+esc(t.body.slice(0,58))+'...';
   else if(t.body)m+='<br>'+esc(t.body);
   if(t.blockedReason)m+='<br><b>Blocked:</b> '+esc(t.blockedReason);
   if(t.lease)m+='<br><b>Lease:</b> '+esc(t.lease.workerId)+' age:'+age(t.lease.lastHeartbeatAt||t.lease.claimedAt)+' ['+t.lease.status+']';
@@ -1230,20 +1918,87 @@ function taskMeta(t){
   if(t.artifacts&&t.artifacts.length>0){const cur=t.artifacts.find(a=>a.isCurrent);if(cur)m+='<br><b>Artifact:</b> v'+cur.version+' '+esc(cur.label)+(cur.content?' <span style="color:var(--text-muted)">('+esc(cur.content.slice(0,50))+')</span>':'');else m+='<br><b>Artifacts:</b> '+t.artifacts.length+' total'}
   return m;
 }
+function hashTask(t){
+  const s=(t.id||'')+'|'+(t.title||'')+'|'+(t.status||'');
+  let h=0;for(let i=0;i<s.length;i++)h=(h*31+s.charCodeAt(i))>>>0;
+  return h
+}
+function taskSignal(t){
+  let h=hashTask(t),bars='',dots='';
+  for(let i=0;i<8;i++){
+    h=(h*1664525+1013904223)>>>0;
+    const height=18+(h%76);
+    bars+='<span class="bar" style="height:'+height+'%"></span>';
+  }
+  h=hashTask(t)^0x9e3779b9;
+  for(let i=0;i<5;i++){
+    h=(h*1103515245+12345)>>>0;
+    const left=8+(h%84);
+    h=(h*1103515245+12345)>>>0;
+    const top=12+(h%66);
+    dots+='<span class="dot" style="left:'+left+'%;top:'+top+'%"></span>';
+  }
+  return '<div class="signal">'+bars+dots+'</div>'
+}
 async function renderStatusBoard(){
   const allTasks=await fetchBoard();if(!allTasks)return;
   const ptasks=savedProj?allTasks.filter(t=>t.projectId===savedProj||!t.projectId):allTasks;
   const tasks=applyFilters(ptasks);
-  const c=document.getElementById("columns");c.innerHTML=COLUMNS.map(x=>'<div class="column"><h2>'+x.toUpperCase()+' ('+tasks.filter(t=>t.status===x).length+')</h2><div id="cards-'+x+'"></div></div>').join('');
+  const links=document.getElementById('dependencyLinks');if(links)links.innerHTML='';
+  const c=document.getElementById("columns");c.innerHTML=COLUMNS.map(x=>'<div class="column" data-status="'+x+'" ondragover="onColumnDragOver(event)" ondragleave="onColumnDragLeave(event)" ondrop="onColumnDrop(event,\\''+x+'\\')"><h2>'+x.toUpperCase()+' ('+tasks.filter(t=>t.status===x).length+')</h2><div id="cards-'+x+'"></div></div>').join('');
   for(const t of tasks){
     const d=document.createElement('div');
-    window['__task_'+t.id]=t;
-    const cls='task-card'+(t.status==='blocked'?' blocked':'')+(t.status==='done'?' done':'')+(t.priority==='urgent'?' prio-urgent':t.priority==='high'?' prio-high':t.priority==='normal'?' prio-normal':'');
+    window.__tasks[t.id]=t;
+    const cls='task-card status-'+t.status+(t.status==='blocked'?' blocked':'')+(t.status==='done'?' done':'')+(t.priority==='urgent'?' prio-urgent':t.priority==='high'?' prio-high':t.priority==='normal'?' prio-normal':'');
     d.className=cls;
-    d.innerHTML='<div class="ttl" onclick="showEditTaskModal(window.__task_'+t.id+')">'+esc(t.title)+'</div><div class="meta">'+t.id+taskMeta(t)+'</div>'+taskActions(t);
-    document.getElementById('cards-'+t.status).appendChild(d);
+    d.draggable=true;
+    d.dataset.taskId=t.id;
+    d.addEventListener('dragstart',onTaskDragStart);
+    d.addEventListener('dragend',onTaskDragEnd);
+    d.innerHTML='<div class="card-head"><span class="card-id">'+esc(t.id)+'</span><span class="card-status">'+esc(t.status)+'</span></div><div class="ttl" onclick="showEditTaskModal('+taskRef(t.id)+')">'+esc(t.title)+'</div>'+taskSignal(t)+'<div class="meta">'+taskMeta(t)+'</div>'+taskActions(t);
+    const col=document.getElementById('cards-'+t.status);
+    if(col)col.appendChild(d);
+  }
+  setTimeout(()=>renderDependencyLinks(tasks),0);
+}
+function onTaskDragStart(e){e.currentTarget.classList.add('dragging');e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('text/plain',e.currentTarget.dataset.taskId)}
+function onTaskDragEnd(e){e.currentTarget.classList.remove('dragging');document.querySelectorAll('.column.drag-over').forEach(c=>c.classList.remove('drag-over'))}
+function onColumnDragOver(e){e.preventDefault();e.currentTarget.classList.add('drag-over')}
+function onColumnDragLeave(e){e.currentTarget.classList.remove('drag-over')}
+async function onColumnDrop(e,status){
+  e.preventDefault();e.currentTarget.classList.remove('drag-over');
+  const id=e.dataTransfer.getData('text/plain');if(!id)return;
+  const task=window.__tasks[id];if(!task||task.status===status)return;
+  try{await apiPost('/api/tasks/'+id+'/move',{status});renderAll()}catch(err){alert('Move failed: '+err.message)}
+}
+function renderDependencyLinks(tasks){
+  const svg=document.getElementById('dependencyLinks');const root=document.getElementById('statusView');
+  if(!svg||!root||!root.getBoundingClientRect)return;
+  svg.innerHTML='';
+  const rootRect=root.getBoundingClientRect();if(!rootRect.width||!rootRect.height)return;
+  svg.setAttribute('width',rootRect.width);svg.setAttribute('height',rootRect.height);
+  const taskMap={};for(const t of tasks)taskMap[t.id]=t;
+  const pairs=[];
+  for(const t of tasks){
+    for(const dep of (t.blockedBy||[]))pairs.push([dep,t.id]);
+    for(const target of (t.blockers||[]))pairs.push([t.id,target]);
+  }
+  const seen=new Set();
+  for(const [fromId,toId] of pairs){
+    const key=fromId+'>'+toId;if(seen.has(key))continue;seen.add(key);
+    const from=document.querySelector(dataTaskSelector(fromId));
+    const to=document.querySelector(dataTaskSelector(toId));
+    if(!from||!to)continue;
+    const a=from.getBoundingClientRect(),b=to.getBoundingClientRect();
+    const x1=a.right-rootRect.left,y1=a.top+a.height/2-rootRect.top;
+    const x2=b.left-rootRect.left,y2=b.top+b.height/2-rootRect.top;
+    const dx=Math.max(40,Math.abs(x2-x1)*0.45);
+    const path=document.createElementNS('http://www.w3.org/2000/svg','path');
+    path.setAttribute('d','M '+x1+' '+y1+' C '+(x1+dx)+' '+y1+', '+(x2-dx)+' '+y2+', '+x2+' '+y2);
+    svg.appendChild(path);
   }
 }
+if(window.addEventListener)window.addEventListener('resize',()=>{if(currentView==='status')renderDependencyLinks(Object.values(window.__tasks))});
 
 // ─── Agent Board ────────────────────────────────────────
 async function renderAgentBoard(){
@@ -1267,7 +2022,7 @@ async function renderAgentBoard(){
       h+='<div class="a-task"><span class="status-badge '+badgeClass+'">'+t.status+'</span><b>'+esc(t.title)+'</b> '+esc(t.id);
       if(t.lease)h+=' <span style="font-size:10px;color:var(--text-muted)">HB:'+age(t.lease.lastHeartbeatAt||t.lease.claimedAt)+'</span>';
       if(t.retry&&t.retry.attempt>0)h+=' <span style="font-size:10px;color:var(--text-muted)">retry:'+t.retry.attempt+'/'+t.retry.maxAttempts+'</span>';
-      h+=' <button style="font-size:10px" onclick="showEventTimeline(\''+t.id+'\')">E</button></div>';
+      h+=' <button style="font-size:10px" onclick="showEventTimeline(\\''+t.id+'\\')">E</button></div>';
     }
     if(tasks.length>10)h+='<div style="font-size:10px;color:var(--text-muted)">+'+(tasks.length-10)+' more</div>';
     h+='</div>';
@@ -1294,10 +2049,10 @@ async function renderZombieMonitor(){
       h+='<b>HB Age:</b> '+age(t.lease.lastHeartbeatAt||t.lease.claimedAt);
     }
     h+='</div><div class="actions">';
-    h+='<button onclick="reclaimZombie(\''+t.id+'\')">Reclaim</button>';
-    h+='<button onclick="releaseZombie(\''+t.id+'\')">Release</button>';
-    if(t.retry&&t.retry.lastError)h+='<button onclick="retryBtn(\''+t.id+'\')">Retry</button>';
-    h+='<button onclick="failTask(\''+t.id+'\')">Fail</button>';
+    h+='<button onclick="reclaimZombie(\\''+t.id+'\\')">Reclaim</button>';
+    h+='<button onclick="releaseZombie(\\''+t.id+'\\')">Release</button>';
+    if(t.retry&&t.retry.lastError)h+='<button onclick="retryBtn(\\''+t.id+'\\')">Retry</button>';
+    h+='<button onclick="failTask(\\''+t.id+'\\')">Fail</button>';
     h+='</div></div>';
   }
   h+='</div>';
@@ -1326,9 +2081,9 @@ async function renderWorkerMonitor(){
     if(w.tasksCompleted!==undefined)h+='<b>Tasks done:</b> '+w.tasksCompleted+'<br>';
     h+='</div>';
     h+='<div class="actions">';
-    if(w.currentTaskId)h+='<button onclick="viewWorkerTask(\''+esc(w.currentTaskId)+'\')">View Task</button>';
-    if(w.status!=='offline')h+='<button onclick="markWorkerOffline(\''+esc(w.id)+'\')">Mark Offline</button>';
-    if(w.status==='stale'&&w.currentTaskId)h+='<button onclick="reclaimWorkerTask(\''+esc(w.id)+'\')">Reclaim Task</button>';
+    if(w.currentTaskId)h+='<button onclick="viewWorkerTask(\\''+esc(w.currentTaskId)+'\\')">View Task</button>';
+    if(w.status!=='offline')h+='<button onclick="markWorkerOffline(\\''+esc(w.id)+'\\')">Mark Offline</button>';
+    if(w.status==='stale'&&w.currentTaskId)h+='<button onclick="reclaimWorkerTask(\\''+esc(w.id)+'\\')">Reclaim Task</button>';
     h+='</div></div>';
   }
   h+='</div>';
@@ -1367,11 +2122,11 @@ async function renderVerificationReview(){
       if(t.hallucinationGuard.recoveryAction)h+='<b>Recovery:</b> '+esc(t.hallucinationGuard.recoveryAction)+'<br>';
     }
     h+='</div><div class="actions">';
-    h+='<button onclick="verifyPass(\''+t.id+'\')">Pass</button>';
-    h+='<button onclick="verifyFail(\''+t.id+'\')">Fail</button>';
-    if(t.status==='running')h+='<button onclick="releaseTask(\''+t.id+'\')">Release</button>';
-    if(t.retry&&t.retry.lastError)h+='<button onclick="retryBtn(\''+t.id+'\')">Retry</button>';
-    h+='<button onclick="showEventTimeline(\''+t.id+'\')">Events</button>';
+    h+='<button onclick="verifyPass(\\''+t.id+'\\')">Pass</button>';
+    h+='<button onclick="verifyFail(\\''+t.id+'\\')">Fail</button>';
+    if(t.status==='running')h+='<button onclick="releaseTask(\\''+t.id+'\\')">Release</button>';
+    if(t.retry&&t.retry.lastError)h+='<button onclick="retryBtn(\\''+t.id+'\\')">Retry</button>';
+    h+='<button onclick="showEventTimeline(\\''+t.id+'\\')">Events</button>';
     h+='</div></div>';
   }
   h+='</div>';
@@ -1420,7 +2175,7 @@ async function viewArtifacts(taskId){
       h+='<div class="artifact-meta">by '+esc(a.createdBy)+' at '+a.createdAt;
       if(a.content)h+=' &middot; '+esc(a.content.slice(0,80))+(a.content.length>80?'...':'');
       h+='</div>';
-      if(!a.isCurrent)h+='<div class="artifact-actions"><button onclick="selectArtifactDashboard(\''+taskId+'\',\''+a.id+'\')">Select as current</button></div>';
+      if(!a.isCurrent)h+='<div class="artifact-actions"><button onclick="selectArtifactDashboard(\\''+taskId+'\\',\\''+a.id+'\\')">Select as current</button></div>';
       h+='</div>';
     }
     el.innerHTML=h;
@@ -1572,6 +2327,24 @@ export function startKanbanServer(options: ServerOptions = {}): Promise<{ url: s
 
         if (path === 'api/board') {
           response = await handlers.handleBoard()
+        } else if (path === 'api/assistant/draft') {
+          if (req.method === 'POST') {
+            response = await handlers.handleAssistantDraft(body)
+          } else {
+            response = createJsonResponse(405, { error: 'Method not allowed' })
+          }
+        } else if (path === 'api/assistant/create') {
+          if (req.method === 'POST') {
+            response = await handlers.handleAssistantCreate(body)
+          } else {
+            response = createJsonResponse(405, { error: 'Method not allowed' })
+          }
+        } else if (path === 'api/assistant/command') {
+          if (req.method === 'POST') {
+            response = await handlers.handleAssistantCommand(body)
+          } else {
+            response = createJsonResponse(405, { error: 'Method not allowed' })
+          }
         } else if (path === 'api/tasks/claim-next') {
           if (req.method === 'POST') {
             response = await handlers.handleClaimNext(body)
