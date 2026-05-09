@@ -3,6 +3,7 @@ import chalk from 'chalk';
 import * as React from 'react';
 import { memo, useCallback, useEffect, useRef } from 'react';
 import { logEvent } from 'src/services/analytics/index.js';
+import { getProviderRegistryEntry } from 'src/services/ai/providerRegistry.js';
 import { useAppState, useSetAppState } from 'src/state/AppState.js';
 import type { PermissionMode } from 'src/utils/permissions/PermissionMode.js';
 import { getKairosActive, getMainThreadAgentType, getOriginalCwd, getSdkBetas, getSessionId } from '../bootstrap/state.js';
@@ -28,7 +29,6 @@ import { getCurrentSessionTitle } from '../utils/sessionStorage.js';
 import { doesMostRecentAssistantMessageExceed200k, getCurrentUsage } from '../utils/tokens.js';
 import { roughTokenCountEstimationForMessages } from '../services/tokenEstimation.js';
 import { getCurrentWorktreeSession } from '../utils/worktree.js';
-import { fileHistoryGetSessionFileDiffStats } from '../utils/fileHistory.js';
 import { isVimModeEnabled } from './PromptInput/utils.js';
 import { getBranch } from '../utils/git.js';
 
@@ -82,7 +82,7 @@ function buildStatusLineCommandInput(
     }),
     model: {
       id: runtimeModel,
-      display_name: renderModelName(runtimeModel, providerOverride)
+      display_name: renderModelName(runtimeModel, providerOverride).replace(/^[^:]+:\s*/, '')
     },
     workspace: {
       current_dir: getCwd(),
@@ -145,6 +145,211 @@ export function getLastAssistantMessageId(messages: Message[]): string | null {
   return getLastAssistantMessage(messages)?.uuid ?? null;
 }
 
+// ─── Claude-HUD-inspired helpers ───────────────────────────────────────────
+
+/** Visual context bar like claude-hud's coloredBar */
+function coloredBar(percent: number, width: number = 10): string {
+  const safePercent = Math.min(100, Math.max(0, percent));
+  const filled = Math.round((safePercent / 100) * width);
+  const empty = width - filled;
+
+  let colorFn: typeof chalk.hex;
+  if (percent > 85) colorFn = chalk.hex('#ff4444');       // red
+  else if (percent > 70) colorFn = chalk.hex('#ffaa00');  // yellow/warning
+  else colorFn = chalk.hex('#44aa44');                      // green
+
+  const emptyFn = chalk.hex('#555555');
+  return colorFn('█'.repeat(filled)) + emptyFn('░'.repeat(empty));
+}
+
+interface ToolActivity {
+  id: string;
+  name: string;
+  target?: string;
+  status: 'running' | 'completed' | 'error';
+}
+
+interface AgentActivity {
+  id: string;
+  type: string;
+  description?: string;
+  status: 'running' | 'completed';
+}
+
+interface TodoState {
+  inProgress: string | null;
+  completed: number;
+  total: number;
+}
+
+function extractTarget(toolName: string, input?: Record<string, unknown>): string | undefined {
+  if (!input) return undefined;
+  switch (toolName) {
+    case 'Read':
+    case 'Write':
+    case 'Edit':
+      return (input.file_path as string) ?? (input.path as string);
+    case 'Glob':
+      return input.pattern as string;
+    case 'Grep':
+      return input.pattern as string;
+    case 'Bash': {
+      const cmd = input.command as string;
+      return cmd ? cmd.slice(0, 30) + (cmd.length > 30 ? '...' : '') : undefined;
+    }
+  }
+  return undefined;
+}
+
+/** Block shape for tool_use/tool_result parsing — subset of actual message content blocks */
+interface ActivityBlock {
+  type: string;
+  id?: string;
+  name?: string;
+  tool_use_id?: string;
+  input?: Record<string, unknown>;
+  is_error?: boolean;
+  subagent_type?: string;
+  description?: string;
+  subject?: string;
+  status?: string;
+  taskId?: string | number;
+  todos?: Array<{ content: string; status: string }>;
+}
+
+/** Extract tool activity and agent state from all messages.
+ *  Mirrors claude-hud's transcript.ts processEntry logic. */
+function extractActivity(messages: Message[]): {
+  tools: ToolActivity[];
+  agents: AgentActivity[];
+  todos: TodoState | null;
+} {
+  const toolMap = new Map<string, ToolActivity>();
+  const agentMap = new Map<string, AgentActivity>();
+  const taskIdToIndex = new Map<string, number>();
+  let latestTodos: Array<{ content: string; status: string }> = [];
+
+  for (const msg of messages) {
+    const content = (msg as any).content;
+    if (!Array.isArray(content)) continue;
+
+    for (const block of content as ActivityBlock[]) {
+      // Tool use => running tool
+      if (block.type === 'tool_use' && block.id && block.name) {
+        const toolEntry: ToolActivity = {
+          id: block.id,
+          name: block.name,
+          target: extractTarget(block.name, block.input),
+          status: 'running',
+        };
+
+        if (block.name === 'Task' || block.name === 'Agent') {
+          const input = (block.input ?? {}) as Record<string, unknown>;
+          agentMap.set(block.id, {
+            id: block.id,
+            type: (input.subagent_type as string) ?? 'agent',
+            description: (input.description as string) ?? undefined,
+            status: 'running',
+          });
+        } else if (block.name === 'TodoWrite') {
+          const input = (block.input ?? {}) as { todos?: Array<{ content: string; status: string }> };
+          if (input.todos && Array.isArray(input.todos)) {
+            // Preserve task IDs by content matching (same as claude-hud)
+            const contentToTaskIds = new Map<string, string[]>();
+            for (const [taskId, idx] of taskIdToIndex) {
+              if (idx < latestTodos.length) {
+                const existingContent = latestTodos[idx].content;
+                const ids = contentToTaskIds.get(existingContent) ?? [];
+                ids.push(taskId);
+                contentToTaskIds.set(existingContent, ids);
+              }
+            }
+            latestTodos = input.todos.map(t => ({ content: t.content, status: t.status }));
+            taskIdToIndex.clear();
+            for (let i = 0; i < latestTodos.length; i++) {
+              const ids = contentToTaskIds.get(latestTodos[i].content);
+              if (ids && ids.length > 0) {
+                taskIdToIndex.set(ids.shift()!, i);
+                if (ids.length === 0) contentToTaskIds.delete(latestTodos[i].content);
+              }
+            }
+          }
+        } else if (block.name === 'TaskCreate') {
+          const input = (block.input ?? {}) as Record<string, unknown>;
+          const subject = typeof input.subject === 'string' ? input.subject : '';
+          const desc = typeof input.description === 'string' ? input.description : '';
+          const todoContent = subject || desc || 'Untitled task';
+          const status = input.status === 'in_progress' ? 'in_progress' :
+                         input.status === 'completed' ? 'completed' : 'pending';
+          latestTodos.push({ content: todoContent, status });
+          const taskId = input.taskId ?? block.id;
+          if (taskId) taskIdToIndex.set(String(taskId), latestTodos.length - 1);
+        } else if (block.name === 'TaskUpdate') {
+          const input = (block.input ?? {}) as Record<string, unknown>;
+          const tid = input.taskId;
+          let idx: number | null = null;
+          if (typeof tid === 'string' || typeof tid === 'number') {
+            const key = String(tid);
+            idx = taskIdToIndex.get(key) ?? null;
+            if (idx === null && /^\d+$/.test(key)) {
+              const n = parseInt(key, 10) - 1;
+              if (n >= 0 && n < latestTodos.length) idx = n;
+            }
+          }
+          if (idx !== null && idx < latestTodos.length) {
+            if (input.status) {
+              const s = String(input.status);
+              latestTodos[idx].status = s === 'completed' ? 'completed' :
+                                        s === 'in_progress' ? 'in_progress' : 'pending';
+            }
+            const newSubject = typeof input.subject === 'string' ? input.subject : '';
+            const newDesc = typeof input.description === 'string' ? input.description : '';
+            if (newSubject || newDesc) latestTodos[idx].content = newSubject || newDesc;
+          }
+        } else {
+          toolMap.set(block.id, toolEntry);
+        }
+      }
+
+      // Tool result => completed/error
+      if (block.type === 'tool_result' && block.tool_use_id) {
+        const tool = toolMap.get(block.tool_use_id);
+        if (tool) {
+          tool.status = block.is_error ? 'error' : 'completed';
+        }
+        const agent = agentMap.get(block.tool_use_id);
+        if (agent) {
+          agent.status = 'completed';
+        }
+      }
+    }
+  }
+
+  const tools = Array.from(toolMap.values());
+  const agents = Array.from(agentMap.values());
+
+  // Build todo state
+  let todos: TodoState | null = null;
+  if (latestTodos.length > 0) {
+    const inProgress = latestTodos.find(t => t.status === 'in_progress');
+    const completed = latestTodos.filter(t => t.status === 'completed').length;
+    todos = {
+      inProgress: inProgress ? inProgress.content : null,
+      completed,
+      total: latestTodos.length,
+    };
+  }
+
+  return { tools, agents, todos };
+}
+
+function truncate(str: string, maxLen: number = 40): string {
+  if (str.length <= maxLen) return str;
+  return str.slice(0, maxLen - 3) + '...';
+}
+
+// ─── StatusLine component ──────────────────────────────────────────────────
+
 function StatusLineInner({
   messagesRef,
   lastAssistantMessageId,
@@ -159,23 +364,11 @@ function StatusLineInner({
   const { addNotification } = useNotifications();
   const mainLoopModel = useMainLoopModel();
   const [currentBranch, setCurrentBranch] = React.useState<string | null>(null);
-  const fileHistory = useAppState(s => s.fileHistory);
-  const [modifiedFiles, setModifiedFiles] = React.useState<Array<{
-    path: string;
-    added: number;
-    removed: number;
-  }>>([]);
   const mcpCount = useAppState(s => s.mcp.clients.length) as number;
   const thinkingEnabled = useAppState(s => s.thinkingEnabled);
   const mainLoopProvider = useAppState(s => s.mainLoopProvider);
   const mainLoopProviderForSession = useAppState(s => s.mainLoopProviderForSession);
-  const [currentTime, setCurrentTime] = React.useState(new Date());
   const [currentCwd, setCurrentCwd] = React.useState(getCwd());
-
-  React.useEffect(() => {
-    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
-    return () => clearInterval(timer);
-  }, []);
 
   // Poll for CWD changes to update status line when /setpath is used
   React.useEffect(() => {
@@ -204,6 +397,7 @@ function StatusLineInner({
     permissionMode: PermissionMode;
     vimMode: VimMode | undefined;
     mainLoopModel: ModelName;
+    provider?: string;
   }>({
     messageId: null,
     exceeds200kTokens: false,
@@ -231,14 +425,8 @@ function StatusLineInner({
         previousStateRef.current.messageId = currentMessageId;
         previousStateRef.current.exceeds200kTokens = exceeds200kTokens;
       }
-      const [branch, sessionFileDiffs] = await Promise.all([getBranch(), fileHistoryGetSessionFileDiffStats(fileHistory)]);
+      const branch = await getBranch();
       setCurrentBranch(branch);
-      const nextModifiedFiles = sessionFileDiffs.map(fileStats => ({
-        path: fileStats.path,
-        added: fileStats.insertions,
-        removed: fileStats.deletions
-      }));
-      setModifiedFiles(nextModifiedFiles.slice(0, 5));
       const activeProvider = mainLoopProviderForSession ?? mainLoopProvider;
       const statusInput = buildStatusLineCommandInput(permissionModeRef.current, exceeds200kTokens, settingsRef.current, msgs, Array.from(addedDirsRef.current.keys()), mainLoopModelRef.current, vimModeRef.current, activeProvider);
       const text = await executeStatusLineCommand(statusInput, controller.signal, undefined, logResult);
@@ -249,7 +437,7 @@ function StatusLineInner({
         });
       }
     } catch { /* ignore */ }
-  }, [fileHistory, messagesRef, setAppState]);
+  }, [messagesRef, setAppState]);
 
   const scheduleUpdate = useCallback(() => {
     if (debounceTimerRef.current !== undefined) clearTimeout(debounceTimerRef.current);
@@ -261,11 +449,11 @@ function StatusLineInner({
 
   useEffect(() => {
     const activeProvider = mainLoopProviderForSession ?? mainLoopProvider;
-    if (lastAssistantMessageId !== previousStateRef.current.messageId || permissionMode !== previousStateRef.current.permissionMode || vimMode !== previousStateRef.current.vimMode || mainLoopModel !== previousStateRef.current.mainLoopModel || activeProvider !== (previousStateRef.current as any).provider) {
+    if (lastAssistantMessageId !== previousStateRef.current.messageId || permissionMode !== previousStateRef.current.permissionMode || vimMode !== previousStateRef.current.vimMode || mainLoopModel !== previousStateRef.current.mainLoopModel || activeProvider !== previousStateRef.current.provider) {
       previousStateRef.current.permissionMode = permissionMode;
       previousStateRef.current.vimMode = vimMode;
       previousStateRef.current.mainLoopModel = mainLoopModel;
-      (previousStateRef.current as any).provider = activeProvider;
+      previousStateRef.current.provider = activeProvider;
       scheduleUpdate();
     }
   }, [lastAssistantMessageId, permissionMode, vimMode, mainLoopModel, mainLoopProvider, mainLoopProviderForSession, scheduleUpdate]);
@@ -347,56 +535,164 @@ function StatusLineInner({
     const formatCost = (usd: number): string => usd < 0.01 ? '<$0.01' : `$${usd.toFixed(2)}`;
     const usedPercentage = contextPercentages.used ?? 0;
     const approxContextTokens = inputTokens + cacheReadTokens + cacheWriteTokens;
-    const timeStr = `${currentTime.getHours().toString().padStart(2, '0')}:${currentTime.getMinutes().toString().padStart(2, '0')}`;
+    const rawModelName = renderModelName(runtimeModel, mainLoopProviderForSession ?? mainLoopProvider);
+    // Strip provider prefix (e.g., "KiloCode: ") when showing in status line,
+    // since the provider is already displayed separately in brackets below
+    const modelName = rawModelName.replace(/^[^:]+:\s*/, '');
+    const branchText = gitBranch ? chalk.dim(`(${gitBranch})`) : '';
     const statusText = thinkingEnabled ? 'THINKING' : 'IDLE';
+
+    // Context bar (claude-hud style)
+    const bar = coloredBar(usedPercentage, 10);
+
+    // Extract tool/agent/todo activity
+    const { tools, agents, todos } = extractActivity(messagesRef.current);
+    const runningTools = tools.filter(t => t.status === 'running');
+    const completedTools = tools.filter(t => t.status === 'completed' || t.status === 'error');
+    const runningAgents = agents.filter(a => a.status === 'running');
+
+    // Build tool count summary for completed tools
+    const toolCounts = new Map<string, number>();
+    for (const t of completedTools) {
+      toolCounts.set(t.name, (toolCounts.get(t.name) ?? 0) + 1);
+    }
+    const sortedCompletedTools = Array.from(toolCounts.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 4);
+
+    const showActivity = runningTools.length > 0 || runningAgents.length > 0 || sortedCompletedTools.length > 0;
+
+    // ── Provider label for non-default providers ──
+    const activeProvider = mainLoopProviderForSession ?? mainLoopProvider;
+    let providerLabel = '';
+    if (activeProvider && activeProvider !== 'anthropic') {
+      const entry = getProviderRegistryEntry(activeProvider);
+      if (entry) providerLabel = chalk.dim(`[${entry.label}]`);
+    }
+
+    // ── Line 1: Identity — model, provider, project, branch ──
+    const line1 =
+      (thinkingEnabled
+        ? chalk.hex('#44ff44')(`● ${statusText}`)
+        : chalk.hex('#666666')(`● ${statusText}`)) +
+      '  ' +
+      chalk.cyan(modelName) +
+      (providerLabel ? ' ' + providerLabel : '') +
+      '  ' +
+      chalk.white(projectName) +
+      ' ' + branchText;
+
+    // ── Line 2: Status — context bar, tokens, rate limits, cost, duration ──
+    const contextTokStr = usedPercentage > 80
+      ? chalk.hex('#ff4444')(`${(approxContextTokens / 1000).toFixed(0)}k ${usedPercentage.toFixed(0)}%`)
+      : usedPercentage > 60
+        ? chalk.hex('#ffaa00')(`${(approxContextTokens / 1000).toFixed(0)}k ${usedPercentage.toFixed(0)}%`)
+        : chalk.hex('#aaaaaa')(`${(approxContextTokens / 1000).toFixed(0)}k ${usedPercentage.toFixed(0)}%`);
+
+    const rawUtil = getRawUtilization();
+    const rateParts: string[] = [];
+    if (rawUtil.five_hour) {
+      rateParts.push(
+        chalk.dim('5h:') +
+        (rawUtil.five_hour.utilization > 0.7
+          ? chalk.hex('#ff4444')(`${(rawUtil.five_hour.utilization * 100).toFixed(0)}%`)
+          : rawUtil.five_hour.utilization > 0.4
+            ? chalk.hex('#ffaa00')(`${(rawUtil.five_hour.utilization * 100).toFixed(0)}%`)
+            : chalk.hex('#44aa44')(`${(rawUtil.five_hour.utilization * 100).toFixed(0)}%`))
+      );
+    }
+    if (rawUtil.seven_day) {
+      rateParts.push(
+        chalk.dim('7d:') +
+        (rawUtil.seven_day.utilization > 0.7
+          ? chalk.hex('#ff4444')(`${(rawUtil.seven_day.utilization * 100).toFixed(0)}%`)
+          : rawUtil.seven_day.utilization > 0.4
+            ? chalk.hex('#ffaa00')(`${(rawUtil.seven_day.utilization * 100).toFixed(0)}%`)
+            : chalk.hex('#44aa44')(`${(rawUtil.seven_day.utilization * 100).toFixed(0)}%`))
+      );
+    }
+    const rateLimitStr = rateParts.length > 0 ? '  │  ' + rateParts.join('  ') : '';
+
+    // Color for ● on line 2 based on context usage
+    let line2BulletColor: typeof chalk.hex;
+    if (usedPercentage > 85) line2BulletColor = chalk.hex('#ff4444');
+    else if (usedPercentage > 70) line2BulletColor = chalk.hex('#ffaa00');
+    else line2BulletColor = chalk.hex('#44aa44');
+
+    const line2 =
+      line2BulletColor('●') +
+      ' ' +
+      bar +
+      ' ' +
+      contextTokStr +
+      rateLimitStr +
+      '  │  ' +
+      chalk.green(formatCost(cost)) +
+      '  ' +
+      chalk.dim(formatDuration(duration)) +
+      (mcpCount > 0 ? '  ' + chalk.hex('#AA88FF')(`MCP:${mcpCount}`) : '');
+
+    // ── Build activity line string ──
+    let activityLine = '';
+    if (showActivity) {
+      const parts: string[] = [];
+      for (const t of runningTools.slice(-3)) {
+        parts.push(
+          chalk.yellow('◐') + ' ' + chalk.cyan(t.name) +
+          (t.target ? chalk.dim(`: ${truncate(t.target.replace(/\\/g, '/'), 25)}`) : '')
+        );
+      }
+      if ((runningTools.length > 0 || runningAgents.length > 0) && sortedCompletedTools.length > 0) {
+        parts.push('  │  ');
+      }
+      for (const [name, count] of sortedCompletedTools) {
+        parts.push(chalk.green('✓') + ' ' + name + ' ' + chalk.dim(`×${count}`) + '  ');
+      }
+      for (const a of runningAgents.slice(0, 2)) {
+        parts.push(
+          chalk.yellow('◐') + ' ' + chalk.magenta(a.type) +
+          (a.description ? chalk.dim(`: ${truncate(a.description, 30)}`) : '') + '  '
+        );
+      }
+      activityLine = parts.join('');
+    }
+
+    // ── Build todo line string ──
+    const todoLine = (todos && todos.inProgress)
+      ? chalk.yellow('▸') + ' ' + truncate(todos.inProgress, 60) + ' ' + chalk.dim(`(${todos.completed}/${todos.total})`)
+      : '';
 
     return (
       <Box flexDirection="column" gap={0} marginTop={0}>
-        <Box flexDirection="row" gap={0}>
-          <Box paddingX={1} backgroundColor="#111111">
-            <Text color="gray">{timeStr}</Text>
-          </Box>
-          <Box paddingX={1} backgroundColor={thinkingEnabled ? 'green' : '#333333'}>
-            <Text color={thinkingEnabled ? 'black' : 'white'} bold>{statusText}</Text>
-          </Box>
-          <Box paddingX={1} backgroundColor="#222222">
-            <Text color="white">{projectName} {gitBranch ? chalk.blue(`(${gitBranch})`) : ''}</Text>
-          </Box>
-          <Box paddingX={1} backgroundColor="#333333">
-            <Text color="cyan">{renderModelName(runtimeModel, mainLoopProviderForSession ?? mainLoopProvider)}</Text>
-          </Box>
-          <Box paddingX={1} backgroundColor="#444444">
-            <Text color="yellow">{(approxContextTokens / 1000).toFixed(1)}k ({usedPercentage.toFixed(0)}%)</Text>
-          </Box>
-          <Box paddingX={1} backgroundColor="#222222">
-            <Text color="green">{formatCost(cost)}</Text>
-          </Box>
-          {mcpCount > 0 && (
-            <Box paddingX={1} backgroundColor="#5533FF">
-              <Text color="white">MCP:{mcpCount}</Text>
-            </Box>
-          )}
-        </Box>
-
-        <Box paddingX={1} marginTop={0}>
-          <Text dimColor>
-            <Ansi>{chalk.gray(`In: ${(inputTokens / 1000).toFixed(1)}k Out: ${(outputTokens / 1000).toFixed(1)}k Cache: ${((cacheReadTokens + cacheWriteTokens) / 1000).toFixed(1)}k | Session: ${formatDuration(duration)}`)}</Ansi>
+        {/* Line 1 — Identity: model, provider, project, branch */}
+        <Box>
+          <Text>
+            <Ansi>{line1}</Ansi>
           </Text>
         </Box>
 
-        {modifiedFiles.length > 0 && (
-          <Box flexDirection="column" gap={0} marginTop={0} paddingLeft={1}>
-            <Box borderStyle="round" borderColor="gray" borderTop={false} borderBottom={false} borderLeft={true} borderRight={false} paddingLeft={1}>
-              <Box flexDirection="column">
-                {modifiedFiles.map(file => (
-                  <Text key={file.path} wrap="truncate">
-                    <Ansi>{chalk.white(file.path.split(/[/\\]/).pop())} </Ansi>
-                    <Ansi>{chalk.green(`+${file.added} `)}</Ansi>
-                    <Ansi>{chalk.red(`-${file.removed}`)}</Ansi>
-                  </Text>
-                ))}
-              </Box>
-            </Box>
+        {/* Line 2 — Status: context bar, tokens, rate limits, cost, duration */}
+        <Box>
+          <Text>
+            <Ansi>{line2}</Ansi>
+          </Text>
+        </Box>
+
+        {/* Activity line — tools & agents (claude-hud style) */}
+        {activityLine && (
+          <Box>
+            <Text>
+              <Ansi>{activityLine}</Ansi>
+            </Text>
+          </Box>
+        )}
+
+        {/* Todo progress line */}
+        {todoLine && (
+          <Box>
+            <Text>
+              <Ansi>{todoLine}</Ansi>
+            </Text>
           </Box>
         )}
       </Box>

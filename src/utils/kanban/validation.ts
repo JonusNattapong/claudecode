@@ -24,6 +24,7 @@ import {
   type KanbanTaskInput,
   type KanbanTaskUpdate,
   type KanbanVerification,
+  type KanbanArtifact,
   type KanbanVerificationEvidence,
 } from './types.js'
 
@@ -136,6 +137,39 @@ function validateComment(value: unknown, index: number): KanbanComment {
   }
 }
 
+function validateArtifact(value: unknown, index: number): KanbanArtifact {
+  if (!isRecord(value)) {
+    throw new Error(`artifacts[${index}] must be an object`)
+  }
+  assertString(value.id, `artifacts[${index}].id`)
+  assertString(value.taskId, `artifacts[${index}].taskId`)
+  if (typeof value.version !== 'number') {
+    throw new Error(`artifacts[${index}].version must be a number`)
+  }
+  assertString(value.label, `artifacts[${index}].label`)
+  const validTypes = ['command', 'file', 'diff', 'test', 'manual', 'build', 'output']
+  if (typeof value.type !== 'string' || !validTypes.includes(value.type)) {
+    throw new Error(`artifacts[${index}].type must be one of: ${validTypes.join(', ')}`)
+  }
+  if (typeof value.isCurrent !== 'boolean') {
+    throw new Error(`artifacts[${index}].isCurrent must be a boolean`)
+  }
+  assertString(value.createdAt, `artifacts[${index}].createdAt`)
+  assertString(value.createdBy, `artifacts[${index}].createdBy`)
+  return {
+    id: value.id,
+    taskId: value.taskId,
+    version: value.version,
+    label: value.label,
+    content: typeof value.content === 'string' ? value.content : undefined,
+    path: typeof value.path === 'string' ? value.path : undefined,
+    type: value.type as KanbanArtifact['type'],
+    isCurrent: value.isCurrent,
+    createdAt: value.createdAt,
+    createdBy: value.createdBy,
+  }
+}
+
 function validateMetadata(value: unknown, field: string): Record<string, unknown> {
   if (value === undefined) return {}
   if (!isRecord(value)) {
@@ -227,6 +261,13 @@ function migrateTask(value: unknown, index: number): KanbanTask {
     })
   }
 
+  if (Array.isArray(value.blockedBy)) {
+    task.blockedBy = value.blockedBy.map(b => {
+      assertString(b, 'blockedBy')
+      return b
+    })
+  }
+
   if (Array.isArray(value.files)) {
     task.files = value.files.map(f => {
       assertString(f, 'files')
@@ -271,6 +312,9 @@ function migrateTask(value: unknown, index: number): KanbanTask {
   }
   if (Array.isArray(value.events)) {
     task.events = value.events as KanbanEvent[]
+  }
+  if (Array.isArray(value.artifacts)) {
+    task.artifacts = value.artifacts.map((a, i) => validateArtifact(a, i))
   }
   if (typeof value.workspaceId === 'string') {
     task.workspaceId = value.workspaceId
@@ -355,6 +399,7 @@ export function validateTaskUpdate(update: KanbanTaskUpdate): KanbanTaskUpdate {
   if (update.blockedReason !== undefined) assertString(update.blockedReason, 'blockedReason')
   if (update.blockedFromStatus !== undefined) validateStatus(update.blockedFromStatus)
   if (update.blockers !== undefined) assertStringArray(update.blockers, 'blockers')
+  if (update.blockedBy !== undefined) assertStringArray(update.blockedBy, 'blockedBy')
   if (update.comments !== undefined) {
     if (!Array.isArray(update.comments)) {
       throw new Error('comments must be an array')

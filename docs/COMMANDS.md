@@ -54,6 +54,7 @@ Access built-in tools and integrations.
 | `/branch` | Create a new git branch with session |
 | `/files` | Browse project files |
 | `/add-dir` | Add directory to session context |
+| `/kanban` | Manage the semi-automatic agent Kanban board (full command list: init, list, show, add, move, edit, delete, assign, block, unblock, complete, comment, archive, conflicts, files, open, export, retry, fail, verify, evidence, events, zombies, reclaim, next, claim-next, worker, workers, worker heartbeat, worker recover-stale, worker fail, artifact list/artifact current/artifact select) |
 
 ### 🤖 **Agent Commands**
 
@@ -66,6 +67,7 @@ Control AI agents and sub-agents.
 | `/advisor` | Request AI advice on current task |
 | `/ultraplan` | Ultra-deep planning mode |
 | `/ultrareview` | Comprehensive code review |
+| `/kanban` | Coordinate multi-step or multi-agent work with task status, ownership, blockers, declared files, and conflict checks |
 
 ### 📦 **Plugin & Skill Commands**
 

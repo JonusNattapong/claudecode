@@ -1,38 +1,50 @@
 import type { LocalCommandResult } from '../../commands.js'
 import type { ToolUseContext } from '../../Tool.js'
-import { getProjectRoot } from '../../bootstrap/state.js'
+import { getProjectRoot, runWithCwdOverride } from '../../utils/cwd.js'
 import {
   addKanbanTask,
   addEvidenceToTask,
   archiveKanbanTask,
   blockKanbanTask,
   claimKanbanTask,
+  claimNextTask,
   commentKanbanTask,
   completeKanbanTask,
   deleteKanbanTask,
   detectKanbanFileConflicts,
+  detectZombieTasks,
   editKanbanTask,
   exportKanbanMarkdown,
   failKanbanTask,
+  findClaimableTasks,
+  getCurrentArtifact,
   getKanbanTask,
+  getTaskArtifacts,
   getTaskEvents,
+  heartbeatKanbanTask,
   initKanbanBoard,
   kanbanBoardExists,
   listKanbanFiles,
   listKanbanTasks,
   listProjects,
   listWorkspaces,
+  listWorkers,
   migratePriority,
   migrateRisk,
   migrateStatus,
   moveKanbanTask,
   readKanbanBoard,
+  recoverStaleClaimedTasks,
+  reclaimKanbanTask,
   retryKanbanTask,
+  runKanbanWorker,
+  selectArtifact,
   unblockKanbanTask,
   verifyKanbanTask,
 } from '../../utils/kanban/index.js'
 import { openKanbanDashboard } from '../../utils/kanban/server.js'
 import type { KanbanPriority, KanbanStatus, KanbanTask, KanbanTaskInput, KanbanTaskUpdate } from '../../utils/kanban/types.js'
+import type { WorkerOptions, WorkerResult } from '../../utils/kanban/worker.js'
 
 type ParsedKanbanCommand =
   | { type: 'help' }
@@ -70,6 +82,20 @@ type ParsedKanbanCommand =
   | { type: 'events'; id: string }
   | { type: 'workspace'; action: 'list' | 'use'; workspaceId?: string }
   | { type: 'project'; action: 'list' | 'use'; projectId?: string }
+  | { type: 'zombies' }
+  | { type: 'reclaim'; id: string; workerId?: string }
+  // Phase 6
+  | { type: 'next'; statuses?: string }
+  | { type: 'claim-next'; worker: string }
+  // Phase 7
+  | { type: 'worker'; workerId: string; options: WorkerOptions }
+  | { type: 'workers' }
+  // Phase 13
+  | { type: 'artifact'; action: 'list' | 'current' | 'select'; taskId: string; artifactId?: string }
+  // Phase 15
+  | { type: 'worker-heartbeat'; taskId: string; workerId: string }
+  | { type: 'worker-recover-stale' }
+  | { type: 'worker-fail'; taskId: string; reason: string; workerId: string }
 
 const HELP = `Usage:
 /kanban init
@@ -95,7 +121,16 @@ const HELP = `Usage:
 /kanban evidence <id> --type command --label "label"
 /kanban events <id>
 /kanban workspace list
-/kanban project list`
+/kanban project list
+/kanban zombies
+/kanban reclaim <taskId> [workerId]
+/kanban next
+/kanban claim-next --worker <id>
+/kanban worker --worker <id> [--once|--loop] [--statuses <s>] [--allowBlocked] [--cmd "<cmd>"] [--cmd-argv <json>] [--verify "<cmd>"] [--project <id>] [--max-tasks <n>] [--poll-ms <ms>] [--heartbeat-ms <ms>] [--timeout-ms <ms>] [--output-limit <n>] [--verbose] [--quiet] [--dry-run]
+/kanban workers
+/kanban artifact list <taskId>
+/kanban artifact current <taskId>
+/kanban artifact select <taskId> <artifactId>`
 
 const STATUSES = ['triage', 'todo', 'ready', 'running', 'blocked', 'done', 'archived']
 const PRIORITIES = ['low', 'normal', 'high', 'urgent']
@@ -147,7 +182,7 @@ function tokenizeArgs(args: string): string[] {
 function readFlagValue(tokens: string[], index: number, flag: string): string {
   const value = tokens[index + 1]
   if (!value || value.startsWith('--')) {
-    throw new Error(`${flag} requires a value`)
+    throw new Error(flag + ' requires a value')
   }
   return value
 }
@@ -206,7 +241,7 @@ function parseAdd(tokens: string[]): ParsedKanbanCommand {
         input.notes = value
         break
       default:
-        throw new Error(`Unknown /kanban add flag: ${token}`)
+        throw new Error('Unknown /kanban add flag: ' + token)
     }
   }
 
@@ -225,7 +260,7 @@ function parseMove(tokens: string[]): ParsedKanbanCommand {
   for (let index = 3; index < tokens.length; index++) {
     const token = tokens[index]
     if (!token.startsWith('--')) {
-      throw new Error(`Unexpected /kanban move argument: ${token}`)
+      throw new Error('Unexpected /kanban move argument: ' + token)
     }
     const value = readFlagValue(tokens, index, token)
     index++
@@ -241,7 +276,7 @@ function parseMove(tokens: string[]): ParsedKanbanCommand {
         update.notes = value
         break
       default:
-        throw new Error(`Unknown /kanban move flag: ${token}`)
+        throw new Error('Unknown /kanban move flag: ' + token)
     }
   }
 
@@ -266,7 +301,7 @@ function parseEdit(tokens: string[]): ParsedKanbanCommand {
   for (let index = 2; index < tokens.length; index++) {
     const token = tokens[index]
     if (!token.startsWith('--')) {
-      throw new Error(`Unexpected /kanban edit argument: ${token}`)
+      throw new Error('Unexpected /kanban edit argument: ' + token)
     }
     switch (token) {
       case '--title':
@@ -298,7 +333,7 @@ function parseEdit(tokens: string[]): ParsedKanbanCommand {
         update.validation = []
         break
       default:
-        throw new Error(`Unknown /kanban edit flag: ${token}`)
+        throw new Error('Unknown /kanban edit flag: ' + token)
     }
   }
 
@@ -319,7 +354,7 @@ function parseBlock(tokens: string[]): ParsedKanbanCommand {
   for (let index = 2; index < tokens.length; index++) {
     const token = tokens[index]
     if (token !== '--reason') {
-      throw new Error(`Unknown /kanban block flag: ${token}`)
+      throw new Error('Unknown /kanban block flag: ' + token)
     }
     reason = readFlagValue(tokens, index, token)
     index++
@@ -336,7 +371,7 @@ function parseIdCommand(
 ): ParsedKanbanCommand {
   const id = tokens[1]
   if (!id || tokens.length > 2) {
-    throw new Error(`/kanban ${type} requires exactly <id>`)
+    throw new Error('/kanban ' + type + ' requires exactly <id>')
   }
   return { type, id }
 }
@@ -472,8 +507,108 @@ export function parseKanbanArgs(args: string): ParsedKanbanCommand {
       if (action === 'use') return { type: 'project', action: 'use', projectId: tokens[2] }
       throw new Error('/kanban project requires list|use')
     }
+    case 'zombies':
+      return { type: 'zombies' }
+    case 'reclaim': {
+      const id = tokens[1]
+      if (!id) throw new Error('/kanban reclaim requires <taskId>')
+      return { type: 'reclaim', id, workerId: tokens[2] }
+    }
+    case 'next':
+      return { type: 'next', statuses: tokens[1] }
+    case 'claim-next': {
+      let worker = ''
+      for (let i = 1; i < tokens.length; i++) {
+        if (tokens[i] === '--worker') {
+          worker = readFlagValue(tokens, i, tokens[i])
+          i++
+        }
+      }
+      if (!worker) throw new Error('/kanban claim-next requires --worker <id>')
+      return { type: 'claim-next', worker }
+    }
+    case 'worker': {
+      // Phase 15 subcommands
+      const sub = tokens[1]
+      if (sub === 'heartbeat') {
+        const taskId = tokens[2]
+        if (!taskId) throw new Error('/kanban worker heartbeat requires <taskId>')
+        const workerId = tokens[3] ?? 'cli'
+        return { type: 'worker-heartbeat', taskId, workerId }
+      }
+      if (sub === 'recover-stale') {
+        return { type: 'worker-recover-stale' }
+      }
+      if (sub === 'fail') {
+        const taskId = tokens[2]
+        if (!taskId) throw new Error('/kanban worker fail requires <taskId>')
+        const reasonIndex = tokens.indexOf('--reason')
+        const reason = reasonIndex >= 0 ? tokens[reasonIndex + 1] : 'Worker failed task'
+        if (!reason) throw new Error('/kanban worker fail --reason requires a value')
+        const workerId = tokens[tokens.length - 1] ?? 'cli'
+        return { type: 'worker-fail', taskId, reason, workerId }
+      }
+      // Existing worker-run command (--worker ...)
+      let workerId = '', cmd = '', verifyCmd = '', statusesRaw = ''
+      let once = false, loop = false, dryRun = false, verbose = false, quiet = false, allowBlocked = false
+      let projectId: string | undefined, cmdArgvRaw: string | undefined
+      let maxTasks = 1, pollMs = 30000, heartbeatMs = 30000
+      let timeoutMs = 300000, outputLimit = 5000
+      let leaseMinutes = 0
+      for (let i = 1; i < tokens.length; i++) {
+        switch (tokens[i]) {
+          case '--worker': workerId = readFlagValue(tokens, i, tokens[i]); i++; break
+          case '--once': once = true; break
+          case '--loop': loop = true; break
+          case '--project': projectId = readFlagValue(tokens, i, tokens[i]); i++; break
+          case '--statuses': statusesRaw = readFlagValue(tokens, i, tokens[i]); i++; break
+          case '--allowBlocked': allowBlocked = true; break
+          case '--cmd': cmd = readFlagValue(tokens, i, tokens[i]); i++; break
+          case '--cmd-argv': cmdArgvRaw = readFlagValue(tokens, i, tokens[i]); i++; break
+          case '--verify': verifyCmd = readFlagValue(tokens, i, tokens[i]); i++; break
+          case '--max-tasks': maxTasks = parseInt(readFlagValue(tokens, i, tokens[i]), 10); i++; break
+          case '--poll-ms': pollMs = parseInt(readFlagValue(tokens, i, tokens[i]), 10); i++; break
+          case '--heartbeat-ms': heartbeatMs = parseInt(readFlagValue(tokens, i, tokens[i]), 10); i++; break
+          case '--dry-run': dryRun = true; break
+          case '--verbose': verbose = true; break
+          case '--quiet': quiet = true; break
+          case '--timeout-ms': timeoutMs = parseInt(readFlagValue(tokens, i, tokens[i]), 10); i++; break
+          case '--output-limit': outputLimit = parseInt(readFlagValue(tokens, i, tokens[i]), 10); i++; break
+          case '--lease-minutes': leaseMinutes = parseInt(readFlagValue(tokens, i, tokens[i]), 10); i++; break
+          default: throw new Error('Unknown worker option: ' + tokens[i])
+        }
+      }
+      if (!workerId) throw new Error('/kanban worker requires --worker <id>')
+      if (!once && !loop) once = true // default to --once
+      if (loop) maxTasks = Infinity
+      const commandArgv: string[] | undefined = cmdArgvRaw ? JSON.parse(cmdArgvRaw) : undefined
+      const statuses: Array<'ready' | 'todo'> | undefined = statusesRaw
+        ? statusesRaw.split(',').map(s => s.trim() as 'ready' | 'todo')
+        : undefined
+      return { type: 'worker', workerId, options: { workerId, projectId, cmd, verifyCmd, maxTasks, pollMs, heartbeatMs, dryRun, verbose, quiet, commandArgv, timeoutMs, outputLimit, statuses, allowBlocked, leaseMinutes: leaseMinutes || undefined } }
+    }
+    case 'workers': {
+      return { type: 'workers' }
+    }
+    case 'artifact': {
+      const sub = tokens[1] as string | undefined
+      const taskId = tokens[2]
+      if (!taskId) throw new Error('/kanban artifact requires <taskId>')
+      if (sub === 'list') {
+        return { type: 'artifact', action: 'list', taskId }
+      }
+      if (sub === 'current') {
+        return { type: 'artifact', action: 'current', taskId }
+      }
+      if (sub === 'select') {
+        const artifactId = tokens[3]
+        if (!artifactId) throw new Error('/kanban artifact select requires <artifactId>')
+        return { type: 'artifact', action: 'select', taskId, artifactId }
+      }
+      throw new Error('/kanban artifact requires list|current|select')
+    }
     default:
-      throw new Error(`Unknown /kanban subcommand: ${tokens[0]}`)
+      throw new Error('Unknown /kanban subcommand: ' + tokens[0])
   }
 }
 
@@ -494,57 +629,57 @@ function formatArray(items: string[]): string {
 
 function formatTaskDetails(task: KanbanTask): string {
   const lines = [
-    `id: ${task.id}`,
-    `title: ${task.title}`,
-    `status: ${task.status}`,
+    'id: ' + task.id,
+    'title: ' + task.title,
+    'status: ' + task.status,
   ]
-  if (task.body) lines.push(`body: ${task.body}`)
-  if (task.priority) lines.push(`priority: ${task.priority}`)
-  if (task.assignee) lines.push(`assignee: ${task.assignee}`)
-  if (task.owner) lines.push(`owner: ${task.owner}`)
-  if (task.tags?.length) lines.push(`tags: ${task.tags.join(', ')}`)
-  if (task.blockedReason) lines.push(`blocked: ${task.blockedReason}`)
-  if (task.completedAt) lines.push(`completed: ${task.completedAt}`)
+  if (task.body) lines.push('body: ' + task.body)
+  if (task.priority) lines.push('priority: ' + task.priority)
+  if (task.assignee) lines.push('assignee: ' + task.assignee)
+  if (task.owner) lines.push('owner: ' + task.owner)
+  if (task.tags?.length) lines.push('tags: ' + task.tags.join(', '))
+  if (task.blockedReason) lines.push('blocked: ' + task.blockedReason)
+  if (task.completedAt) lines.push('completed: ' + task.completedAt)
   if (task.lease) {
-    lines.push(`lease: worker=${task.lease.workerId} expires=${task.lease.expiresAt} status=${task.lease.status}`)
+    lines.push('lease: worker=' + task.lease.workerId + ' expires=' + task.lease.expiresAt + ' status=' + task.lease.status)
   }
   if (task.retry) {
-    lines.push(`retry: attempt=${task.retry.attempt}/${task.retry.maxAttempts} strategy=${task.retry.strategy}`)
-    if (task.retry.lastError) lines.push(`lastError: ${task.retry.lastError}`)
+    lines.push('retry: attempt=' + task.retry.attempt + '/' + task.retry.maxAttempts + ' strategy=' + task.retry.strategy)
+    if (task.retry.lastError) lines.push('lastError: ' + task.retry.lastError)
   }
   if (task.verification) {
-    if (task.verification.passed !== undefined) lines.push(`verification: ${task.verification.passed ? 'PASSED' : 'FAILED'}`)
-    if (task.verification.summary) lines.push(`verificationSummary: ${task.verification.summary}`)
+    if (task.verification.passed !== undefined) lines.push('verification: ' + (task.verification.passed ? 'PASSED' : 'FAILED'))
+    if (task.verification.summary) lines.push('verificationSummary: ' + task.verification.summary)
     if (task.verification.evidence?.length) {
       lines.push('evidence:')
       for (const e of task.verification.evidence) {
-        lines.push(`  - ${e.type}: ${e.label}${e.content ? ' (' + e.content + ')' : ''}`)
+        lines.push('  - ' + e.type + ': ' + e.label + (e.content ? ' (' + e.content + ')' : ''))
       }
     }
   }
   if (task.comments?.length) {
     lines.push('comments:')
     for (const c of task.comments) {
-      lines.push(`  - ${c.author} (${c.createdAt}): ${c.body}`)
+      lines.push('  - ' + c.author + ' (' + c.createdAt + '): ' + c.body)
     }
   }
   if (task.events?.length) {
     lines.push('events:')
     for (const e of task.events.slice(-5)) {
-      lines.push(`  - [${e.type}] ${e.actor}: ${e.message} (${e.createdAt})`)
+      lines.push('  - [' + e.type + '] ' + e.actor + ': ' + e.message + ' (' + e.createdAt + ')')
     }
   }
-  lines.push(`created: ${task.createdAt}`)
-  lines.push(`updated: ${task.updatedAt}`)
+  lines.push('created: ' + task.createdAt)
+  lines.push('updated: ' + task.updatedAt)
   return lines.join('\n')
 }
 
 function formatTaskLine(task: KanbanTask): string {
-  const assignee = task.assignee ? ` @${task.assignee}` : ''
-  const priority = task.priority ? ` [${task.priority}]` : ''
-  const leaseInfo = task.lease ? ` [lease:${task.lease.workerId}]` : ''
-  const retryInfo = task.retry && task.retry.attempt > 0 ? ` [retry:${task.retry.attempt}/${task.retry.maxAttempts}]` : ''
-  return `- ${task.id} ${task.status}${priority}${leaseInfo}${retryInfo} ${task.title}${assignee}`
+  const assignee = task.assignee ? ' @' + task.assignee : ''
+  const priority = task.priority ? ' [' + task.priority + ']' : ''
+  const leaseInfo = task.lease ? ' [lease:' + task.lease.workerId + ']' : ''
+  const retryInfo = task.retry && task.retry.attempt > 0 ? ' [retry:' + task.retry.attempt + '/' + task.retry.maxAttempts + ']' : ''
+  return '- ' + task.id + ' ' + task.status + priority + leaseInfo + retryInfo + ' ' + task.title + assignee
 }
 
 async function renderList(projectId?: string): Promise<string> {
@@ -570,9 +705,9 @@ async function renderConflicts(): Promise<string> {
   return conflicts
     .map(conflict => {
       const tasks = conflict.tasks
-        .map(task => `${task.id} agent=${task.assignedAgent || '-'}`)
+        .map(task => task.id + ' agent=' + (task.assignedAgent || '-'))
         .join(', ')
-      return `- ${conflict.file}: ${tasks}`
+      return '- ' + conflict.file + ': ' + tasks
     })
     .join('\n')
 }
@@ -586,7 +721,7 @@ async function renderFiles(): Promise<string> {
   return files
     .map(
       file =>
-        `- ${file.file}: ${file.taskId} [${file.status}] agent=${file.assignedAgent || '-'}`,
+        '- ' + file.file + ': ' + file.taskId + ' [' + file.status + '] agent=' + (file.assignedAgent || '-'),
     )
     .join('\n')
 }
@@ -594,32 +729,37 @@ async function renderFiles(): Promise<string> {
 async function renderEvents(id: string): Promise<string> {
   const board = await readKanbanBoard()
   const events = getTaskEvents(board, id)
-  if (events.length === 0) return `No events for task ${id}.`
+  if (events.length === 0) return 'No events for task ' + id + '.'
   return events.map(e => {
-    const meta = e.metadata ? ` ${JSON.stringify(e.metadata)}` : ''
-    return `[${e.createdAt}] ${e.type} by ${e.actor}: ${e.message}${meta}`
+    const meta = e.metadata ? ' ' + JSON.stringify(e.metadata) : ''
+    return '[' + e.createdAt + '] ' + e.type + ' by ' + e.actor + ': ' + e.message + meta
   }).join('\n')
 }
 
 export async function call(
   args: string,
   _context: ToolUseContext,
+  options?: { cwd?: string },
 ): Promise<LocalCommandResult> {
-  try {
-    const command = parseKanbanArgs(args)
-    switch (command.type) {
-      case 'help':
-        return { type: 'text', value: HELP }
-      case 'init': {
-        const { created } = await initKanbanBoard()
-        return {
-          type: 'text',
-          value: created
-            ? 'Initialized Kanban board at .claude/tasks/kanban.json'
-            : 'Kanban board already exists at .claude/tasks/kanban.json',
+  const run = async (cwd?: string): Promise<LocalCommandResult> => {
+    if (cwd) {
+      return runWithCwdOverride(cwd, async () => run(undefined))
+    }
+    try {
+      const command = parseKanbanArgs(args)
+      switch (command.type) {
+        case 'help':
+          return { type: 'text', value: HELP }
+        case 'init': {
+          const { created } = await initKanbanBoard()
+          return {
+            type: 'text',
+            value: created
+              ? 'Initialized Kanban board at .claude/tasks/kanban.json'
+              : 'Kanban board already exists at .claude/tasks/kanban.json',
+          }
         }
-      }
-      case 'list':
+        case 'list':
         return { type: 'text', value: await renderList(command.projectId) }
       case 'show':
         return { type: 'text', value: formatTaskDetails(await getKanbanTask(command.id)) }
@@ -627,7 +767,7 @@ export async function call(
         const { task } = await addKanbanTask(command.input)
         return {
           type: 'text',
-          value: `Added Kanban task ${task.id}: ${task.title}`,
+          value: 'Added Kanban task ' + task.id + ': ' + task.title,
         }
       }
       case 'move': {
@@ -639,21 +779,21 @@ export async function call(
         )
         return {
           type: 'text',
-          value: `Moved Kanban task ${task.id} to ${task.status}`,
+          value: 'Moved Kanban task ' + task.id + ' to ' + task.status,
         }
       }
       case 'edit': {
         const { task } = await editKanbanTask(command.id, command.update)
         return {
           type: 'text',
-          value: `Edited Kanban task ${task.id}: ${task.title}`,
+          value: 'Edited Kanban task ' + task.id + ': ' + task.title,
         }
       }
       case 'delete': {
         const { task } = await deleteKanbanTask(command.id)
         return {
           type: 'text',
-          value: `Deleted Kanban task ${task.id}: ${task.title}`,
+          value: 'Deleted Kanban task ' + task.id + ': ' + task.title,
         }
       }
       case 'assign': {
@@ -661,43 +801,43 @@ export async function call(
         return {
           type: 'text',
           value: task.assignedAgent
-            ? `Assigned Kanban task ${task.id} to ${task.assignedAgent}`
-            : `Cleared agent assignment for Kanban task ${task.id}`,
+            ? 'Assigned Kanban task ' + task.id + ' to ' + task.assignedAgent
+            : 'Cleared agent assignment for Kanban task ' + task.id,
         }
       }
       case 'block': {
         const { task } = await blockKanbanTask(command.id, command.reason)
         return {
           type: 'text',
-          value: `Blocked Kanban task ${task.id}: ${command.reason}`,
+          value: 'Blocked Kanban task ' + task.id + ': ' + command.reason,
         }
       }
       case 'unblock': {
         const { task } = await unblockKanbanTask(command.id)
         return {
           type: 'text',
-          value: `Unblocked Kanban task ${task.id}; status is ${task.status}`,
+          value: 'Unblocked Kanban task ' + task.id + '; status is ' + task.status,
         }
       }
       case 'complete': {
         const { task } = await completeKanbanTask(command.id, command.summary)
         return {
           type: 'text',
-          value: `Completed Kanban task ${task.id}: ${task.title}`,
+          value: 'Completed Kanban task ' + task.id + ': ' + task.title,
         }
       }
       case 'comment': {
         const { task } = await commentKanbanTask(command.id, 'user', command.body)
         return {
           type: 'text',
-          value: `Added comment to Kanban task ${task.id}`,
+          value: 'Added comment to Kanban task ' + task.id,
         }
       }
       case 'archive': {
         const { task } = await archiveKanbanTask(command.id)
         return {
           type: 'text',
-          value: `Archived Kanban task ${task.id}: ${task.title}`,
+          value: 'Archived Kanban task ' + task.id + ': ' + task.title,
         }
       }
       case 'conflicts':
@@ -708,7 +848,7 @@ export async function call(
         const { path } = await exportKanbanMarkdown()
         return {
           type: 'text',
-          value: `Exported Kanban board to ${path}`,
+          value: 'Exported Kanban board to ' + path,
         }
       }
       case 'open': {
@@ -716,7 +856,7 @@ export async function call(
         const url = await openKanbanDashboard(undefined, rootDir)
         return {
           type: 'text',
-          value: `Kanban dashboard opened at ${url}`,
+          value: 'Kanban dashboard opened at ' + url,
         }
       }
       // Phase 3
@@ -724,28 +864,28 @@ export async function call(
         const { task } = await retryKanbanTask(command.id)
         return {
           type: 'text',
-          value: `Retried Kanban task ${task.id} (attempt ${task.retry?.attempt ?? 0})`,
+          value: 'Retried Kanban task ' + task.id + ' (attempt ' + (task.retry ? task.retry.attempt : 0) + ')',
         }
       }
       case 'fail': {
         const { task } = await failKanbanTask(command.id, command.reason)
         return {
           type: 'text',
-          value: `Failed Kanban task ${task.id}: ${command.reason}`,
+          value: 'Failed Kanban task ' + task.id + ': ' + command.reason,
         }
       }
       case 'verify': {
         const { task } = await verifyKanbanTask(command.id, command.passed, command.summary)
         return {
           type: 'text',
-          value: `Verification ${command.passed ? 'passed' : 'failed'} for task ${task.id}`,
+          value: 'Verification ' + (command.passed ? 'passed' : 'failed') + ' for task ' + task.id,
         }
       }
       case 'evidence': {
         const { task } = await addEvidenceToTask(command.id, command.evidenceType as any, command.label, undefined, { content: command.content })
         return {
           type: 'text',
-          value: `Added ${command.evidenceType} evidence to task ${task.id}: ${command.label}`,
+          value: 'Added ' + command.evidenceType + ' evidence to task ' + task.id + ': ' + command.label,
         }
       }
       case 'events': {
@@ -755,7 +895,7 @@ export async function call(
         if (command.action === 'list') {
           const workspaces = await listWorkspaces()
           if (workspaces.length === 0) return { type: 'text', value: 'No workspaces.' }
-          return { type: 'text', value: workspaces.map(w => `- ${w.id}: ${w.name} (${w.rootDir})`).join('\n') }
+          return { type: 'text', value: workspaces.map(w => '- ' + w.id + ': ' + w.name + ' (' + w.rootDir + ')').join('\n') }
         }
         return { type: 'text', value: 'Workspace switching not implemented in CLI. Use the dashboard.' }
       }
@@ -763,13 +903,139 @@ export async function call(
         if (command.action === 'list') {
           const projects = await listProjects()
           if (projects.length === 0) return { type: 'text', value: 'No projects.' }
-          return { type: 'text', value: projects.map(p => `- ${p.id}: ${p.name} (workspace: ${p.workspaceId})`).join('\n') }
+          return { type: 'text', value: projects.map(p => '- ' + p.id + ': ' + p.name + ' (workspace: ' + p.workspaceId + ')').join('\n') }
         }
         return { type: 'text', value: 'Project switching not implemented in CLI. Use the dashboard.' }
       }
+      case 'zombies': {
+        const board = await readKanbanBoard()
+        const zombies = detectZombieTasks(board)
+        if (zombies.length === 0) return { type: 'text', value: 'No zombie tasks found.' }
+        return { type: 'text', value: zombies.map(t => {
+          const expired = t.lease ? ' (lease expired: ' + t.lease.expiresAt + ')' : ''
+          return '- ' + t.id + ' ' + t.title + expired
+        }).join('\n') }
+      }
+      case 'reclaim': {
+        const cwd = getProjectRoot()
+        const { task } = await reclaimKanbanTask(command.id, command.workerId ?? 'cli-reclaim', 'user', cwd)
+        return { type: 'text', value: 'Reclaimed task ' + task.id + ': ' + task.title + ' (new lease: ' + (task.lease ? task.lease.workerId : 'none') + ')' }
+      }
+      // Phase 6
+      case 'next': {
+        const rootDir = getProjectRoot()
+        const tasks = await findClaimableTasks(rootDir)
+        if (tasks.length === 0) return { type: 'text', value: 'No claimable tasks.' }
+        const lines = tasks.slice(0, 10).map(t => {
+          const deps = t.blockedBy?.length ? ' deps:' + t.blockedBy.length : ''
+          return '- ' + t.id + ' [' + t.priority ?? 'normal' + '] ' + t.title + deps
+        })
+        if (tasks.length > 10) lines.push('... and ' + tasks.length - 10 + ' more')
+        return { type: 'text', value: 'Claimable tasks (priority order):\n' + lines.join('\n') }
+      }
+      case 'claim-next': {
+        const rootDir = getProjectRoot()
+        const result = await claimNextTask(rootDir, command.worker)
+        if (!result) return { type: 'text', value: 'No claimable tasks available.' }
+        const t = result.task
+        return {
+          type: 'text',
+          value: 'Claimed task ' + t.id + '\nTitle: ' + t.title + '\nStatus: ' + t.status + '\nPriority: ' + t.priority ?? 'normal' + '\nLease: ' + t.lease ? t.lease.workerId : 'N/A'
+        }
+      }
+      case 'worker': {
+        const rootDir = getProjectRoot()
+        const results: WorkerResult[] = []
+        for await (const result of runKanbanWorker(rootDir, command.options)) {
+          results.push(result)
+        }
+        const lines: string[] = []
+        for (const r of results) {
+          if (r.taskId) {
+            const s = r.summary ? ': ' + r.summary : ''
+            lines.push('- ' + r.taskId + ' [' + r.status + '] ' + r.title + s)
+          } else {
+            lines.push('- [' + r.status + '] ' + (r.summary ?? ''))
+          }
+        }
+        return {
+          type: 'text',
+          value: 'Worker ' + command.workerId + ' completed ' + results.length + ' task(s):\n' + lines.join('\n')
+        }
+      }
+      // Phase 15
+      case 'worker-heartbeat': {
+        const rootDir = getProjectRoot()
+        const { task } = await heartbeatKanbanTask(command.taskId, command.workerId, rootDir)
+        const expiresAt = task.lease?.expiresAt ?? 'unknown'
+        return { type: 'text', value: 'Heartbeat for ' + command.taskId + ' (lease extends to ' + expiresAt + ')' }
+      }
+      case 'worker-recover-stale': {
+        const rootDir = getProjectRoot()
+        const result = await recoverStaleClaimedTasks(rootDir)
+        if (result.recovered === 0) return { type: 'text', value: 'No stale tasks found.' }
+        const lines = result.tasks.map(t => '- ' + t.id + ' ' + t.title)
+        return { type: 'text', value: 'Recovered ' + result.recovered + ' stale task(s):\n' + lines.join('\n') }
+      }
+      case 'worker-fail': {
+        const rootDir = getProjectRoot()
+        const { task } = await failKanbanTask(command.taskId, command.reason, command.workerId, rootDir)
+        const attempt = task.retry?.attempt ?? 0
+        return { type: 'text', value: 'Failed task ' + command.taskId + ' (attempt ' + attempt + '): ' + command.reason }
+      }
+      case 'workers': {
+        const rootDir = getProjectRoot()
+        const workers = await listWorkers(rootDir)
+        if (workers.length === 0) {
+          return { type: 'text', value: 'No registered workers. Start a worker with /kanban worker --worker <id> --loop' }
+        }
+        const lines = workers.map(w => {
+          const status = w.status
+          const heartbeatAge = w.lastHeartbeatAt
+            ? ' (' + Math.floor((Date.now() - new Date(w.lastHeartbeatAt).getTime()) / 1000) + 's ago)'
+            : ' (never)'
+          const task = w.currentTaskId ? ' task=' + w.currentTaskId : ''
+          return '- ' + w.id + ' ' + status + heartbeatAge + task
+        })
+        return { type: 'text', value: 'Registered workers:\n' + lines.join('\n') }
+      }
+      // Phase 13
+      case 'artifact': {
+        const rootDir = getProjectRoot()
+        if (command.action === 'list') {
+          const artifacts = await getTaskArtifacts(command.taskId, rootDir)
+          if (artifacts.length === 0) return { type: 'text', value: 'No artifacts for task ' + command.taskId }
+          const lines = artifacts.map(a =>
+            (a.isCurrent ? '  * ' : '    ') + 'v' + a.version + ' [' + a.type + '] ' + a.label +
+            (a.content ? ' (' + a.content.slice(0, 60) + (a.content.length > 60 ? '...' : '') + ')' : '') +
+            ' by ' + a.createdBy + ' at ' + a.createdAt
+          )
+          return { type: 'text', value: 'Artifacts for ' + command.taskId + ':\n' + lines.join('\n') }
+        }
+        if (command.action === 'current') {
+          const artifact = await getCurrentArtifact(command.taskId, rootDir)
+          if (!artifact) return { type: 'text', value: 'No current artifact for task ' + command.taskId }
+          return {
+            type: 'text',
+            value: 'Current artifact for ' + command.taskId + ':\nv' + artifact.version + ' [' + artifact.type + '] ' + artifact.label +
+              (artifact.content ? '\n' + artifact.content : '') +
+              '\nCreated by ' + artifact.createdBy + ' at ' + artifact.createdAt,
+          }
+        }
+        if (command.action === 'select') {
+          const result = await selectArtifact(command.taskId, command.artifactId!, rootDir)
+          return {
+            type: 'text',
+            value: 'Selected artifact v' + result.artifact.version + ' as current for task ' + command.taskId,
+          }
+        }
+        return { type: 'text', value: 'Unknown artifact action. Available: list <taskId>, current <taskId>, select <taskId> <artifactId>' }
+      }
     }
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error)
-    return { type: 'text', value: `Kanban error: ${message}\n\n${HELP}` }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      return { type: 'text', value: 'Kanban error: ' + message + '\n\n' + HELP }
+    }
   }
+  return run(options?.cwd)
 }

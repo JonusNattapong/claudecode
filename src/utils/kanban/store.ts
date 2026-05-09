@@ -1,6 +1,6 @@
 import { mkdir, readFile, rename, unlink, writeFile } from 'fs/promises'
 import { dirname, join, relative, resolve } from 'path'
-import { getProjectRoot } from '../../bootstrap/state.js'
+import { getProjectRoot } from '../cwd.js'
 import { getErrnoCode } from '../errors.js'
 import { safeParseJSON } from '../json.js'
 import { jsonStringify } from '../slowOperations.js'
@@ -22,6 +22,7 @@ import {
   type Project,
   type Workspace,
   type WorkspaceConfig,
+  type KanbanArtifact,
 } from './types.js'
 import {
   validateBoard,
@@ -68,9 +69,10 @@ async function atomicWriteFile(path: string, content: string): Promise<void> {
   }
 }
 
-export async function kanbanBoardExists(cwd = getProjectRoot()): Promise<boolean> {
+export async function kanbanBoardExists(cwd = getProjectRoot(), projectId?: string): Promise<boolean> {
   try {
-    await readFile(getKanbanPaths(cwd).json, { encoding: 'utf8' })
+    const boardPath = projectId ? await getProjectBoardPath(projectId, cwd) : getKanbanPaths(cwd).json
+    await readFile(boardPath, { encoding: 'utf8' })
     return true
   } catch (error) {
     if (getErrnoCode(error) === 'ENOENT') return false
@@ -78,8 +80,9 @@ export async function kanbanBoardExists(cwd = getProjectRoot()): Promise<boolean
   }
 }
 
-export async function readKanbanBoard(cwd = getProjectRoot()): Promise<KanbanBoard> {
-  const content = await readFile(getKanbanPaths(cwd).json, {
+export async function readKanbanBoard(cwd = getProjectRoot(), projectId?: string): Promise<KanbanBoard> {
+  const boardPath = projectId ? await getProjectBoardPath(projectId, cwd) : getKanbanPaths(cwd).json
+  const content = await readFile(boardPath, {
     encoding: 'utf8',
   })
   const parsed = safeParseJSON(content, false)
@@ -92,10 +95,12 @@ export async function readKanbanBoard(cwd = getProjectRoot()): Promise<KanbanBoa
 export async function writeKanbanBoard(
   board: KanbanBoard,
   cwd = getProjectRoot(),
+  projectId?: string,
 ): Promise<KanbanBoard> {
   const validated = validateBoard(board)
+  const boardPath = projectId ? await getProjectBoardPath(projectId, cwd) : getKanbanPaths(cwd).json
   await atomicWriteFile(
-    getKanbanPaths(cwd).json,
+    boardPath,
     `${jsonStringify(validated, null, 2)}\n`,
   )
   return validated
@@ -346,8 +351,13 @@ export async function commentKanbanTask(
 export async function archiveKanbanTask(
   id: string,
   cwd = getProjectRoot(),
+  actor?: string,
 ): Promise<{ board: KanbanBoard; task: KanbanTask }> {
-  return updateKanbanTask(id, { status: 'archived' }, cwd)
+  const board = await readKanbanBoard(cwd)
+  const taskIndex = findTaskOrThrow(board, id)
+  const task = board.tasks[taskIndex]
+  const updatedTask: KanbanTask = { ...task, status: 'archived', lease: undefined }
+  return withAppendEvent(board, taskIndex, id, updatedTask, 'archived', actor ?? 'system', `Task archived`, cwd)
 }
 
 export async function listKanbanTasks(
@@ -459,9 +469,46 @@ export async function claimKanbanTask(
   const board = await readKanbanBoard(cwd)
   const taskIndex = findTaskOrThrow(board, id)
   const task = board.tasks[taskIndex]
-  if (task.status !== 'ready' && task.status !== 'todo') {
-    throw new Error(`Cannot claim task in status "${task.status}": must be "ready" or "todo"`)
+
+  // Reject claim on terminal statuses
+  if (task.status === 'done' || task.status === 'archived') {
+    throw new Error(`Cannot claim task in status "${task.status}"`)
   }
+
+  // Check active lease from another worker
+  if (task.lease) {
+    const now = new Date()
+    if (!isStale(task.lease, now)) {
+      // Active lease — only allow if same worker
+      if (task.lease.workerId !== workerId) {
+        throw new Error(`Task ${id} is already claimed by ${task.lease.workerId} (lease active until ${task.lease.expiresAt})`)
+      }
+      // Same worker re-claiming — extend the existing lease
+      const ttlMs = options?.ttlMs ?? KANBAN_LEASE_TTL_MS
+      const heartbeatMs = options?.heartbeatIntervalMs ?? KANBAN_HEARTBEAT_INTERVAL_MS
+      const nowIso = now.toISOString()
+      const updatedLease = {
+        ...task.lease,
+        claimedAt: nowIso,
+        expiresAt: new Date(now.getTime() + ttlMs).toISOString(),
+        heartbeatIntervalMs: heartbeatMs,
+        status: 'active' as const,
+        lastHeartbeatAt: nowIso,
+      }
+      return withAppendEvent(board, taskIndex, id, {
+        ...task,
+        status: 'running',
+        lease: updatedLease,
+      }, 'claimed', claimedBy, `Task re-claimed by ${claimedBy} (worker: ${workerId})`, cwd)
+    }
+    // Expired lease — allow claim, the lease gets replaced below
+  }
+
+  // Existing status check for tasks that aren't normally claimable
+  if (task.status !== 'ready' && task.status !== 'todo' && task.status !== 'running') {
+    throw new Error(`Cannot claim task in status "${task.status}": must be "ready", "todo", or a stale "running"`)
+  }
+
   const now = new Date()
   const ttlMs = options?.ttlMs ?? KANBAN_LEASE_TTL_MS
   const heartbeatMs = options?.heartbeatIntervalMs ?? KANBAN_HEARTBEAT_INTERVAL_MS
@@ -586,6 +633,61 @@ export function listStaleTasks(board: KanbanBoard, now?: Date): KanbanTask[] {
   })
 }
 
+// ─── Stale Recovery ────────────────────────────────────
+
+/**
+ * Recover tasks with expired leases by clearing claim fields and resetting
+ * status to 'ready'. Does NOT touch tasks with active leases.
+ * Idempotent — running twice on the same board produces the same result.
+ */
+export async function recoverStaleClaimedTasks(
+  cwd = getProjectRoot(),
+  now?: Date,
+): Promise<{ recovered: number; tasks: KanbanTask[] }> {
+  const board = await readKanbanBoard(cwd)
+  const nowDate = now ?? new Date()
+
+  // Find all tasks with expired leases, regardless of current status
+  const stale = board.tasks.filter(t => t.lease && isStale(t.lease, nowDate))
+  if (stale.length === 0) return { recovered: 0, tasks: [] }
+
+  const tasks = board.tasks.slice()
+  const recoveredIds: string[] = []
+
+  for (const s of stale) {
+    const idx = tasks.findIndex(t => t.id === s.id)
+    if (idx === -1) continue
+
+    const task = tasks[idx]
+    const events = task.events ?? []
+    const event = {
+      id: createEventId(),
+      taskId: task.id,
+      type: 'stale_recovered' as const,
+      actor: 'system',
+      message: `Stale lease recovered (worker: ${task.lease!.workerId}, expired at: ${task.lease!.expiresAt})`,
+      metadata: {
+        workerId: task.lease!.workerId,
+        expiredAt: task.lease!.expiresAt,
+      },
+      createdAt: nowDate.toISOString(),
+    }
+
+    tasks[idx] = {
+      ...task,
+      status: task.status === 'running' ? 'ready' : task.status,
+      lease: undefined,
+      events: [...events, event],
+      updatedAt: nowDate.toISOString(),
+    }
+    recoveredIds.push(task.id)
+  }
+
+  const next = validateBoard({ ...board, tasks })
+  await writeKanbanBoard(next, cwd)
+  return { recovered: recoveredIds.length, tasks: recoveredIds.map(id => next.tasks.find(t => t.id === id)!) }
+}
+
 // ─── Retry / Fail ─────────────────────────────────────────
 
 export async function failKanbanTask(
@@ -604,6 +706,7 @@ export async function failKanbanTask(
     maxAttempts: KANBAN_DEFAULT_MAX_ATTEMPTS,
     strategy: 'none',
   }
+  retry.attempt++
   retry.lastError = reason
 
   const updated: KanbanTask = {
@@ -968,7 +1071,9 @@ export async function getProjectBoardPath(projectId: string, cwd = getProjectRoo
     throw new Error(`Project not found: ${projectId}`)
   }
   const projectRoot = project.rootDir ?? cwd
-  return join(projectRoot, '.claude/tasks', `kanban-${projectId}.json`)
+  const boardPath = join(projectRoot, '.kanban', 'projects', projectId, 'board.json')
+  assertPathInsideRoot(boardPath, projectRoot)
+  return boardPath
 }
 
 // ─── Check file conflicts (Phase 3: re-export for wider use) ───
@@ -990,4 +1095,138 @@ export function hasFileConflictWithRunningTasks(
     }
   }
   return conflicts
+}
+
+// ─── Phase 13: Artifacts ───────────────────────────────────
+
+export type ArtifactInput = {
+  taskId: string
+  label: string
+  content?: string
+  path?: string
+  type?: KanbanArtifact['type']
+  createdBy?: string
+}
+
+function createArtifactId(): string {
+  return `ka-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
+}
+
+function getNextVersion(task: KanbanTask): number {
+  const artifacts = task.artifacts ?? []
+  if (artifacts.length === 0) return 1
+  return Math.max(...artifacts.map(a => a.version)) + 1
+}
+
+/**
+ * Generate and attach a new artifact to a task.
+ * The new artifact gets the next version number and is set as current.
+ * All previous artifacts for the task are set to non-current.
+ */
+export async function generateArtifact(
+  taskId: string,
+  label: string,
+  cwd = getProjectRoot(),
+  options?: { content?: string; path?: string; type?: KanbanArtifact['type']; createdBy?: string },
+): Promise<{ board: KanbanBoard; task: KanbanTask; artifact: KanbanArtifact }> {
+  const board = await readKanbanBoard(cwd)
+  const taskIndex = findTaskOrThrow(board, taskId)
+  const task = board.tasks[taskIndex]
+  const now = new Date().toISOString()
+  const createdBy = options?.createdBy ?? 'worker'
+  const type = options?.type ?? 'output'
+  const version = getNextVersion(task)
+
+  // Set all existing artifacts to non-current
+  const updatedArtifacts = (task.artifacts ?? []).map(a => ({ ...a, isCurrent: false }))
+
+  const artifact: KanbanArtifact = {
+    id: createArtifactId(),
+    taskId,
+    version,
+    label,
+    content: options?.content,
+    path: options?.path,
+    type,
+    isCurrent: true,
+    createdAt: now,
+    createdBy,
+  }
+
+  updatedArtifacts.push(artifact)
+  const updatedTask: KanbanTask = {
+    ...task,
+    artifacts: updatedArtifacts,
+    updatedAt: now,
+  }
+
+  const result = await withAppendEvent(board, taskIndex, taskId, updatedTask, 'artifact_generated', createdBy, `Artifact v${version} created: ${label}`, cwd, {
+    artifactId: artifact.id,
+    version,
+    isCurrent: true,
+  })
+  return { ...result, artifact }
+}
+
+/**
+ * Get all artifacts for a task, sorted by version DESC.
+ */
+export async function getTaskArtifacts(
+  taskId: string,
+  cwd = getProjectRoot(),
+): Promise<KanbanArtifact[]> {
+  const board = await readKanbanBoard(cwd)
+  const task = board.tasks.find(t => t.id === taskId)
+  if (!task) throw new Error(`Kanban task not found: ${taskId}`)
+  return [...(task.artifacts ?? [])].sort((a, b) => b.version - a.version)
+}
+
+/**
+ * Get the current artifact for a task (the one with isCurrent=true).
+ * Returns undefined if no artifacts exist.
+ */
+export async function getCurrentArtifact(
+  taskId: string,
+  cwd = getProjectRoot(),
+): Promise<KanbanArtifact | undefined> {
+  const artifacts = await getTaskArtifacts(taskId, cwd)
+  return artifacts.find(a => a.isCurrent)
+}
+
+/**
+ * Select an artifact as the current one for its task.
+ * All other artifacts for the task become non-current.
+ */
+export async function selectArtifact(
+  taskId: string,
+  artifactId: string,
+  cwd = getProjectRoot(),
+): Promise<{ board: KanbanBoard; task: KanbanTask; artifact: KanbanArtifact }> {
+  const board = await readKanbanBoard(cwd)
+  const taskIndex = findTaskOrThrow(board, taskId)
+  const task = board.tasks[taskIndex]
+  const artifacts = task.artifacts ?? []
+
+  const target = artifacts.find(a => a.id === artifactId)
+  if (!target) {
+    throw new Error(`Artifact ${artifactId} not found on task ${taskId}`)
+  }
+
+  const now = new Date().toISOString()
+  const updatedArtifacts = artifacts.map(a => ({
+    ...a,
+    isCurrent: a.id === artifactId,
+  }))
+
+  const updatedTask: KanbanTask = {
+    ...task,
+    artifacts: updatedArtifacts,
+    updatedAt: now,
+  }
+
+  const result = await withAppendEvent(board, taskIndex, taskId, updatedTask, 'artifact_selected', 'user', `Artifact v${target.version} selected as current`, cwd, {
+    artifactId,
+    version: target.version,
+  })
+  return { ...result, artifact: target }
 }

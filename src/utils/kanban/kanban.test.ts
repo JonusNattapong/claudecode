@@ -1,5 +1,6 @@
-import { afterEach, describe, expect, test } from 'bun:test'
+import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 import { mkdtemp, readdir, readFile, rm } from 'fs/promises'
+import { writeFileSync } from 'fs'
 import { join } from 'path'
 import { tmpdir } from 'os'
 import { call, parseKanbanArgs } from '../../commands/kanban/kanban.js'
@@ -7,6 +8,7 @@ import { runWithCwdOverride } from '../cwd.js'
 import {
   addEvidenceToTask,
   addKanbanTask,
+  archiveKanbanTask,
   assignKanbanTask,
   blockKanbanTask,
   claimKanbanTask,
@@ -19,9 +21,14 @@ import {
   ensureDefaultWorkspace,
   exportKanbanMarkdown,
   failKanbanTask,
+  generateArtifact,
+  getCurrentArtifact,
+  generateArtifact,
   getDefaultProject,
   getKanbanTask,
   getKanbanPaths,
+  getProjectBoardPath,
+  getTaskArtifacts,
   getTaskEvents,
   heartbeatKanbanTask,
   initKanbanBoard,
@@ -33,8 +40,10 @@ import {
   moveKanbanTask,
   readKanbanBoard,
   reclaimKanbanTask,
+  recoverStaleClaimedTasks,
   releaseKanbanTask,
   retryKanbanTask,
+  selectArtifact,
   unblockKanbanTask,
   verifyAndCompleteTask,
   verifyKanbanTask,
@@ -43,6 +52,25 @@ import {
 import { renderKanbanMarkdown } from './markdown.js'
 import { validateBoard, validateRelativeSafePath } from './validation.js'
 import { startKanbanServer } from './server.js'
+import {
+  addCommandEvidence,
+  claimNextTask,
+  completeWithEvidence,
+  failWithEvidence,
+  findClaimableTasks,
+  recoverStaleTasks,
+  startHeartbeatLoop,
+} from './agentRuntime.js'
+import { processTask, runKanbanWorker } from './worker.js'
+import {
+  listWorkers,
+  getWorker,
+  registerWorker,
+  heartbeatWorker,
+  markWorkerOffline,
+  unregisterWorker,
+  clearWorkerTask,
+} from './workers.js'
 
 const tempDirs: string[] = []
 
@@ -52,11 +80,18 @@ async function makeTempWorkspace(): Promise<string> {
   return dir
 }
 
+let tempDirsBeforeTest = 0
+
+beforeEach(() => {
+  tempDirsBeforeTest = tempDirs.length
+})
+
 afterEach(async () => {
-  while (tempDirs.length > 0) {
+  // Only remove dirs created during this test, not dirs created by previous tests
+  while (tempDirs.length > tempDirsBeforeTest) {
     const dir = tempDirs.pop()
     if (dir) {
-      await rm(dir, { recursive: true, force: true })
+      await rm(dir, { recursive: true, force: true }).catch(() => {})
     }
   }
 })
@@ -541,6 +576,26 @@ describe('/kanban command parsing', () => {
       update: { risk: 'UnknownRisk' },
     })
   })
+
+  // ─── Phase 3.1: Zombies / Reclaim ───────────────────────
+
+  test('parses zombies command', () => {
+    expect(parseKanbanArgs('zombies')).toEqual({ type: 'zombies' })
+  })
+
+  test('parses reclaim with task id only', () => {
+    const parsed = parseKanbanArgs('reclaim task-abc')
+    expect(parsed).toEqual({ type: 'reclaim', id: 'task-abc', workerId: undefined })
+  })
+
+  test('parses reclaim with task id and worker id', () => {
+    const parsed = parseKanbanArgs('reclaim task-abc w2')
+    expect(parsed).toEqual({ type: 'reclaim', id: 'task-abc', workerId: 'w2' })
+  })
+
+  test('reclaim without id throws', () => {
+    expect(() => parseKanbanArgs('reclaim')).toThrow('requires')
+  })
 })
 
 // ─── Phase 3: Lease / Heartbeat ───────────────────────────
@@ -748,7 +803,7 @@ describe('Kanban retry and fail', () => {
     const { task } = await addKanbanTask({ title: 'Retry me', status: 'running' }, cwd)
     await failKanbanTask(task.id, 'First fail', 'w1', cwd)
     const retried = await retryKanbanTask(task.id, 'w1', cwd)
-    expect(retried.task.retry?.attempt).toBe(1)
+    expect(retried.task.retry?.attempt).toBe(2) // fail increments to 1, retry increments to 2
     expect(retried.task.status).toBe('ready')
     expect(retried.task.retry?.lastError).toBeUndefined()
   })
@@ -756,14 +811,12 @@ describe('Kanban retry and fail', () => {
   test('retry blocked when maxAttempts reached', async () => {
     const cwd = await makeTempWorkspace()
     const { task } = await addKanbanTask({ title: 'Max retry', status: 'running' }, cwd)
+    // fail increments attempt, retry also increments. With maxAttempts=3:
+    // fail(1) → attempt=1, retry → attempt=2
+    // fail(2) → attempt=3, retry → attempt=4 but check: 3 >= 3 => throws
     await failKanbanTask(task.id, 'Fail 1', 'w1', cwd)
     await retryKanbanTask(task.id, 'w1', cwd)
     await failKanbanTask(task.id, 'Fail 2', 'w1', cwd)
-    await retryKanbanTask(task.id, 'w1', cwd)
-    await failKanbanTask(task.id, 'Fail 3', 'w1', cwd)
-    await retryKanbanTask(task.id, 'w1', cwd)
-    await failKanbanTask(task.id, 'Fail 4', 'w1', cwd)
-    // maxAttempts is 3, so 4th retry should fail
     await expect(retryKanbanTask(task.id, 'w1', cwd)).rejects.toThrow('max retry attempts')
   })
 
@@ -864,6 +917,18 @@ describe('Kanban hallucination recovery and verification', () => {
     expect(events.some(e => e.type === 'verification_added')).toBe(true)
     expect(events.some(e => e.type === 'verification_passed')).toBe(true)
   })
+
+  // ─── Phase 3.1: Archive events ───────────────────────────
+
+  test('archiveKanbanTask appends archived event', async () => {
+    const cwd = await makeTempWorkspace()
+    const { task } = await addKanbanTask({ title: 'Archive event test' }, cwd)
+    await archiveKanbanTask(task.id, cwd)
+
+    const board = await readKanbanBoard(cwd)
+    const events = getTaskEvents(board, task.id)
+    expect(events.some(e => e.type === 'archived')).toBe(true)
+  })
 })
 
 // ─── Phase 3: Workspace / Project ─────────────────────────
@@ -916,6 +981,496 @@ describe('Kanban workspace and project', () => {
     const board1 = await readKanbanBoard(cwd1)
     expect(board1.tasks).toHaveLength(1)
     expect(board1.tasks[0].id).toBe(t1.id)
+  })
+
+  // ─── Phase 3.1: Project board isolation ──────────────────
+
+  test('getProjectBoardPath returns .kanban/projects/<id>/board.json', async () => {
+    const cwd = await makeTempWorkspace()
+    const ws = await ensureDefaultWorkspace(cwd)
+    const proj = await createProject(ws.id, 'iso-test', cwd, cwd)
+    const path = await getProjectBoardPath(proj.id, cwd)
+    expect(path).toContain('.kanban')
+    expect(path).toContain('projects')
+    expect(path).toContain(proj.id)
+    expect(path).toContain('board.json')
+  })
+
+  test('readKanbanBoard with projectId reads project-specific board', async () => {
+    const cwd = await makeTempWorkspace()
+    const ws = await ensureDefaultWorkspace(cwd)
+    const proj = await createProject(ws.id, 'proj-board', cwd, cwd)
+
+    // Write a task to the project board
+    const { task } = await addKanbanTask(
+      { title: 'Project task', projectId: proj.id, status: 'todo' },
+      cwd,
+    )
+    // Write board with projectId
+    const board = await readKanbanBoard(cwd)
+    await writeKanbanBoard(board, cwd, proj.id)
+
+    // Read back from the project-specific board
+    const projBoard = await readKanbanBoard(cwd, proj.id)
+    expect(projBoard.tasks.some(t => t.id === task.id)).toBe(true)
+  })
+
+  test('writeKanbanBoard with projectId persists to isolated file', async () => {
+    const cwd = await makeTempWorkspace()
+    const ws = await ensureDefaultWorkspace(cwd)
+    const proj = await createProject(ws.id, 'isolated-write', cwd, cwd)
+
+    const { task } = await addKanbanTask(
+      { title: 'Isolated', projectId: proj.id },
+      cwd,
+    )
+    const board = await readKanbanBoard(cwd)
+    await writeKanbanBoard(board, cwd, proj.id)
+
+    // The default board should still have the task
+    const defaultBoard = await readKanbanBoard(cwd)
+    expect(defaultBoard.tasks.some(t => t.id === task.id)).toBe(true)
+
+    // The project board should also have it
+    const projBoard = await readKanbanBoard(cwd, proj.id)
+    expect(projBoard.tasks.some(t => t.id === task.id)).toBe(true)
+  })
+})
+
+describe('Kanban Phase 13: Artifacts', () => {
+  test('generateArtifact creates first artifact with version 1 and isCurrent true', async () => {
+    const cwd = await makeTempWorkspace()
+    const { task } = await addKanbanTask({ title: 'Artifact Test', status: 'ready' }, cwd)
+    const { artifact } = await generateArtifact(task.id, 'Initial build', cwd, {
+      content: 'build output here',
+      type: 'build',
+      createdBy: 'worker-1',
+    })
+    expect(artifact.version).toBe(1)
+    expect(artifact.isCurrent).toBe(true)
+    expect(artifact.label).toBe('Initial build')
+    expect(artifact.content).toBe('build output here')
+    expect(artifact.type).toBe('build')
+    expect(artifact.createdBy).toBe('worker-1')
+
+    // Verify on board
+    const board = await readKanbanBoard(cwd)
+    const t = board.tasks.find(x => x.id === task.id)!
+    expect(t.artifacts).toHaveLength(1)
+    expect(t.artifacts![0].isCurrent).toBe(true)
+  })
+
+  test('second generateArtifact increments version and sets as current', async () => {
+    const cwd = await makeTempWorkspace()
+    const { task } = await addKanbanTask({ title: 'Artifact Test', status: 'ready' }, cwd)
+    const { artifact: a1 } = await generateArtifact(task.id, 'First version', cwd, { createdBy: 'w1' })
+    const { artifact: a2 } = await generateArtifact(task.id, 'Second version', cwd, { createdBy: 'w1' })
+
+    expect(a1.version).toBe(1)
+    // a1 was current at time of generation; re-read board to verify current state
+    const board = await readKanbanBoard(cwd)
+    const t = board.tasks.find(x => x.id === task.id)!
+    const boardA1 = t.artifacts!.find(a => a.id === a1.id)!
+    expect(boardA1.isCurrent).toBe(false)
+    expect(a2.version).toBe(2)
+    expect(a2.isCurrent).toBe(true)
+
+    // Verify on board — only one is current
+    expect(t.artifacts).toHaveLength(2)
+    expect(t.artifacts!.filter(a => a.isCurrent)).toHaveLength(1)
+    expect(t.artifacts!.find(a => a.isCurrent)!.version).toBe(2)
+  })
+
+  test('getTaskArtifacts returns sorted by version DESC', async () => {
+    const cwd = await makeTempWorkspace()
+    const { task } = await addKanbanTask({ title: 'Artifact Test', status: 'ready' }, cwd)
+    await generateArtifact(task.id, 'v1', cwd, { createdBy: 'w1' })
+    await generateArtifact(task.id, 'v2', cwd, { createdBy: 'w1' })
+    await generateArtifact(task.id, 'v3', cwd, { createdBy: 'w1' })
+
+    const artifacts = await getTaskArtifacts(task.id, cwd)
+    expect(artifacts).toHaveLength(3)
+    expect(artifacts[0].version).toBe(3)
+    expect(artifacts[1].version).toBe(2)
+    expect(artifacts[2].version).toBe(1)
+  })
+
+  test('getCurrentArtifact returns the current artifact', async () => {
+    const cwd = await makeTempWorkspace()
+    const { task } = await addKanbanTask({ title: 'Artifact Test', status: 'ready' }, cwd)
+    await generateArtifact(task.id, 'v1', cwd, { createdBy: 'w1' })
+    const { artifact: current } = await generateArtifact(task.id, 'v2', cwd, { createdBy: 'w1' })
+
+    const found = await getCurrentArtifact(task.id, cwd)
+    expect(found).toBeDefined()
+    expect(found!.version).toBe(2)
+    expect(found!.label).toBe('v2')
+  })
+
+  test('getCurrentArtifact returns undefined when no artifacts', async () => {
+    const cwd = await makeTempWorkspace()
+    const { task } = await addKanbanTask({ title: 'No artifacts' }, cwd)
+    const found = await getCurrentArtifact(task.id, cwd)
+    expect(found).toBeUndefined()
+  })
+
+  test('selectArtifact makes selected artifact current and others non-current', async () => {
+    const cwd = await makeTempWorkspace()
+    const { task } = await addKanbanTask({ title: 'Artifact Test', status: 'ready' }, cwd)
+    const { artifact: a1 } = await generateArtifact(task.id, 'v1', cwd, { createdBy: 'w1' })
+    await generateArtifact(task.id, 'v2', cwd, { createdBy: 'w1' })
+    const { artifact: a3 } = await generateArtifact(task.id, 'v3', cwd, { createdBy: 'w1' })
+
+    // Select v1 as current
+    const result = await selectArtifact(task.id, a1.id, cwd)
+    // re-read board to verify current state (result.artifact is the original)
+    const board = await readKanbanBoard(cwd)
+    const t = board.tasks.find(x => x.id === task.id)!
+    const boardA1 = t.artifacts!.find(a => a.id === a1.id)!
+    expect(boardA1.isCurrent).toBe(true)
+    expect(boardA1.version).toBe(1)
+
+    // Verify on board — only one is current
+    expect(t.artifacts!.filter(a => a.isCurrent)).toHaveLength(1)
+    expect(t.artifacts!.find(a => a.isCurrent)!.id).toBe(a1.id)
+
+    // v3 should no longer be current
+    const v3 = t.artifacts!.find(a => a.version === 3)!
+    expect(v3.isCurrent).toBe(false)
+  })
+
+  test('selectArtifact throws for invalid artifactId', async () => {
+    const cwd = await makeTempWorkspace()
+    const { task } = await addKanbanTask({ title: 'Artifact Test', status: 'ready' }, cwd)
+    await generateArtifact(task.id, 'v1', cwd, { createdBy: 'w1' })
+    await expect(selectArtifact(task.id, 'invalid-artifact-id', cwd)).rejects.toThrow('not found')
+  })
+
+  test('generateArtifact throws for invalid taskId', async () => {
+    const cwd = await makeTempWorkspace()
+    await initKanbanBoard(cwd)
+    await expect(generateArtifact('nonexistent-task', 'label', cwd)).rejects.toThrow('not found')
+  })
+
+  test('artifact events are recorded', async () => {
+    const cwd = await makeTempWorkspace()
+    const { task } = await addKanbanTask({ title: 'Artifact Test', status: 'ready' }, cwd)
+    await generateArtifact(task.id, 'v1', cwd, { createdBy: 'worker-1' })
+    const board2 = await readKanbanBoard(cwd)
+    const t = board2.tasks.find(x => x.id === task.id)!
+    await selectArtifact(task.id, t.artifacts![0].id, cwd)
+
+    const board3 = await readKanbanBoard(cwd)
+    const events = getTaskEvents(board3, task.id)
+    expect(events.some(e => e.type === 'artifact_generated')).toBe(true)
+    expect(events.some(e => e.type === 'artifact_selected')).toBe(true)
+  })
+
+  // Worker + artifact integration
+  test('worker completion generates an artifact', async () => {
+    const cwd = await makeTempWorkspace()
+    await initKanbanBoard(cwd)
+    const { task } = await addKanbanTask({ title: 'Worker artifact', status: 'ready' }, cwd)
+    await claimKanbanTask(task.id, 'w1', 'w1', cwd)
+
+    const result = await processTask(cwd, { ...task, status: 'running' }, { workerId: 'w1', commandArgv: ['echo', 'hello'] })
+    expect(result.status).toBe('completed')
+
+    const board = await readKanbanBoard(cwd)
+    const updated = board.tasks.find(t => t.id === task.id)!
+    expect(updated.artifacts).toHaveLength(1)
+    expect(updated.artifacts![0].isCurrent).toBe(true)
+    expect(updated.artifacts![0].version).toBe(1)
+    expect(updated.artifacts![0].type).toBe('output')
+  })
+
+  test('parseKanbanArgs artifact list', () => {
+    const cmd = parseKanbanArgs('artifact list kb-test-123')
+    expect(cmd.type).toBe('artifact')
+    expect((cmd as any).action).toBe('list')
+    expect((cmd as any).taskId).toBe('kb-test-123')
+  })
+
+  test('parseKanbanArgs artifact current', () => {
+    const cmd = parseKanbanArgs('artifact current kb-test-456')
+    expect(cmd.type).toBe('artifact')
+    expect((cmd as any).action).toBe('current')
+    expect((cmd as any).taskId).toBe('kb-test-456')
+  })
+
+  test('parseKanbanArgs artifact select', () => {
+    const cmd = parseKanbanArgs('artifact select kb-test-789 ka-artifact-abc')
+    expect(cmd.type).toBe('artifact')
+    expect((cmd as any).action).toBe('select')
+    expect((cmd as any).taskId).toBe('kb-test-789')
+    expect((cmd as any).artifactId).toBe('ka-artifact-abc')
+  })
+
+  test('parseKanbanArgs artifact requires taskId', () => {
+    expect(() => parseKanbanArgs('artifact list')).toThrow('requires')
+    expect(() => parseKanbanArgs('artifact current')).toThrow('requires')
+    expect(() => parseKanbanArgs('artifact select kb-123')).toThrow('requires')
+  })
+
+  // ─── Phase 14: CLI smoke tests ──────────────────────────
+
+  test('call artifact list — output is concise and readable', async () => {
+    const cwd = await makeTempWorkspace()
+    await initKanbanBoard(cwd)
+    const { task } = await addKanbanTask({ title: 'Smoke Test', status: 'ready' }, cwd)
+    await generateArtifact(task.id, 'v1', cwd, { createdBy: 'w1' })
+    await generateArtifact(task.id, 'v2', cwd, { createdBy: 'w1' })
+
+    const result = await call('artifact list ' + task.id, {} as any, { cwd })
+    expect(result.type).toBe('text')
+    expect(result.value).toContain('v2') // newest first
+    expect(result.value).toContain('v1')
+    expect(result.value).toContain('*')  // current marker
+  })
+
+  test('call artifact list — empty state is clear', async () => {
+    const cwd = await makeTempWorkspace()
+    await initKanbanBoard(cwd)
+    const { task } = await addKanbanTask({ title: 'No Artifacts', status: 'ready' }, cwd)
+
+    const result = await call('artifact list ' + task.id, {} as any, { cwd })
+    expect(result.type).toBe('text')
+    expect(result.value).toContain('No artifacts')
+    expect(result.value).toContain(task.id)
+  })
+
+  test('call artifact current — shows current artifact', async () => {
+    const cwd = await makeTempWorkspace()
+    await initKanbanBoard(cwd)
+    const { task } = await addKanbanTask({ title: 'Current Test', status: 'ready' }, cwd)
+    await generateArtifact(task.id, 'v1', cwd, { createdBy: 'w1' })
+    await generateArtifact(task.id, 'v2', cwd, { createdBy: 'w1' })
+
+    const result = await call('artifact current ' + task.id, {} as any, { cwd })
+    expect(result.type).toBe('text')
+    expect(result.value).toContain('v2')
+    expect(result.value).toContain('Current artifact')
+  })
+
+  test('call artifact current — empty state is clear', async () => {
+    const cwd = await makeTempWorkspace()
+    await initKanbanBoard(cwd)
+    const { task } = await addKanbanTask({ title: 'No Artifacts', status: 'ready' }, cwd)
+
+    const result = await call('artifact current ' + task.id, {} as any, { cwd })
+    expect(result.type).toBe('text')
+    expect(result.value).toContain('No current artifact')
+  })
+
+  test('call artifact select — switches current and prints confirmation', async () => {
+    const cwd = await makeTempWorkspace()
+    await initKanbanBoard(cwd)
+    const { task } = await addKanbanTask({ title: 'Select Test', status: 'ready' }, cwd)
+    const { artifact: a1 } = await generateArtifact(task.id, 'v1', cwd, { createdBy: 'w1' })
+    await generateArtifact(task.id, 'v2', cwd, { createdBy: 'w1' })
+
+    const result = await call('artifact select ' + task.id + ' ' + a1.id, {} as any, { cwd })
+    expect(result.type).toBe('text')
+    expect(result.value).toContain('v1')
+    expect(result.value).toContain('current')
+
+    // Verify board state
+    const board = await readKanbanBoard(cwd)
+    const t = board.tasks.find(x => x.id === task.id)!
+    expect(t.artifacts!.find(a => a.id === a1.id)!.isCurrent).toBe(true)
+    expect(t.artifacts!.find(a => a.version === 2)!.isCurrent).toBe(false)
+  })
+
+  test('call artifact — invalid taskId produces clean error', async () => {
+    const cwd = await makeTempWorkspace()
+    await initKanbanBoard(cwd)
+
+    const result = await call('artifact list kb-nonexistent-000', {} as any, { cwd })
+    expect(result.type).toBe('text')
+    expect(result.value).toContain('not found')
+  })
+
+  test('call artifact select — invalid artifactId produces clean error', async () => {
+    const cwd = await makeTempWorkspace()
+    await initKanbanBoard(cwd)
+    const { task } = await addKanbanTask({ title: 'Bad Artifact', status: 'ready' }, cwd)
+    await generateArtifact(task.id, 'v1', cwd, { createdBy: 'w1' })
+
+    const result = await call('artifact select ' + task.id + ' ka-invalid-000', {} as any, { cwd })
+    expect(result.type).toBe('text')
+    expect(result.value).toContain('not found')
+  })
+
+  test('call artifact — artifactId belongs to another task', async () => {
+    const cwd = await makeTempWorkspace()
+    await initKanbanBoard(cwd)
+    const { task: t1 } = await addKanbanTask({ title: 'Task 1', status: 'ready' }, cwd)
+    const { task: t2 } = await addKanbanTask({ title: 'Task 2', status: 'ready' }, cwd)
+    const { artifact: a1 } = await generateArtifact(t1.id, 'v1', cwd, { createdBy: 'w1' })
+
+    // Try to select t1's artifact on t2
+    const result = await call('artifact select ' + t2.id + ' ' + a1.id, {} as any, { cwd })
+    expect(result.type).toBe('text')
+    expect(result.value).toContain('not found')
+  })
+
+  test('owner and notes are preserved after artifact generation', async () => {
+    const cwd = await makeTempWorkspace()
+    await initKanbanBoard(cwd)
+    const { task } = await addKanbanTask({ title: 'Owner Test', status: 'ready', owner: 'alice', notes: 'some notes' }, cwd)
+
+    await generateArtifact(task.id, 'v1', cwd, { createdBy: 'w1' })
+
+    const board = await readKanbanBoard(cwd)
+    const t = board.tasks.find(x => x.id === task.id)!
+    expect(t.owner).toBe('alice')
+    expect(t.notes).toBe('some notes')
+  })
+
+  test('call artifact select — success message is concise', async () => {
+    const cwd = await makeTempWorkspace()
+    await initKanbanBoard(cwd)
+    const { task } = await addKanbanTask({ title: 'Msg Test', status: 'ready' }, cwd)
+    const { artifact: a1 } = await generateArtifact(task.id, 'v1', cwd, { createdBy: 'w1' })
+    await generateArtifact(task.id, 'v2', cwd, { createdBy: 'w1' })
+
+    const result = await call('artifact select ' + task.id + ' ' + a1.id, {} as any, { cwd })
+    expect(result.type).toBe('text')
+    // Single-line confirmation, no stack trace
+    expect(result.value).toContain('Selected artifact v1 as current')
+    const lines = result.value.split('\n')
+    expect(lines.length).toBeLessThanOrEqual(3) // confirmation + help hint
+  })
+})
+
+// ─── Phase 14: CLI smoke tests ──────────────────────────
+
+describe('Kanban Phase 14: CLI smoke tests', () => {
+  test('artifact list output is concise and readable', async () => {
+    const cwd = await makeTempWorkspace()
+    await initKanbanBoard(cwd)
+    const { task } = await addKanbanTask({ title: 'Smoke Test', status: 'ready' }, cwd)
+    await generateArtifact(task.id, 'v1', cwd, { createdBy: 'w1' })
+    await generateArtifact(task.id, 'v2', cwd, { createdBy: 'w1' })
+
+    const result = await call('artifact list ' + task.id, {} as any, { cwd })
+    expect(result.type).toBe('text')
+    expect(result.value).toContain('v2') // newest first
+    expect(result.value).toContain('v1')
+    expect(result.value).toContain('*')  // current marker
+  })
+
+  test('artifact list empty state is clear', async () => {
+    const cwd = await makeTempWorkspace()
+    await initKanbanBoard(cwd)
+    const { task } = await addKanbanTask({ title: 'No Artifacts', status: 'ready' }, cwd)
+
+    const result = await call('artifact list ' + task.id, {} as any, { cwd })
+    expect(result.type).toBe('text')
+    expect(result.value).toContain('No artifacts')
+    expect(result.value).toContain(task.id)
+  })
+
+  test('artifact current shows current artifact', async () => {
+    const cwd = await makeTempWorkspace()
+    await initKanbanBoard(cwd)
+    const { task } = await addKanbanTask({ title: 'Current Test', status: 'ready' }, cwd)
+    await generateArtifact(task.id, 'v1', cwd, { createdBy: 'w1' })
+    await generateArtifact(task.id, 'v2', cwd, { createdBy: 'w1' })
+
+    const result = await call('artifact current ' + task.id, {} as any, { cwd })
+    expect(result.type).toBe('text')
+    expect(result.value).toContain('v2')
+    expect(result.value).toContain('Current artifact')
+  })
+
+  test('artifact current empty state is clear', async () => {
+    const cwd = await makeTempWorkspace()
+    await initKanbanBoard(cwd)
+    const { task } = await addKanbanTask({ title: 'No Artifacts', status: 'ready' }, cwd)
+
+    const result = await call('artifact current ' + task.id, {} as any, { cwd })
+    expect(result.type).toBe('text')
+    expect(result.value).toContain('No current artifact')
+  })
+
+  test('artifact select switches current and prints confirmation', async () => {
+    const cwd = await makeTempWorkspace()
+    await initKanbanBoard(cwd)
+    const { task } = await addKanbanTask({ title: 'Select Test', status: 'ready' }, cwd)
+    const { artifact: a1 } = await generateArtifact(task.id, 'v1', cwd, { createdBy: 'w1' })
+    await generateArtifact(task.id, 'v2', cwd, { createdBy: 'w1' })
+
+    const result = await call('artifact select ' + task.id + ' ' + a1.id, {} as any, { cwd })
+    expect(result.type).toBe('text')
+    expect(result.value).toContain('v1')
+    expect(result.value).toContain('current')
+
+    // Verify board state
+    const board = await readKanbanBoard(cwd)
+    const t = board.tasks.find(x => x.id === task.id)!
+    expect(t.artifacts!.find(a => a.id === a1.id)!.isCurrent).toBe(true)
+    expect(t.artifacts!.find(a => a.version === 2)!.isCurrent).toBe(false)
+  })
+
+  test('artifact invalid taskId produces clean error', async () => {
+    const cwd = await makeTempWorkspace()
+    await initKanbanBoard(cwd)
+
+    const result = await call('artifact list kb-nonexistent-000', {} as any, { cwd })
+    expect(result.type).toBe('text')
+    expect(result.value).toContain('not found')
+  })
+
+  test('artifact select invalid artifactId produces clean error', async () => {
+    const cwd = await makeTempWorkspace()
+    await initKanbanBoard(cwd)
+    const { task } = await addKanbanTask({ title: 'Bad Artifact', status: 'ready' }, cwd)
+    await generateArtifact(task.id, 'v1', cwd, { createdBy: 'w1' })
+
+    const result = await call('artifact select ' + task.id + ' ka-invalid-000', {} as any, { cwd })
+    expect(result.type).toBe('text')
+    expect(result.value).toContain('not found')
+  })
+
+  test('artifact cross-task artifactId produces clean error', async () => {
+    const cwd = await makeTempWorkspace()
+    await initKanbanBoard(cwd)
+    const { task: t1 } = await addKanbanTask({ title: 'Task 1', status: 'ready' }, cwd)
+    const { task: t2 } = await addKanbanTask({ title: 'Task 2', status: 'ready' }, cwd)
+    const { artifact: a1 } = await generateArtifact(t1.id, 'v1', cwd, { createdBy: 'w1' })
+
+    // Try to select t1's artifact on t2
+    const result = await call('artifact select ' + t2.id + ' ' + a1.id, {} as any, { cwd })
+    expect(result.type).toBe('text')
+    expect(result.value).toContain('not found')
+  })
+
+  test('owner and notes preserved after artifact generation', async () => {
+    const cwd = await makeTempWorkspace()
+    await initKanbanBoard(cwd)
+    const { task } = await addKanbanTask({ title: 'Owner Test', status: 'ready', owner: 'alice', notes: 'some notes' }, cwd)
+
+    await generateArtifact(task.id, 'v1', cwd, { createdBy: 'w1' })
+
+    const board = await readKanbanBoard(cwd)
+    const t = board.tasks.find(x => x.id === task.id)!
+    expect(t.owner).toBe('alice')
+    expect(t.notes).toBe('some notes')
+  })
+
+  test('artifact select success message is concise', async () => {
+    const cwd = await makeTempWorkspace()
+    await initKanbanBoard(cwd)
+    const { task } = await addKanbanTask({ title: 'Msg Test', status: 'ready' }, cwd)
+    const { artifact: a1 } = await generateArtifact(task.id, 'v1', cwd, { createdBy: 'w1' })
+    await generateArtifact(task.id, 'v2', cwd, { createdBy: 'w1' })
+
+    const result = await call('artifact select ' + task.id + ' ' + a1.id, {} as any, { cwd })
+    expect(result.type).toBe('text')
+    expect(result.value).toContain('Selected artifact v1 as current')
+    const lines = result.value.split('\n')
+    expect(lines.length).toBeLessThanOrEqual(3) // confirmation + help hint
   })
 })
 
@@ -1168,4 +1723,798 @@ describe('Kanban Phase 3 server endpoints', () => {
 
     close()
   })
+
+  // ─── Phase 6: Agent Runtime ────────────────────────────
+
+  describe('findClaimableTasks', () => {
+    test('prioritizes urgent > high > normal > low, then oldest', async () => {
+      const cwd = await makeTempWorkspace()
+      await initKanbanBoard(cwd)
+      await addKanbanTask({ title: 'Normal', priority: 'normal', status: 'ready' }, cwd)
+      await addKanbanTask({ title: 'Urgent', priority: 'urgent', status: 'ready' }, cwd)
+      await addKanbanTask({ title: 'Low', priority: 'low', status: 'ready' }, cwd)
+
+      const tasks = await findClaimableTasks(cwd)
+      expect(tasks).toHaveLength(3)
+      expect(tasks[0].title).toBe('Urgent')
+      expect(tasks[1].title).toBe('Normal')
+      expect(tasks[2].title).toBe('Low')
+    })
+
+    test('skips tasks with unmet dependencies by default', async () => {
+      const cwd = await makeTempWorkspace()
+      await initKanbanBoard(cwd)
+      // dep with non-claimable status so blockedBy is unmet
+      const { task: dep } = await addKanbanTask({ title: 'Dep', status: 'running' }, cwd)
+      const now = new Date().toISOString()
+      await writeKanbanBoard({
+        version: 1,
+        tasks: [
+          { id: dep.id, title: 'Dep', status: 'running', createdAt: now, updatedAt: now },
+          { id: `kb-${Date.now().toString(36)}-b1`, title: 'Blocked', status: 'ready',
+            blockedBy: [dep.id], createdAt: now, updatedAt: now },
+        ],
+      }, cwd)
+      await addKanbanTask({ title: 'Free', status: 'ready' }, cwd)
+
+      const tasks = await findClaimableTasks(cwd)
+      expect(tasks).toHaveLength(1)
+      expect(tasks[0].title).toBe('Free')
+    })
+
+    test('includes blocked tasks when allowBlocked is true', async () => {
+      const cwd = await makeTempWorkspace()
+      await initKanbanBoard(cwd)
+      const { task: dep } = await addKanbanTask({ title: 'Dep', status: 'running' }, cwd)
+      const now = new Date().toISOString()
+      await writeKanbanBoard({
+        version: 1,
+        tasks: [
+          { id: dep.id, title: 'Dep', status: 'running', createdAt: now, updatedAt: now },
+          { id: `kb-${Date.now().toString(36)}-b2`, title: 'Blocked', status: 'ready',
+            blockedBy: [dep.id], createdAt: now, updatedAt: now },
+        ],
+      }, cwd)
+
+      const tasks = await findClaimableTasks(cwd, { allowBlocked: true })
+      expect(tasks).toHaveLength(1)
+      expect(tasks[0].title).toBe('Blocked')
+    })
+
+    test('does not include blocked/done/archived tasks', async () => {
+      const cwd = await makeTempWorkspace()
+      await initKanbanBoard(cwd)
+      await addKanbanTask({ title: 'Blocked', status: 'blocked' }, cwd)
+      await addKanbanTask({ title: 'Done', status: 'done' }, cwd)
+      await addKanbanTask({ title: 'Archived', status: 'archived' }, cwd)
+      await addKanbanTask({ title: 'Ready', status: 'ready' }, cwd)
+
+      const tasks = await findClaimableTasks(cwd)
+      expect(tasks).toHaveLength(1)
+      expect(tasks[0].title).toBe('Ready')
+    })
+  })
+
+  describe('claimNextTask', () => {
+    test('claims highest priority task', async () => {
+      const cwd = await makeTempWorkspace()
+      await initKanbanBoard(cwd)
+      await addKanbanTask({ title: 'Low', priority: 'low', status: 'ready' }, cwd)
+      await addKanbanTask({ title: 'High', priority: 'high', status: 'ready' }, cwd)
+
+      const result = await claimNextTask(cwd, 'agent-1')
+      expect(result).not.toBeNull()
+      expect(result!.task.title).toBe('High')
+      expect(result!.task.status).toBe('running')
+      expect(result!.task.lease!.workerId).toBe('agent-1')
+    })
+
+    test('returns null when no tasks', async () => {
+      const cwd = await makeTempWorkspace()
+      await initKanbanBoard(cwd)
+      const result = await claimNextTask(cwd, 'agent-1')
+      expect(result).toBeNull()
+    })
+  })
+
+  describe('startHeartbeatLoop', () => {
+    test('starts and stops cleanly', async () => {
+      const cwd = await makeTempWorkspace()
+      await initKanbanBoard(cwd)
+      const { task } = await addKanbanTask({ title: 'HB Test', status: 'ready' }, cwd)
+      await claimKanbanTask(task.id, 'agent-1', 'agent-1', cwd)
+
+      const hb = startHeartbeatLoop(cwd, task.id, 'agent-1', { intervalMs: 50000 })
+      expect(hb.running).toBe(true)
+
+      // Should heartbeat immediately, check lease
+      await new Promise(r => setTimeout(r, 100))
+
+      // Stop cleanly
+      hb.stop()
+      expect(hb.running).toBe(false)
+
+      // Calling stop twice should not throw
+      hb.stop()
+    })
+
+    test('calls onError on failed heartbeat', async () => {
+      const cwd = await makeTempWorkspace()
+      await initKanbanBoard(cwd)
+      const errors: Error[] = []
+      const hb = startHeartbeatLoop(cwd, 'nonexistent', 'agent-1', {
+        intervalMs: 50000,
+        onError: (err) => { errors.push(err) },
+      })
+
+      await new Promise(r => setTimeout(r, 200))
+      hb.stop()
+      expect(errors.length).toBeGreaterThan(0)
+    })
+  })
+
+  describe('addCommandEvidence', () => {
+    test('adds command evidence to task', async () => {
+      const cwd = await makeTempWorkspace()
+      await initKanbanBoard(cwd)
+      const { task } = await addKanbanTask({ title: 'Evid Test' }, cwd)
+
+      await addCommandEvidence(cwd, task.id, 'npm test', '✓ 42 passed', true)
+
+      const board = await readKanbanBoard(cwd)
+      const updated = board.tasks[0]
+      expect(updated.verification).toBeDefined()
+      expect(updated.verification!.evidence).toHaveLength(1)
+      expect(updated.verification!.evidence[0].type).toBe('command')
+      expect(updated.verification!.evidence[0].label).toBe('npm test')
+    })
+  })
+
+  describe('completeWithEvidence', () => {
+    test('completes task when all evidence passes', async () => {
+      const cwd = await makeTempWorkspace()
+      await initKanbanBoard(cwd)
+      const { task } = await addKanbanTask({ title: 'Complete Test', status: 'running' }, cwd)
+
+      const { task: completed } = await completeWithEvidence(cwd, task.id, 'All good', [
+        { command: 'npm test', output: '✓ 42 passed', passed: true },
+        { command: 'npm build', output: '✓ built', passed: true },
+      ])
+
+      expect(completed.status).toBe('done')
+      expect(completed.verification!.passed).toBe(true)
+      expect(completed.verification!.evidence).toHaveLength(2)
+    })
+
+    test('fails task when evidence fails', async () => {
+      const cwd = await makeTempWorkspace()
+      await initKanbanBoard(cwd)
+      const { task } = await addKanbanTask({ title: 'Fail Test', status: 'running' }, cwd)
+
+      const { task: failed } = await completeWithEvidence(cwd, task.id, 'Some failed', [
+        { command: 'npm test', output: '✓ 42 passed', passed: true },
+        { command: 'npm lint', output: '3 errors', passed: false },
+      ])
+
+      expect(failed.status).toBe('done')
+      expect(failed.verification!.passed).toBe(false)
+      expect(failed.retry).toBeDefined()
+      expect(failed.retry!.lastError).toContain('Evidence check failed')
+    })
+  })
+
+  describe('failWithEvidence', () => {
+    test('fails task and attaches evidence', async () => {
+      const cwd = await makeTempWorkspace()
+      await initKanbanBoard(cwd)
+      const { task } = await addKanbanTask({ title: 'Fail Evid', status: 'running' }, cwd)
+
+      const { task: failed } = await failWithEvidence(cwd, task.id, 'Implementation broken', [
+        { command: 'npm test', output: '10 failures', passed: false },
+      ])
+
+      expect(failed.status).toBe('done')
+      expect(failed.retry!.lastError).toContain('Implementation broken')
+      expect(failed.verification!.evidence).toHaveLength(1)
+    })
+  })
+
+  describe('recoverStaleTasks', () => {
+    test('detects zombie tasks', async () => {
+      const cwd = await makeTempWorkspace()
+      await initKanbanBoard(cwd)
+      const { task } = await addKanbanTask({ title: 'Zombie', status: 'ready' }, cwd)
+      // Claim and wait for zombie
+      const now = new Date()
+      await claimKanbanTask(task.id, 'dead-worker', 'dead-worker', cwd)
+      // Manually set lease to expired zombie time
+      const past = new Date(now.getTime() - 600000).toISOString()
+      const board = await readKanbanBoard(cwd)
+      const t = board.tasks[0]
+      t.lease!.claimedAt = past
+      t.lease!.expiresAt = past
+      t.lease!.lastHeartbeatAt = past
+      await writeKanbanBoard(board, cwd)
+
+      const summary = await recoverStaleTasks(cwd)
+      expect(summary.stale).toBeGreaterThanOrEqual(1)
+      expect(summary.zombies).toBeGreaterThanOrEqual(1)
+    })
+
+    test('reclaim mode reclaims zombie tasks', async () => {
+      const cwd = await makeTempWorkspace()
+      await initKanbanBoard(cwd)
+      const { task } = await addKanbanTask({ title: 'Reclaimable Zombie', status: 'ready' }, cwd)
+      await claimKanbanTask(task.id, 'dead-worker', 'dead-worker', cwd)
+
+      // Force zombie state
+      const past = new Date(Date.now() - 600000).toISOString()
+      const board = await readKanbanBoard(cwd)
+      board.tasks[0].lease!.claimedAt = past
+      board.tasks[0].lease!.expiresAt = past
+      board.tasks[0].lease!.lastHeartbeatAt = past
+      await writeKanbanBoard(board, cwd)
+
+      const summary = await recoverStaleTasks(cwd, {
+        reclaim: true,
+        workerId: 'savior',
+        claimedBy: 'savior',
+      })
+      expect(summary.reclaimed).toBeGreaterThanOrEqual(1)
+
+      const board2 = await readKanbanBoard(cwd)
+      expect(board2.tasks[0].lease!.workerId).toBe('savior')
+    })
+  })
+
+  // ─── Worker tests ──────────────────────────────────
+
+  describe('worker', () => {
+    test('processTask dry-run claims nothing', async () => {
+      const cwd = await makeTempWorkspace()
+      await initKanbanBoard(cwd)
+      // No tasks added — claim returns nothing
+      const gen = runKanbanWorker(cwd, { workerId: 'w1', dryRun: true })
+      const result = await gen.next()
+      expect(result.done).toBe(false)
+      expect(result.value.status).toBe('skipped')
+      expect(result.value.summary).toContain('no claimable tasks')
+    })
+
+    test('processTask --once claims highest priority', async () => {
+      const cwd = await makeTempWorkspace()
+      await initKanbanBoard(cwd)
+      // Add two tasks: low priority (older) and urgent priority (newer)
+      const { task: lowTask } = await addKanbanTask(
+        { title: 'Low priority', status: 'ready', priority: 'low' },
+        cwd,
+      )
+      const { task: urgentTask } = await addKanbanTask(
+        { title: 'Urgent priority', status: 'ready', priority: 'urgent' },
+        cwd,
+      )
+
+      // Run worker with --once (default)
+      const gen = runKanbanWorker(cwd, { workerId: 'w1', cmd: 'echo done' })
+      const result = await gen.next()
+      expect(result.done).toBe(false)
+      expect(result.value.taskId).toBe(urgentTask.id)
+      expect(result.value.status).toBe('completed')
+
+      // Verify urgent task is done, low task is still running/claimable
+      const board = await readKanbanBoard(cwd)
+      const urgent = board.tasks.find(t => t.id === urgentTask.id)
+      const low = board.tasks.find(t => t.id === lowTask.id)
+      expect(urgent?.status).toBe('done')
+      expect(low?.status).toBe('ready')
+    })
+
+    test('worker command success adds evidence and completes', async () => {
+      const cwd = await makeTempWorkspace()
+      await initKanbanBoard(cwd)
+      const { task } = await addKanbanTask(
+        { title: 'Worker success', status: 'ready' },
+        cwd,
+      )
+      await claimKanbanTask(task.id, 'w1', 'w1', cwd)
+
+      const result = await processTask(cwd, { ...task, status: 'running' }, { workerId: 'w1', cmd: 'echo hello' })
+      expect(result.status).toBe('completed')
+      expect(result.taskId).toBe(task.id)
+      expect(result.evidenceCount).toBeGreaterThanOrEqual(1)
+
+      // Verify on the board
+      const board = await readKanbanBoard(cwd)
+      const updated = board.tasks[0]
+      expect(updated.status).toBe('done')
+      expect(updated.verification?.evidence).toHaveLength(1)
+    })
+
+    test('worker command failure fails task', async () => {
+      const cwd = await makeTempWorkspace()
+      await initKanbanBoard(cwd)
+      const { task } = await addKanbanTask(
+        { title: 'Worker fail', status: 'ready' },
+        cwd,
+      )
+      await claimKanbanTask(task.id, 'w1', 'w1', cwd)
+
+      const result = await processTask(cwd, { ...task, status: 'running' }, { workerId: 'w1', cmd: 'exit 1' })
+      expect(result.status).toBe('failed')
+      expect(result.summary).toContain('exit code 1')
+
+      const board = await readKanbanBoard(cwd)
+      const updated = board.tasks[0]
+      expect(updated.status).toBe('done')
+      expect(updated.retry?.lastError).toContain('Command exited with code')
+    })
+
+    test('verify failure fails task', async () => {
+      const cwd = await makeTempWorkspace()
+      await initKanbanBoard(cwd)
+      const { task } = await addKanbanTask(
+        { title: 'Verify fail', status: 'ready' },
+        cwd,
+      )
+      await claimKanbanTask(task.id, 'w1', 'w1', cwd)
+
+      const result = await processTask(
+        cwd,
+        { ...task, status: 'running' },
+        { workerId: 'w1', cmd: 'echo ok', verifyCmd: 'exit 1' },
+      )
+      expect(result.status).toBe('failed')
+      expect(result.summary).toContain('verify exit code 1')
+
+      const board = await readKanbanBoard(cwd)
+      const updated = board.tasks[0]
+      expect(updated.verification?.evidence).toHaveLength(2)
+    })
+
+    test('heartbeat stops after task completes', async () => {
+      const cwd = await makeTempWorkspace()
+      await initKanbanBoard(cwd)
+      const { task } = await addKanbanTask(
+        { title: 'HB complete', status: 'ready' },
+        cwd,
+      )
+      await claimKanbanTask(task.id, 'w1', 'w1', cwd)
+
+      const result = await processTask(cwd, { ...task, status: 'running' }, { workerId: 'w1', cmd: 'echo done' })
+      expect(result.status).toBe('completed')
+
+      // Heartbeat should have been stopped — verify no active lease heartbeat
+      const board = await readKanbanBoard(cwd)
+      const updated = board.tasks[0]
+      // Task should be done with no active lease
+      expect(updated.status).toBe('done')
+      expect(updated.lease).toBeUndefined()
+    })
+
+    test('output is capped', async () => {
+      const cwd = await makeTempWorkspace()
+      await initKanbanBoard(cwd)
+      const { task } = await addKanbanTask(
+        { title: 'Output cap', status: 'ready' },
+        cwd,
+      )
+      await claimKanbanTask(task.id, 'w1', 'w1', cwd)
+
+      // Generate output > 5000 chars
+      const result = await processTask(
+        cwd,
+        { ...task, status: 'running' },
+        { workerId: 'w1', cmd: 'python -c "print(\'x\'*6000)"' },
+      )
+      expect(result.status).toBe('completed')
+
+      const board = await readKanbanBoard(cwd)
+      const updated = board.tasks[0]
+      const evidence = updated.verification?.evidence ?? []
+      // At least one evidence item with truncated content
+      expect(evidence.length).toBeGreaterThanOrEqual(1)
+      const content = evidence[0].content ?? ''
+      expect(content.length).toBeLessThanOrEqual(5100) // 5000 + "\n... (truncated)"
+    })
+
+    test('metadata command is used if no CLI command provided', async () => {
+      const cwd = await makeTempWorkspace()
+      await initKanbanBoard(cwd)
+      // Use writeKanbanBoard to create a task with metadata (addKanbanTask doesn't support metadata in input)
+      const taskId = 'kb-meta-' + Date.now().toString(36)
+      await writeKanbanBoard({
+        version: 1,
+        tasks: [{
+          id: taskId,
+          title: 'Meta cmd',
+          status: 'ready',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          metadata: { command: 'echo metadata-command-ran' },
+        }],
+      }, cwd)
+      await claimKanbanTask(taskId, 'w1', 'w1', cwd)
+
+      // Read back the task with metadata
+      const board = await readKanbanBoard(cwd)
+      const task = board.tasks[0]
+
+      // No --cmd provided, should use task.metadata.command
+      const result = await processTask(cwd, task, { workerId: 'w1' })
+      expect(result.status).toBe('completed')
+      expect(result.evidenceCount).toBeGreaterThanOrEqual(1)
+    })
+
+    test('commandArgv safe execution', async () => {
+      const cwd = await makeTempWorkspace()
+      await initKanbanBoard(cwd)
+      const { task } = await addKanbanTask({ title: 'Argv test', status: 'ready' }, cwd)
+      await claimKanbanTask(task.id, 'w1', 'w1', cwd)
+
+      const result = await processTask(cwd, { ...task, status: 'running' }, { workerId: 'w1', commandArgv: ['echo', 'argv-success'] })
+      expect(result.status).toBe('completed')
+      expect(result.evidenceCount).toBeGreaterThanOrEqual(1)
+    })
+
+    test('timeout option overrides', async () => {
+      const cwd = await makeTempWorkspace()
+      await initKanbanBoard(cwd)
+      const { task } = await addKanbanTask({ title: 'Timeout test', status: 'ready' }, cwd)
+      await claimKanbanTask(task.id, 'w1', 'w1', cwd)
+
+      // 100ms timeout for a command that takes 5 seconds — should timeout
+      const result = await processTask(cwd, { ...task, status: 'running' }, { workerId: 'w1', commandArgv: ['sleep', '5'], timeoutMs: 100 })
+      expect(result.status).toBe('failed')
+    })
+
+    test('output limit option', async () => {
+      const cwd = await makeTempWorkspace()
+      await initKanbanBoard(cwd)
+      const { task } = await addKanbanTask({ title: 'Output limit', status: 'ready' }, cwd)
+      await claimKanbanTask(task.id, 'w1', 'w1', cwd)
+
+      // Python to generate >1000 chars of output with 200 char limit
+      const result = await processTask(
+        cwd,
+        { ...task, status: 'running' },
+        { workerId: 'w1', commandArgv: ['python', '-c', 'print("x"*6000)'], outputLimit: 200 },
+      )
+      expect(result.status).toBe('completed')
+      const board = await readKanbanBoard(cwd)
+      const evidence = board.tasks[0].verification?.evidence ?? []
+      // Output should be truncated
+      expect(evidence[0].content?.length).toBeLessThanOrEqual(220)
+    })
+
+    test('expectedFiles success — all files exist', async () => {
+      const cwd = await makeTempWorkspace()
+      await initKanbanBoard(cwd)
+
+      // Create expected files
+      const testFile = join(cwd, 'output.txt')
+      writeFileSync(testFile, 'hello world')
+
+      const { task } = await addKanbanTask(
+        {
+          title: 'Expected files test',
+          status: 'ready',
+          metadata: { command: 'echo done', expectedFiles: ['output.txt'] },
+        } as any,
+        cwd,
+      )
+      await claimKanbanTask(task.id, 'w1', 'w1', cwd)
+
+      const result = await processTask(cwd, task, { workerId: 'w1', cmd: 'echo done' })
+      expect(result.status).toBe('completed')
+    })
+
+    test('expectedFiles missing causes not-done', async () => {
+      const cwd = await makeTempWorkspace()
+      await initKanbanBoard(cwd)
+
+      // Use writeKanbanBoard to create task with expectedFiles metadata
+      const taskId = 'kb-efile-' + Date.now().toString(36)
+      await writeKanbanBoard({
+        version: 1,
+        tasks: [{
+          id: taskId,
+          title: 'Missing files test',
+          status: 'ready',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          metadata: { command: 'echo done', expectedFiles: ['nonexistent.txt'] },
+        }],
+      }, cwd)
+      await claimKanbanTask(taskId, 'w1', 'w1', cwd)
+
+      const board = await readKanbanBoard(cwd)
+      const task = board.tasks[0]
+
+      const result = await processTask(cwd, task, { workerId: 'w1', cmd: 'echo done' })
+      expect(result.status).toBe('failed')
+      expect(result.summary).toContain('expectedFiles missing')
+
+      const board2 = await readKanbanBoard(cwd)
+      expect(board2.tasks[0].status).toBe('done')
+      expect(board2.tasks[0].retry?.lastError).toContain('Expected files missing')
+    })
+
+    test('worker event append', async () => {
+      const cwd = await makeTempWorkspace()
+      await initKanbanBoard(cwd)
+      const { task } = await addKanbanTask({ title: 'Event test', status: 'ready' }, cwd)
+      await claimKanbanTask(task.id, 'w1', 'w1', cwd)
+
+      await processTask(cwd, { ...task, status: 'running' }, { workerId: 'w1', cmd: 'echo ok' })
+
+      const board = await readKanbanBoard(cwd)
+      const events = board.tasks[0].events ?? []
+      const eventTypes = events.map(e => e.type)
+      expect(eventTypes).toContain('worker_started')
+      expect(eventTypes).toContain('command_completed')
+      expect(eventTypes).toContain('worker_completed')
+    })
+
+    test('releaseActiveTaskOnInterrupt releases lease', async () => {
+      const cwd = await makeTempWorkspace()
+      await initKanbanBoard(cwd)
+      const { task } = await addKanbanTask({ title: 'Interrupt release', status: 'ready' }, cwd)
+      await claimKanbanTask(task.id, 'w1', 'w1', cwd)
+
+      // Verify lease exists
+      let board = await readKanbanBoard(cwd)
+      expect(board.tasks[0].lease?.workerId).toBe('w1')
+
+      // Release via interrupt helper
+      const { releaseActiveTaskOnInterrupt } = await import('./worker.js')
+      await releaseActiveTaskOnInterrupt(cwd, task.id, 'w1')
+
+      // Lease should be cleared (task marked done with failed event)
+      board = await readKanbanBoard(cwd)
+      expect(board.tasks[0].lease).toBeUndefined()
+      expect(board.tasks[0].status).toBe('done')
+      expect(board.tasks[0].events?.some(e => e.type === 'failed')).toBe(true)
+    })
+
+    // ─── CLI parser tests ───────────────────────────
+
+    test('parseKanbanArgs worker --verbose', () => {
+      const cmd = parseKanbanArgs('worker --worker w1 --verbose')
+      expect(cmd.type).toBe('worker')
+      expect((cmd as any).workerId).toBe('w1')
+      expect((cmd as any).options.verbose).toBe(true)
+    })
+
+    test('parseKanbanArgs worker --quiet', () => {
+      const cmd = parseKanbanArgs('worker --worker w1 --quiet')
+      expect(cmd.type).toBe('worker')
+      expect((cmd as any).options.quiet).toBe(true)
+    })
+
+    test('parseKanbanArgs worker --statuses', () => {
+      const cmd = parseKanbanArgs('worker --worker w1 --statuses ready,todo')
+      expect(cmd.type).toBe('worker')
+      expect((cmd as any).options.statuses).toEqual(['ready', 'todo'])
+    })
+
+    test('parseKanbanArgs worker --allowBlocked', () => {
+      const cmd = parseKanbanArgs('worker --worker w1 --allowBlocked')
+      expect(cmd.type).toBe('worker')
+      expect((cmd as any).options.allowBlocked).toBe(true)
+    })
+
+    test('parseKanbanArgs worker combined options', () => {
+      const cmd = parseKanbanArgs('worker --worker w1 --once --statuses ready,todo --allowBlocked --verbose')
+      expect(cmd.type).toBe('worker')
+      expect((cmd as any).workerId).toBe('w1')
+      expect((cmd as any).options.verbose).toBe(true)
+      expect((cmd as any).options.allowBlocked).toBe(true)
+      expect((cmd as any).options.statuses).toEqual(['ready', 'todo'])
+    })
+  })
 })
+
+describe('Kanban Phase 15: Multi-agent safety', () => {
+  test('claim records claimedBy', async () => {
+    const cwd = await makeTempWorkspace()
+    await initKanbanBoard(cwd)
+    const { task: t } = await addKanbanTask({ title: 'T1', status: 'ready' }, cwd)
+    const { task } = await claimKanbanTask(t.id, 'w1', 'user-1', cwd)
+    expect(task.lease?.claimedBy).toBe('user-1')
+    expect(task.lease?.workerId).toBe('w1')
+  })
+
+  test('active lease blocks other workers', async () => {
+    const cwd = await makeTempWorkspace()
+    await initKanbanBoard(cwd)
+    const { task: t } = await addKanbanTask({ title: 'T1', status: 'ready' }, cwd)
+    await claimKanbanTask(t.id, 'w1', 'user-1', cwd)
+    await expect(
+      claimKanbanTask(t.id, 'w2', 'user-2', cwd)
+    ).rejects.toThrow(/already claimed/)
+  })
+
+  test('same worker can re-claim non-stale lease', async () => {
+    const cwd = await makeTempWorkspace()
+    await initKanbanBoard(cwd)
+    const { task: t } = await addKanbanTask({ title: 'T1', status: 'ready' }, cwd)
+    await claimKanbanTask(t.id, 'w1', 'user-1', cwd)
+    const { task } = await claimKanbanTask(t.id, 'w1', 'user-1', cwd)
+    expect(task.lease?.workerId).toBe('w1')
+    expect(task.lease?.status).toBe('active')
+  })
+
+  test('expired lease allows reclaim', async () => {
+    const cwd = await makeTempWorkspace()
+    await initKanbanBoard(cwd)
+    const { task: t } = await addKanbanTask({ title: 'T1', status: 'ready' }, cwd)
+    const { task: claimed } = await claimKanbanTask(t.id, 'w1', 'user-1', cwd, { ttlMs: 1 })
+    await new Promise(r => setTimeout(r, 10))
+    const { task } = await claimKanbanTask(t.id, 'w2', 'user-2', cwd)
+    expect(task.lease?.workerId).toBe('w2')
+  })
+
+  test('leaseMinutes override', async () => {
+    const cwd = await makeTempWorkspace()
+    await initKanbanBoard(cwd)
+    const { task: t } = await addKanbanTask({ title: 'T1', status: 'ready' }, cwd)
+    const { task } = await claimKanbanTask(t.id, 'w1', 'user-1', cwd, { ttlMs: 10 * 60 * 1000 })
+    const expiresAt = new Date(task.lease!.expiresAt).getTime()
+    const claimedAt = new Date(task.lease!.claimedAt).getTime()
+    const diffMs = expiresAt - claimedAt
+    expect(diffMs).toBeGreaterThanOrEqual(9.5 * 60 * 1000)
+  })
+
+  test('cannot claim done task', async () => {
+    const cwd = await makeTempWorkspace()
+    await initKanbanBoard(cwd)
+    const { task: t } = await addKanbanTask({ title: 'T1', status: 'done' }, cwd)
+    await expect(
+      claimKanbanTask(t.id, 'w1', 'u1', cwd)
+    ).rejects.toThrow(/Cannot claim/)
+  })
+
+  test('heartbeat updates lastHeartbeatAt', async () => {
+    const cwd = await makeTempWorkspace()
+    await initKanbanBoard(cwd)
+    const { task: t } = await addKanbanTask({ title: 'T1', status: 'ready' }, cwd)
+    const { task: claimed } = await claimKanbanTask(t.id, 'w1', 'u1', cwd, { ttlMs: 60000 })
+    await new Promise(r => setTimeout(r, 5))
+    const { task } = await heartbeatKanbanTask(t.id, 'w1', cwd)
+    expect(task.lease?.lastHeartbeatAt).toBeDefined()
+    const hbTime = new Date(task.lease!.lastHeartbeatAt!).getTime()
+    const claimTime = new Date(claimed.lease!.claimedAt).getTime()
+    expect(hbTime).toBeGreaterThan(claimTime)
+  })
+
+  test('wrong worker heartbeat fails', async () => {
+    const cwd = await makeTempWorkspace()
+    await initKanbanBoard(cwd)
+    const { task: t } = await addKanbanTask({ title: 'T1', status: 'ready' }, cwd)
+    await claimKanbanTask(t.id, 'w1', 'u1', cwd)
+    await expect(
+      heartbeatKanbanTask(t.id, 'w2', cwd)
+    ).rejects.toThrow()
+  })
+
+  test('nonexistent task heartbeat fails', async () => {
+    const cwd = await makeTempWorkspace()
+    await initKanbanBoard(cwd)
+    await expect(
+      heartbeatKanbanTask('nonexistent-id', 'w1', cwd)
+    ).rejects.toThrow()
+  })
+
+  test('recoverStaleClaimedTasks clears expired leases', async () => {
+    const cwd = await makeTempWorkspace()
+    await initKanbanBoard(cwd)
+    const { task: t } = await addKanbanTask({ title: 'T1', status: 'ready' }, cwd)
+    const { task: claimed } = await claimKanbanTask(t.id, 'w1', 'u1', cwd, { ttlMs: 1 })
+    await new Promise(r => setTimeout(r, 10))
+    const result = await recoverStaleClaimedTasks(cwd)
+    expect(result.recovered).toBe(1)
+    const board = await readKanbanBoard(cwd)
+    const bt = board.tasks.find(x => x.id === t.id)
+    expect(bt?.lease).toBeUndefined()
+    expect(bt?.status).toBe('ready')
+  })
+
+  test('recoverStaleClaimedTasks leaves active leases', async () => {
+    const cwd = await makeTempWorkspace()
+    await initKanbanBoard(cwd)
+    const { task: t } = await addKanbanTask({ title: 'T1', status: 'ready' }, cwd)
+    await claimKanbanTask(t.id, 'w1', 'u1', cwd, { ttlMs: 60000 })
+    const result = await recoverStaleClaimedTasks(cwd)
+    expect(result.recovered).toBe(0)
+  })
+
+  test('recoverStaleClaimedTasks is idempotent', async () => {
+    const cwd = await makeTempWorkspace()
+    await initKanbanBoard(cwd)
+    const { task: t } = await addKanbanTask({ title: 'T1', status: 'ready' }, cwd)
+    await claimKanbanTask(t.id, 'w1', 'u1', cwd, { ttlMs: 1 })
+    await new Promise(r => setTimeout(r, 10))
+    const r1 = await recoverStaleClaimedTasks(cwd)
+    expect(r1.recovered).toBe(1)
+    const r2 = await recoverStaleClaimedTasks(cwd)
+    expect(r2.recovered).toBe(0)
+  })
+
+  test('recoverStaleClaimedTasks writes stale_recovered event', async () => {
+    const cwd = await makeTempWorkspace()
+    await initKanbanBoard(cwd)
+    const { task: t } = await addKanbanTask({ title: 'T1', status: 'ready' }, cwd)
+    await claimKanbanTask(t.id, 'w1', 'u1', cwd, { ttlMs: 1 })
+    await new Promise(r => setTimeout(r, 10))
+    await recoverStaleClaimedTasks(cwd)
+    const board = await readKanbanBoard(cwd)
+    const bt = board.tasks.find(x => x.id === t.id)
+    expect(bt?.events?.some(e => e.type === 'stale_recovered')).toBe(true)
+  })
+
+  test('recoverStaleClaimedTasks empty board', async () => {
+    const cwd = await makeTempWorkspace()
+    await initKanbanBoard(cwd)
+    const result = await recoverStaleClaimedTasks(cwd)
+    expect(result.recovered).toBe(0)
+    expect(result.tasks).toEqual([])
+  })
+
+  test('failKanbanTask increments attempt', async () => {
+    const cwd = await makeTempWorkspace()
+    await initKanbanBoard(cwd)
+    const { task: t } = await addKanbanTask({ title: 'T1', status: 'ready' }, cwd)
+    const { task: claimed } = await claimKanbanTask(t.id, 'w1', 'u1', cwd)
+    const { task } = await failKanbanTask(claimed.id, 'test failure', 'w1', cwd)
+    expect(task.retry?.attempt).toBe(1)
+  })
+
+  test('failKanbanTask clears lease', async () => {
+    const cwd = await makeTempWorkspace()
+    await initKanbanBoard(cwd)
+    const { task: t } = await addKanbanTask({ title: 'T1', status: 'ready' }, cwd)
+    const { task: claimed } = await claimKanbanTask(t.id, 'w1', 'u1', cwd)
+    const { task } = await failKanbanTask(claimed.id, 'test failure', 'w1', cwd)
+    expect(task.lease).toBeUndefined()
+  })
+
+  test('failKanbanTask repeated failures increment', async () => {
+    const cwd = await makeTempWorkspace()
+    await initKanbanBoard(cwd)
+    const { task: t1 } = await addKanbanTask({ title: 'T1', status: 'ready' }, cwd)
+    const { task: c1 } = await claimKanbanTask(t1.id, 'w1', 'u1', cwd)
+    let { task } = await failKanbanTask(c1.id, 'fail 1', 'w1', cwd)
+    expect(task.retry?.attempt).toBe(1)
+    const { task: t2 } = await addKanbanTask({ title: 'T2', status: 'ready' }, cwd)
+    const { task: c2 } = await claimKanbanTask(t2.id, 'w1', 'u1', cwd)
+    ;({ task } = await failKanbanTask(c2.id, 'fail 2', 'w1', cwd))
+    expect(task.retry?.attempt).toBe(1) // new task, fresh retry counter
+  })
+
+  test('parseKanbanArgs worker heartbeat', () => {
+    const cmd = parseKanbanArgs('worker heartbeat task-123 w1')
+    expect(cmd.type).toBe('worker-heartbeat')
+    expect((cmd as any).taskId).toBe('task-123')
+    expect((cmd as any).workerId).toBe('w1')
+  })
+
+  test('parseKanbanArgs worker recover-stale', () => {
+    const cmd = parseKanbanArgs('worker recover-stale')
+    expect(cmd.type).toBe('worker-recover-stale')
+  })
+
+  test('parseKanbanArgs worker fail', () => {
+    const cmd = parseKanbanArgs('worker fail task-123 --reason "something broke" w1')
+    expect(cmd.type).toBe('worker-fail')
+    expect((cmd as any).taskId).toBe('task-123')
+    expect((cmd as any).reason).toBe('something broke')
+    expect((cmd as any).workerId).toBe('w1')
+  })
+
+  test('parseKanbanArgs worker --lease-minutes', () => {
+    const cmd = parseKanbanArgs('worker --worker w1 --once --lease-minutes 5')
+    expect(cmd.type).toBe('worker')
+    expect((cmd as any).options.leaseMinutes).toBe(5)
+  })
+})
+

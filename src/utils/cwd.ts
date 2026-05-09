@@ -1,5 +1,5 @@
 import { AsyncLocalStorage } from 'async_hooks'
-import { getCwdState, getOriginalCwd } from '../bootstrap/state.js'
+import { getCwdState, getOriginalCwd, getProjectRoot as getProjectRootBase } from '../bootstrap/state.js'
 
 const cwdOverrideStorage = new AsyncLocalStorage<string>()
 
@@ -14,14 +14,24 @@ export function runWithCwdOverride<T>(cwd: string, fn: () => T): T {
 }
 
 /**
- * Get the current working directory
+ * Get the current working directory (respects runWithCwdOverride).
  */
 export function pwd(): string {
   return cwdOverrideStorage.getStore() ?? getCwdState()
 }
 
 /**
- * Get the current working directory or the original working directory if the current one is not available
+ * Get the project root (respects runWithCwdOverride).
+ * When inside a runWithCwdOverride context, returns the override instead of the
+ * stable project root. This ensures Kanban CLI commands see the test workspace.
+ */
+export function getProjectRoot(): string {
+  return cwdOverrideStorage.getStore() ?? getProjectRootBase()
+}
+
+/**
+ * Get the current working directory or the original working directory if the
+ * current one is not available.
  */
 export function getCwd(): string {
   try {

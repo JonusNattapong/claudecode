@@ -26,6 +26,7 @@ import ide from './commands/ide/index.js'
 import init from './commands/init.js'
 import initVerifiers from './commands/init-verifiers.js'
 import keybindings from './commands/keybindings/index.js'
+import kanban from './commands/kanban/index.js'
 import login from './commands/login/index.js'
 import logout from './commands/logout/index.js'
 import installGitHubApp from './commands/install-github-app/index.js'
@@ -260,6 +261,7 @@ const COMMANDS = memoize((): Command[] => [
   help,
   ide,
   init,
+  kanban,
   keybindings,
   installGitHubApp,
   installSlackApp,

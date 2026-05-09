@@ -55,6 +55,21 @@ export const KANBAN_EVENT_TYPES = [
   'hallucination_detected',
   'completed',
   'archived',
+  // Phase 13: Artifact events
+  'artifact_generated',
+  'artifact_selected',
+  // Phase 7.1: Worker events
+  'worker_started',
+  'command_started',
+  'command_completed',
+  'command_failed',
+  'verify_started',
+  'verify_completed',
+  'verify_failed',
+  'worker_completed',
+  'worker_failed',
+  // Phase 15: Stale recovery
+  'stale_recovered',
 ] as const
 
 export type KanbanStatus = (typeof KANBAN_STATUSES)[number]
@@ -188,6 +203,24 @@ export type KanbanTask = {
   events?: KanbanEvent[]
   workspaceId?: string
   projectId?: string
+
+  // Phase 13: Artifacts
+  artifacts?: KanbanArtifact[]
+}
+
+export type KanbanArtifact = {
+  id: string
+  taskId: string
+  /** Version number, starts at 1, increments per task */
+  version: number
+  label: string
+  content?: string
+  path?: string
+  type: 'command' | 'file' | 'diff' | 'test' | 'manual' | 'build' | 'output'
+  /** If true, this artifact is the currently selected one for the task */
+  isCurrent: boolean
+  createdAt: string
+  createdBy: string
 }
 
 export type KanbanBoard = {
