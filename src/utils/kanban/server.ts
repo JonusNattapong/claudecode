@@ -1337,7 +1337,7 @@ function renderDashboard(): string {
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Kanban Dashboard — OpenFinch</title>
+<title>Kanban Dashboard</title>
 <style>
 :root{--bg:#050608;--panel:#111319;--panel-2:#181b24;--card-bg:#080a0e;--text:#f4f1e8;--text-muted:#8e98a7;--col-bg:#080a0f;--col-title:#c7d2e5;--border:#222838;--border-strong:#3a4358;--tab-bg:#111319;--tab-active:#1b202b;--accent:#ffb21a;--accent-soft:#2d2110;--accent-rgb:255,178,26;--blue:#1b5cff;--blue-soft:#0e1c45;--danger:#ff6d2d;--success:#ffd36a;--warning:#ff9f1a;--info:#2d78ff;--shadow:rgba(0,0,0,0.5);--mono:"SFMono-Regular","Cascadia Code","Liberation Mono",Consolas,monospace}
 *{box-sizing:border-box}
