@@ -63,7 +63,8 @@
       "Bash(grep -n \"case ''workers''\\\\|case ''worker''\" src/commands/kanban/kanban.ts)",
       "Bash(python:*)",
       "Bash(grep -n \"parseKanbanArgs\\\\|type.*worker\\\\|type.*fail\\\\|type.*heartbeat\\\\|case ''''worker''''\" src/commands/kanban/kanban.ts)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(gh release:*)"
     ]
   },
   "outputStyle": "Explanatory",
