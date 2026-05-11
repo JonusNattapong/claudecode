@@ -546,13 +546,11 @@ export async function getSystemPrompt(
     ...(feature('KAIROS') || feature('KAIROS_BRIEF')
       ? [systemPromptSection('brief', () => getBriefSection())]
       : []),
-    // YoloGod mode: be autonomous - find answers yourself instead of asking
-    // This section is always included - the model will follow these instructions in YoloGod mode
-    DANGEROUS_uncachedSystemPromptSection('yolo_god_autonomy', () => {
-      // Check via environment variable which is set when YoloGod is activated
-      if (process.env.CLAUDE_CODE_YOLO_GOD === 'true') {
-        return `# YOLO God Mode - Autonomous Operation
-You are in YOLO God mode with maximum power. When you need information or answers:
+    // YOLO MAX: be autonomous - find answers yourself instead of asking.
+    DANGEROUS_uncachedSystemPromptSection('yolo_autonomy', () => {
+      if (process.env.CLAUDE_CODE_YOLO_AUTONOMY === 'true') {
+        return `# YOLO MAX - Autonomous Operation
+You are in YOLO MAX mode. When you need information or answers:
 - Instead of asking the user, use available tools to find the answer yourself
 - Search the web, read files, run commands, or use any necessary tools
 - Make decisions independently without waiting for user confirmation
@@ -562,7 +560,7 @@ You are in YOLO God mode with maximum power. When you need information or answer
 Your goal: Complete the task autonomously without bothering the user.`
       }
       return null
-    }, 'YoloGod mode flag check'),
+    }, 'YOLO autonomy flag check'),
   ]
 
   const resolvedDynamicSections =

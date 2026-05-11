@@ -11,14 +11,14 @@ import type { ToolPermissionContext } from '../Tool.js';
 import type { LocalJSXCommandOnDone } from '../types/command.js';
 import { Dialog } from './design-system/Dialog.js';
 
-type YoloTier = 'yoloLite' | 'yolo' | 'yoloMax' | 'yoloGod';
+type YoloTier = 'yoloLite' | 'yolo' | 'yoloMax';
 
 type YoloTierConfig = {
   mode: YoloTier;
   title: string;
   description: string;
   symbol: string;
-  color: 'yoloLite' | 'yolo' | 'yoloMax' | 'yoloGod';
+  color: 'yoloLite' | 'yolo' | 'yoloMax';
   warning?: string;
 };
 
@@ -26,34 +26,32 @@ const YOLO_TIERS: YoloTierConfig[] = [
   {
     mode: 'yoloLite',
     title: 'YOLO Lite',
-    description: 'Auto-allow file operations with safety checks for dangerous commands',
-    symbol: '⚡',
+    description: 'Auto-allow most actions, but still asks for necessary dangerous or sensitive operations',
+    symbol: '1',
     color: 'yoloLite',
+    warning: 'Guardian stays on for destructive commands and sensitive files',
   },
   {
     mode: 'yolo',
-    title: 'YOLO',
-    description: 'Auto-allow everything (equivalent to bypassPermissions)',
-    symbol: '⚡⚡',
+    title: 'YOLO ALLOW',
+    description: 'Auto-allow tool use broadly for trusted work sessions',
+    symbol: '2',
     color: 'yolo',
+    warning: 'Use only in repositories you trust',
   },
   {
     mode: 'yoloMax',
-    title: 'YOLO Max',
-    description: 'Auto-allow everything + bypass sandbox',
-    symbol: '⚡⚡⚡',
+    title: 'YOLO MAX',
+    description: 'Full autonomous mode: auto-allow tools, bypass sandbox when available, and find answers instead of asking',
+    symbol: '3',
     color: 'yoloMax',
-    warning: '⚠️ Bypasses sandbox - can execute arbitrary commands',
-  },
-  {
-    mode: 'yoloGod',
-    title: 'YOLO God',
-    description: 'Maximum power - no limits',
-    symbol: '🔥',
-    color: 'yoloGod',
-    warning: '🔥 Maximum power - no safety checks whatsoever',
+    warning: 'Bypasses sandbox when allowed and pushes the assistant to resolve questions on its own',
   },
 ];
+
+function isYoloTier(mode: PermissionMode): mode is YoloTier {
+  return mode === 'yoloLite' || mode === 'yolo' || mode === 'yoloMax';
+}
 
 type Props = {
   onDone: LocalJSXCommandOnDone;
@@ -61,10 +59,10 @@ type Props = {
 };
 
 export function YoloModePicker({ onDone, defaultTier }: Props) {
-  const [selectedTier, setSelectedTier] = useState<YoloTier | null>(
-    defaultTier ?? null,
-  );
   const currentMode = useAppState((s) => s.toolPermissionContext.mode) as PermissionMode;
+  const [selectedTier, setSelectedTier] = useState<YoloTier | null>(
+    defaultTier ?? (isYoloTier(currentMode) ? currentMode : null),
+  );
   const toolPermissionContext = useAppState((s) => s.toolPermissionContext) as ToolPermissionContext;
   const setAppState = useSetAppState();
 
@@ -82,10 +80,10 @@ export function YoloModePicker({ onDone, defaultTier }: Props) {
       toolPermissionContext: newContext,
     }));
 
-    if (selectedTier === 'yoloGod') {
-      process.env.CLAUDE_CODE_YOLO_GOD = 'true';
+    if (selectedTier === 'yoloMax') {
+      process.env.CLAUDE_CODE_YOLO_AUTONOMY = 'true';
     } else {
-      delete process.env.CLAUDE_CODE_YOLO_GOD;
+      delete process.env.CLAUDE_CODE_YOLO_AUTONOMY;
     }
 
     const tierConfig = YOLO_TIERS.find((t) => t.mode === selectedTier)!;

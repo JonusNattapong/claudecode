@@ -134,14 +134,6 @@
     border-radius: 4px;
   }
 
-  .logo-icon {
-    font-size: 1.5rem;
-    background: linear-gradient(135deg, var(--primary-light) 0%, var(--accent) 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-  }
-
   .logo-text {
     background: linear-gradient(90deg, var(--text) 0%, var(--text-muted) 100%);
     -webkit-background-clip: text;

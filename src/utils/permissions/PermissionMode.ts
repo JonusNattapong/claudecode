@@ -85,32 +85,25 @@ const PERMISSION_MODE_CONFIG: Partial<
     external: 'dontAsk',
   },
   yolo: {
-    title: 'YOLO Mode',
-    shortTitle: 'YOLO',
-    symbol: '⚡️',
+    title: 'yolo allow',
+    shortTitle: 'yolo allow',
+    symbol: '2',
     color: 'error',
     external: 'yolo',
   },
   yoloLite: {
-    title: 'YOLO Lite',
-    shortTitle: 'Lite',
-    symbol: '⚡',
+    title: 'yolo lite',
+    shortTitle: 'yolo lite',
+    symbol: '1',
     color: 'warning',
     external: 'yoloLite',
   },
   yoloMax: {
-    title: 'YOLO Max',
-    shortTitle: 'Max',
-    symbol: '⚡⚡',
+    title: 'yolo max',
+    shortTitle: 'yolo max',
+    symbol: '3',
     color: 'error',
     external: 'yoloMax',
-  },
-  yoloGod: {
-    title: 'YOLO God',
-    shortTitle: 'God',
-    symbol: '🔥',
-    color: 'error',
-    external: 'yoloGod',
   },
   ...(feature('TRANSCRIPT_CLASSIFIER')
     ? {
@@ -150,6 +143,9 @@ export function toExternalPermissionMode(
 }
 
 export function permissionModeFromString(str: string): PermissionMode {
+  if (str === 'yoloGod') {
+    return 'yoloMax'
+  }
   return (PERMISSION_MODES as readonly string[]).includes(str)
     ? (str as PermissionMode)
     : 'default'

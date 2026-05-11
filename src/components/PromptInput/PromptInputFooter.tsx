@@ -96,18 +96,13 @@ function PromptInputFooter({
 }: Props): ReactNode {
   const settings = useSettings();
   const {
-    columns,
-    rows
+    columns
   } = useTerminalSize();
   const messagesRef = useRef(messages);
   messagesRef.current = messages;
   const lastAssistantMessageId = useMemo(() => getLastAssistantMessageId(messages), [messages]);
   const isNarrow = columns < 80;
-  // In fullscreen the bottom slot is flexShrink:0, so every row here is a row
-  // stolen from the ScrollBox. Drop the optional StatusLine first. Non-fullscreen
-  // has terminal scrollback to absorb overflow, so we never hide StatusLine there.
   const isFullscreen = isFullscreenEnvEnabled();
-  const isShort = isFullscreen && rows < 24;
 
   // Pill highlights when tasks is the active footer item AND no specific
   // agent row is selected. When coordinatorTaskIndex >= 0 the pointer has
@@ -138,7 +133,7 @@ function PromptInputFooter({
   return <>
       <Box flexDirection={isNarrow ? 'column' : 'row'} justifyContent={isNarrow ? 'flex-start' : 'space-between'} paddingLeft={0} paddingRight={2} gap={isNarrow ? 0 : 1}>
         <Box flexDirection="column" flexShrink={isNarrow ? 0 : 1}>
-          {mode === 'prompt' && !isShort && !exitMessage.show && !isPasting && statusLineShouldDisplay(settings) && (
+          {mode === 'prompt' && !exitMessage.show && !isPasting && statusLineShouldDisplay(settings) && (
             <StatusLine
               messagesRef={messagesRef}
               lastAssistantMessageId={lastAssistantMessageId}

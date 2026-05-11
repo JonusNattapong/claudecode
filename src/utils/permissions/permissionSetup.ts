@@ -605,6 +605,12 @@ export function transitionPermissionMode(
   handlePlanModeTransition(fromMode, toMode)
   handleAutoModeTransition(fromMode, toMode)
 
+  if (toMode === 'yoloMax') {
+    process.env.CLAUDE_CODE_YOLO_AUTONOMY = 'true'
+  } else {
+    delete process.env.CLAUDE_CODE_YOLO_AUTONOMY
+  }
+
   if (fromMode === 'plan' && toMode !== 'plan') {
     setHasExitedPlanMode(true)
   }

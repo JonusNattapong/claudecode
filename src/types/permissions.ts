@@ -23,7 +23,6 @@ export const EXTERNAL_PERMISSION_MODES = [
   'yolo',
   'yoloLite',
   'yoloMax',
-  'yoloGod',
 ] as const
 
 export type ExternalPermissionMode = (typeof EXTERNAL_PERMISSION_MODES)[number]

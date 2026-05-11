@@ -100,7 +100,6 @@ import fast from './commands/fast/index.js'
 import yolo from './commands/yolo/index.js'
 import yoloLite from './commands/yolo-lite/index.js'
 import yoloMax from './commands/yolo-max/index.js'
-import yoloGod from './commands/yolo-god/index.js'
 import passes from './commands/passes/index.js'
 import privacySettings from './commands/privacy-settings/index.js'
 import hooks from './commands/hooks/index.js'
@@ -319,7 +318,6 @@ setpath,
   yolo,
   yoloLite,
   yoloMax,
-  yoloGod,
   ...(!isUsing3PServices() ? [logout, login()] : []),
   passes,
   ...(peersCmd ? [peersCmd] : []),
