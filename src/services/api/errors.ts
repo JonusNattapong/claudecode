@@ -1184,6 +1184,7 @@ export function categorizeRetryableAPIError(
 export function getErrorMessageIfRefusal(
   stopReason: BetaStopReason | null,
   model: string,
+  lastAssistantMessage?: AssistantMessage,
 ): AssistantMessage | undefined {
   if (stopReason !== 'refusal') {
     return
@@ -1191,9 +1192,23 @@ export function getErrorMessageIfRefusal(
 
   logEvent('tengu_refusal_api_response', {})
 
+  // Find refusal text if available in content blocks
+  const refusalBlock = lastAssistantMessage?.message.content.find(
+    (c: any) => c.type === 'refusal',
+  )
+  const refusalText = (refusalBlock as any)?.text
+
   const baseMessage = getIsNonInteractiveSession()
-    ? `${API_ERROR_MESSAGE_PREFIX}: Claude Code is unable to respond to this request, which appears to violate our Usage Policy (https://www.anthropic.com/legal/aup). Try rephrasing the request or attempting a different approach.`
-    : `${API_ERROR_MESSAGE_PREFIX}: Claude Code is unable to respond to this request, which appears to violate our Usage Policy (https://www.anthropic.com/legal/aup). Please double press esc to edit your last message or start a new session for Claude Code to assist with a different task.`
+    ? `${API_ERROR_MESSAGE_PREFIX}: Claude Code is unable to respond to this request, which appears to violate our Usage Policy (https://www.anthropic-ai.com/legal/aup).`
+    : `${API_ERROR_MESSAGE_PREFIX}: Claude Code is unable to respond to this request, which appears to violate our Usage Policy (https://www.anthropic-ai.com/legal/aup).`
+
+  const detailedRefusal = refusalText
+    ? `\n\nAPI Refusal Message: ${refusalText}`
+    : ''
+
+  const recoveryHint = getIsNonInteractiveSession()
+    ? ' Try rephrasing the request or attempting a different approach.'
+    : ' Please double press esc to edit your last message or start a new session for Claude Code to assist with a different task.'
 
   const modelSuggestion =
     model !== 'claude-sonnet-4-20250514'
@@ -1201,7 +1216,7 @@ export function getErrorMessageIfRefusal(
       : ''
 
   return createAssistantAPIErrorMessage({
-    content: baseMessage + modelSuggestion,
+    content: baseMessage + detailedRefusal + recoveryHint + modelSuggestion,
     error: 'invalid_request',
   })
 }

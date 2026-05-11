@@ -214,6 +214,7 @@ type State = {
   // Why the previous iteration continued. Undefined on first iteration.
   // Lets tests assert recovery paths fired without inspecting message contents.
   transition: Continue | undefined
+  briefModeRetryCount: number
 }
 
 export async function* query(
@@ -276,6 +277,7 @@ async function* queryLoop(
     turnCount: 1,
     pendingToolUseSummary: undefined,
     transition: undefined,
+    briefModeRetryCount: 0,
   }
   const budgetTracker = feature('TOKEN_BUDGET') ? createBudgetTracker() : null
 
@@ -1110,6 +1112,7 @@ async function* queryLoop(
                 reason: 'collapse_drain_retry',
                 committed: drained.committed,
               },
+              briefModeRetryCount: state.briefModeRetryCount,
             }
             state = next
             continue
@@ -1160,6 +1163,7 @@ async function* queryLoop(
             stopHookActive: undefined,
             turnCount,
             transition: { reason: 'reactive_compact_retry' },
+            briefModeRetryCount: state.briefModeRetryCount,
           }
           state = next
           continue
@@ -1215,6 +1219,7 @@ async function* queryLoop(
             stopHookActive: undefined,
             turnCount,
             transition: { reason: 'max_output_tokens_escalate' },
+            briefModeRetryCount: state.briefModeRetryCount,
           }
           state = next
           continue
@@ -1246,6 +1251,7 @@ async function* queryLoop(
               reason: 'max_output_tokens_recovery',
               attempt: maxOutputTokensRecoveryCount + 1,
             },
+            briefModeRetryCount: state.briefModeRetryCount,
           }
           state = next
           continue
@@ -1262,6 +1268,30 @@ async function* queryLoop(
       if (lastMessage?.isApiErrorMessage) {
         void executeStopFailureHooks(lastMessage, toolUseContext)
         return { reason: 'completed' }
+      }
+
+      // Brief mode retry: if brief mode is enabled but the model produced text
+      // instead of calling SendUserMessage, retry once with a nudge.
+      if (
+        (feature('KAIROS') || feature('KAIROS_BRIEF')) &&
+        toolUseContext.getAppState().kairosEnabled &&
+        state.briefModeRetryCount === 0 &&
+        lastMessage?.type === 'assistant' &&
+        !lastMessage.isApiErrorMessage &&
+        lastMessage.message.content.some((c: any) => c.type === 'text') &&
+        !lastMessage.message.content.some((c: any) => c.type === 'tool_use')
+      ) {
+        const nudge = createUserMessage({
+          content: `You responded with plain text. In brief mode, you MUST use the SendUserMessage tool to communicate with the user. Please retry using the tool.`,
+          isMeta: true,
+        })
+        state = {
+          ...state,
+          messages: [...messagesForQuery, ...assistantMessages, nudge],
+          briefModeRetryCount: 1,
+          transition: { reason: 'brief_mode_retry' },
+        }
+        continue
       }
 
       const stopHookResult = yield* handleStopHooks(
@@ -1300,6 +1330,7 @@ async function* queryLoop(
           stopHookActive: true,
           turnCount,
           transition: { reason: 'stop_hook_blocking' },
+          briefModeRetryCount: state.briefModeRetryCount,
         }
         state = next
         continue
@@ -1336,6 +1367,7 @@ async function* queryLoop(
             stopHookActive: undefined,
             turnCount,
             transition: { reason: 'token_budget_continuation' },
+            briefModeRetryCount: state.briefModeRetryCount,
           }
           continue
         }
@@ -1723,6 +1755,7 @@ async function* queryLoop(
       maxOutputTokensOverride: undefined,
       stopHookActive,
       transition: { reason: 'next_turn' },
+      briefModeRetryCount: state.briefModeRetryCount,
     }
     state = next
   } // while (true)

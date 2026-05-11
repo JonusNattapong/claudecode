@@ -26,16 +26,24 @@ import { getFsImplementation } from './fsOperations.js'
  * so `proxy.ts`/`mtls.ts` don't transitively pull in the command registry.
  */
 export const getCACertificates = memoize((): string[] | undefined => {
+  const certStore = process.env.CLAUDE_CODE_CERT_STORE
+  // Default to system CA trust if certStore is not 'bundled'.
+  // Explicit 'system' or presence of --use-system-ca / --use-openssl-ca also enables it.
   const useSystemCA =
-    hasNodeOption('--use-system-ca') || hasNodeOption('--use-openssl-ca')
+    certStore !== 'bundled' &&
+    (certStore === 'system' ||
+      !certStore ||
+      hasNodeOption('--use-system-ca') ||
+      hasNodeOption('--use-openssl-ca'))
 
   const extraCertsPath = process.env.NODE_EXTRA_CA_CERTS
 
   logForDebugging(
-    `CA certs: useSystemCA=${useSystemCA}, extraCertsPath=${extraCertsPath}`,
+    `CA certs: certStore=${certStore}, useSystemCA=${useSystemCA}, extraCertsPath=${extraCertsPath}`,
   )
 
-  // If neither is set, return undefined (use runtime defaults, no override)
+  // If we're not using system CAs and no extra certs are provided, return undefined
+  // to let the runtime use its bundled defaults (Mozilla).
   if (!useSystemCA && !extraCertsPath) {
     return undefined
   }

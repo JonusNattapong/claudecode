@@ -38,7 +38,7 @@ import { getSettings_DEPRECATED } from './settings/settings.js';
 import { jsonStringify } from './slowOperations.js';
 import { asSystemPrompt } from './systemPromptType.js';
 import { fetchSession, type GitRepositoryOutcome, type GitSource, getBranchFromSession, getOAuthHeaders, type SessionResource } from './teleport/api.js';
-import { fetchEnvironments } from './teleport/environments.js';
+import { createDefaultCloudEnvironment, fetchEnvironments } from './teleport/environments.js';
 import { createAndUploadGitBundle } from './teleport/gitBundle.js';
 export type TeleportResult = {
   messages: Message[];
@@ -1075,10 +1075,23 @@ export async function teleportToRemote(options: {
       const retried = await fetchEnvironments();
       cloudEnv = retried?.find(env => env.kind === 'anthropic_cloud');
       if (!cloudEnv) {
-        logError(new Error(`No anthropic_cloud environment available after retry (got: ${(retried ?? environments).map(e => `${e.name} (${e.kind})`).join(', ')}). Silent byoc fallthrough would launch into a dead env — fail fast instead.`));
-        return null;
+        logForDebugging('Still no anthropic_cloud environment; attempting to auto-create default');
+        try {
+          cloudEnv = await createDefaultCloudEnvironment('Default');
+          logForDebugging(`Auto-created default environment: ${cloudEnv.environment_id}`);
+          if (retried) {
+            retried.push(cloudEnv);
+            environments = retried;
+          } else {
+            environments.push(cloudEnv);
+          }
+        } catch (createErr) {
+          logError(new Error(`Failed to auto-create default environment: ${createErr}. Silent byoc fallthrough would launch into a dead env — fail fast instead.`));
+          return null;
+        }
+      } else if (retried) {
+        environments = retried;
       }
-      if (retried) environments = retried;
     }
     const selectedEnvironment = defaultEnvironmentId && environments.find(env => env.environment_id === defaultEnvironmentId) || cloudEnv || environments.find(env => env.kind !== 'bridge') || environments[0];
     if (!selectedEnvironment) {

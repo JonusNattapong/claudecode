@@ -45,6 +45,7 @@ import share from './commands/share/index.js'
 import skills from './commands/skills/index.js'
 import status from './commands/status/index.js'
 import tasks from './commands/tasks/index.js'
+import teamOnboarding from './commands/team-onboarding/index.js'
 import teleport from './commands/teleport/index.js'
 import providerSelect from './commands/provider-select/index.js'
 /* eslint-disable @typescript-eslint/no-require-imports */
@@ -218,6 +219,7 @@ export const INTERNAL_ONLY_COMMANDS = [
   resetLimits,
   resetLimitsNonInteractive,
   onboarding,
+  teamOnboarding,
   share,
   summary,
   teleport,
@@ -298,6 +300,7 @@ setpath,
   rateLimitOptions,
   usage,
   usageReport,
+  teamOnboarding,
   ...(webCmd ? [webCmd] : []),
   ...(forkCmd ? [forkCmd] : []),
   buddy,

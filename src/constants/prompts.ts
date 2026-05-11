@@ -275,9 +275,9 @@ function getUsingYourToolsSection(enabledTools: Set<string>): string {
       taskToolName
         ? `Break down and manage your work with the ${taskToolName} tool. These tools are helpful for planning your work and helping the user track your progress. Mark each task as completed as soon as you are done with the task. Do not batch up multiple tasks before marking them as completed.`
         : null,
-    ].filter(item => item !== null)
+    ].filter((item): item is string => item !== null)
     if (items.length === 0) return ''
-    return [`# Using your tools`, ...prependBullets(items)].join(`\n`)
+    return ['# Using your tools', ...prependBullets(items)].join('\n')
   }
 
   // Ant-native builds alias find/grep to embedded bfs/ugrep and remove the
@@ -304,9 +304,9 @@ function getUsingYourToolsSection(enabledTools: Set<string>): string {
       ? `Break down and manage your work with the ${taskToolName} tool. These tools are helpful for planning your work and helping the user track your progress. Mark each task as completed as soon as you are done with the task. Do not batch up multiple tasks before marking them as completed.`
       : null,
     `You can call multiple tools in a single response. If you intend to call multiple tools and there are no dependencies between them, make all independent tool calls in parallel. Maximize use of parallel tool calls where possible to increase efficiency. However, if some tool calls depend on previous calls to inform dependent values, do NOT call these tools in parallel and instead call them sequentially. For instance, if one operation must complete before another starts, run these operations sequentially instead.`,
-  ].filter(item => item !== null)
+  ].filter((item): item is string | string[] => item !== null)
 
-  return [`# Using your tools`, ...prependBullets(items)].join(`\n`)
+  return ['# Using your tools', ...prependBullets(items)].join('\n')
 }
 
 function getAgentToolSection(): string {
@@ -546,6 +546,9 @@ export async function getSystemPrompt(
     ...(feature('KAIROS') || feature('KAIROS_BRIEF')
       ? [systemPromptSection('brief', () => getBriefSection())]
       : []),
+    ...(getIsNonInteractiveSession()
+      ? [systemPromptSection('focus_mode', () => getFocusModeSection())]
+      : []),
     // YOLO MAX: be autonomous - find answers yourself instead of asking.
     DANGEROUS_uncachedSystemPromptSection('yolo_autonomy', () => {
       if (process.env.CLAUDE_CODE_YOLO_AUTONOMY === 'true') {
@@ -582,7 +585,10 @@ Your goal: Complete the task autonomously without bothering the user.`
     ...(shouldUseGlobalCacheScope() ? [SYSTEM_PROMPT_DYNAMIC_BOUNDARY] : []),
     // --- Dynamic content (registry-managed) ---
     ...resolvedDynamicSections,
-  ].filter(s => s !== null)
+  ].filter((s): s is string | string[] => s !== null) as (
+    | string
+    | string[]
+  )[]
 }
 
 function getMcpInstructions(mcpClients: MCPServerConnection[]): string | null {
@@ -864,6 +870,11 @@ function getBriefSection(): string | null {
   )
     return null
   return BRIEF_PROACTIVE_SECTION
+}
+
+function getFocusModeSection(): string | null {
+  return `# Focus Mode
+You are running in focus mode. The user will only see your FINAL response. Ensure your final response is comprehensive, self-contained, and summarizes all important findings and actions taken during the session. Do not assume the user has seen any intermediate tool outputs or thoughts.`
 }
 
 function getProactiveSection(): string | null {
