@@ -1,39 +1,99 @@
 # Claude Code
 
-A research fork of Anthropic's Claude Code CLI.
+by Dek1milliontoken
 
-## About
+Claude Code is an experimental, Bun-powered AI coding assistant CLI. This fork focuses on learning, research, and extension: multi-provider model routing, terminal UI, MCP integration, plugin workflows, permissions, subagents, and local developer automation.
 
-This project studies how Claude Code works — its architecture, design decisions, and implementation. We built this to understand multi-provider AI routing, plugin systems, permission models, and terminal UI design.
+> This repository is not affiliated with Anthropic. It is an independent research and development fork.
 
-> **Not affiliated with Anthropic.** Not a replacement. A learning project.
+## What This Project Includes
 
-We believe that understanding how great tools work makes us better developers. By studying Claude Code, we've learned about building AI-powered developer tools — a skill that will only become more valuable.
+- A terminal-first AI coding interface built with React/Ink-style components.
+- Multi-provider AI support through `src/services/ai`.
+- Built-in tools for reading, editing, searching, shell execution, MCP, notebooks, planning, and agent workflows.
+- Slash commands for configuration, model/provider selection, permissions, plugins, MCP, sessions, git/worktree workflows, and diagnostics.
+- Plugin support for commands, agents, skills, hooks, MCP servers, and output styles.
+- Static HTML documentation in `docs/`.
+- Example configs, hooks, and MDM policy files in `examples/`.
 
----
+## Requirements
 
-## Quick Start
+- Bun 1.3 or newer
+- Git
+- Windows, macOS, Linux, or WSL
+- At least one configured AI provider or compatible local provider
+
+## Install
 
 ```bash
-# Install dependencies
 bun install
+```
 
-# Build the project
-bun run build
+If dependencies ever get into a stale state:
 
-# Start a session
-bun run src/main.tsx session
+```bash
+rm -rf node_modules
+bun install
+```
 
-# Or use development mode (with hot reload)
+On Windows PowerShell:
+
+```powershell
+Remove-Item -Recurse -Force node_modules
+bun install
+```
+
+## Run
+
+Development mode with watch:
+
+```bash
 bun run dev
 ```
 
-### Setting Up API Keys
-
-At least one provider API key is required:
+Start once:
 
 ```bash
-# Anthropic (default)
+bun run start
+```
+
+Build:
+
+```bash
+bun run build
+```
+
+Test:
+
+```bash
+bun test
+```
+
+The dev script runs:
+
+```bash
+bun --watch run src/main.tsx
+```
+
+## Provider Configuration
+
+The repo contains provider implementations for:
+
+- Anthropic
+- OpenAI
+- OpenAI Responses
+- Google Gemini
+- OpenRouter
+- Ollama
+- OpenAI-compatible endpoints
+- ChatGPT session/OAuth flows
+- Copilot
+- KiloCode
+
+Common environment variables:
+
+```bash
+# Anthropic
 export ANTHROPIC_API_KEY=sk-ant-...
 
 # OpenAI
@@ -45,423 +105,136 @@ export GOOGLE_GENERATIVE_API_KEY=...
 # OpenRouter
 export OPENROUTER_API_KEY=sk-or-...
 
-# Ollama (local)
+# Ollama
 export OLLAMA_HOST=http://localhost:11434
 ```
 
----
+Inside the CLI, use:
 
-## Key Differences from Original Claude Code
-
-| Feature | Claude Code | This Fork |
-|---------|-------------|-----------|
-| **AI Providers** | Anthropic only | 11 providers |
-| **YOLO Modes** | Basic (4 tiers) | 5 tiers (+ YoloGod) |
-| **ChatGPT OAuth** | Not supported | Supported |
-| **Documentation** | Markdown files | HTML website |
-| **Focus** | Production use | Learning & research |
-
-### YoloGod Mode
-
-YoloGod is the highest level of permission bypass. In this mode:
-
-- All safety checks are bypassed
-- Claude makes decisions without asking
-- Web searches happen automatically
-- Tool execution proceeds without prompts
-
-**Use with caution.** This mode is designed for fully autonomous operation where human intervention is not expected.
-
----
-
-## Features
-
-### 11 AI Providers
-
-Claude Code supports 11 different AI providers through a unified provider adapter system:
-
-1. **Anthropic** (default)
-   - claude-sonnet-4-20250514
-   - claude-opus-4-5-20250514
-   - claude-3-5-sonnet-20241022
-   - claude-3-haiku-20240307
-
-2. **OpenAI**
-   - gpt-4o, gpt-4o-mini
-   - gpt-4-turbo, gpt-3.5-turbo
-
-3. **Google Gemini**
-   - gemini-2.0-flash-exp
-   - gemini-1.5-pro, gemini-1.5-flash
-
-4. **OpenRouter**
-   - 100+ models including:
-   - anthropic/claude-3-5-sonnet
-   - openai/gpt-4o
-   - google/gemini-pro
-   - meta/llama-3.1-70b
-   - mistral/mistral-large
-
-5. **Ollama** (Local)
-   - llama3, llama3.1
-   - mistral, codellama
-   - phi3, qwen2
-
-6. **xAI Grok**
-   - grok-2, grok-2-vision
-
-7. **Mistral**
-   - mistral-large-latest
-   - codestral-latest
-
-8. **OpenAI Compatible**
-   - Connect to any OpenAI-compatible API
-   - LM Studio, local APIs, custom endpoints
-
-9. **ChatGPT OAuth**
-   - Use existing ChatGPT Plus/Pro subscription
-   - Authenticate via browser session token
-
-10. **Copilot**
-    - GitHub Copilot integration
-
-11. **KiloCode**
-    - Specialized provider for specific tasks
-
-### 90+ Commands
-
-Claude Code provides over 90 slash commands:
-
-**File Operations**
-- `/read` — Read file contents
-- `/write` — Create or overwrite file
-- `/edit` — Edit specific part of file
-- `/glob` — Find files by pattern
-- `/grep` — Search file contents
-- `/add-dir` — Add directory to project
-- `/path` — Show file path
-- `/rename` — Rename files
-- `/files` — File browser
-- `/tag` — Tag files
-
-**Git Operations**
-- `/git` — Run git commands
-- `/branch` — List/create branches
-- `/diff` — Show changes
-- `/commit` — Create git commit
-- `/enter` — Enter worktree
-- `/exit` — Exit worktree
-
-**Development**
-- `/test` — Run tests
-- `/build` — Build project
-- `/npm` — Run npm commands
-- `/agent` — Create subagent
-- `/agents` — Manage agents
-- `/resume` — Resume agent
-- `/tasks` — List background tasks
-- `/capabilities` — Show capabilities
-
-**Search & Web**
-- `/search` — Web search (DuckDuckGo/Brave)
-- `/fetch` — Fetch URL content
-- `/ls` — List directory
-- `/find` — Find files
-- `/mcp` — MCP server management
-
-**AI & Model**
-- `/model` — Switch model
-- `/provider` — Switch provider
-- `/cost` — Show API cost
-- `/usage` — Show token usage
-- `/extra-usage` — Detailed usage breakdown
-
-**Permissions**
-- `/yolo` — Open YOLO mode picker
-- `/yolo-lite` — Auto-approve read-only
-- `/yolo` — Auto-approve most
-- `/yolo-max` — Full auto including destructive
-- `/yolo-god` — Complete autonomy
-- `/permissions` — Permission settings
-- `/plan` — Enter plan mode
-
-**Session**
-- `/session` — New session
-- `/clear` — Clear conversation
-- `/context` — View context usage
-- `/compact` — Compact context
-- `/rewind` — Rewind conversation
-- `/resume` — Resume previous session
-- `/export` — Export conversation
-- `/memory` — Memory management
-
-**Settings**
-- `/config` — Edit settings
-- `/theme` — Change theme
-- `/color` — Change color
-- `/keybindings` — View keybindings
-- `/hooks` — Manage hooks
-- `/mcp` — MCP configuration
-- `/privacy` — Privacy settings
-
-**Collaboration**
-- `/bridge` — Start bridge mode
-- `/remote-env` — Remote environment
-- `/remote-setup` — Remote setup
-- `/sticker` — Send stickers
-- `/btw` — Send message
-
-**Utility**
-- `/help` — Show help
-- `/stats` — Show usage stats
-- `/status` — Show internal state
-- `/doctor` — Run diagnostics
-- `/skill` — Load skill
-- `/skills` — List skills
-- `/ide` — Open in IDE
-
-### 40+ Tools
-
-Built-in tools for various operations:
-
-**File Tools**
-- Read — Read file contents
-- Edit — Edit specific part of file
-- Write — Create or overwrite file
-- Glob — Find files by pattern
-- Grep — Search file contents
-- NotebookEdit — Edit Jupyter notebooks
-
-**Shell Tools**
-- Bash — Run shell commands (Unix)
-- PowerShell — Run PowerShell commands (Windows)
-- Tungsten — Claude Code shell wrapper
-
-**Web Tools**
-- WebSearch — Search the web
-- WebFetch — Fetch URL content
-- Browser — Browser automation
-
-**Development Tools**
-- Agent — Create and manage subagents
-- LSP — Language server protocol operations
-- MCP — Model Context Protocol tools
-- Config — Edit configuration
-
-**Git Tools**
-- EnterWorktree — Enter git worktree
-- ExitWorktree — Exit git worktree
-
-**Planning Tools**
-- EnterPlanMode — Enter plan mode
-- ExitPlanMode — Exit plan mode
-
-**Utility Tools**
-- AskUser — Ask user for input
-- JsonPath — Query JSON data
-- Brief — File upload/attachments
-- ComputerUse — Computer use automation
-- CodeIndex — Code indexing for search
-
-### 12+ Plugins
-
-Extensible plugin system:
-
-- **plugin-dev** — Plugin development toolkit
-- **feature-dev** — Feature development workflow
-- **code-review** — Automated code review
-- **hookify** — Git hooks integration
-- **commit-commands** — Enhanced git commits
-- **frontend-design** — UI/UX assistance
-- **pr-review-toolkit** — PR review automation
-- **agent-sdk-dev** — Agent SDK development
-- **learning-output-style** — Learning output
-- **explanatory-output-style** — Detailed explanations
-- **claude-opus-4-5-migration** — Migration guide
-- **ralph-wiggum** — Debug mode
-
-### YOLO Permission Modes
-
-| Mode | Description |
-|------|-------------|
-| Default | Ask before tool execution |
-| Auto | Auto-approve safe tools |
-| yoloLite | Auto-approve read-only (Glob, Grep, Read) |
-| yolo | Auto-approve most tools |
-| yoloMax | Full auto including destructive operations |
-| yoloGod | Complete autonomy + automatic web search |
-
----
-
-## Architecture
-
+```text
+/provider
+/model
 ```
+
+See [docs/providers.html](docs/providers.html) and [docs/provider-pattern.html](docs/provider-pattern.html).
+
+## Important Commands
+
+Common interactive commands include:
+
+```text
+/help              Show command help
+/model             Select or inspect models
+/provider          Switch AI provider
+/config            Edit configuration
+/permissions       Review permission settings
+/yolo              Open automation mode picker
+/mcp               Manage MCP servers
+/agents            Manage subagents
+/plugins           Manage plugins
+/reload-plugins    Reload plugin state
+/theme             Change terminal theme
+/doctor            Run diagnostics
+/compact           Compact context
+/resume            Resume a previous session
+```
+
+More command docs are in [docs/commands.html](docs/commands.html).
+
+## Permissions And Automation
+
+The project includes an ask-first permission model plus progressive automation modes. Keep the default permission behavior for normal development.
+
+Automation modes such as `yolo`, `yolo-max`, and `yolo-god` can allow broad tool execution. Use them only in trusted repositories or disposable sandboxes.
+
+See:
+
+- [docs/permissions.html](docs/permissions.html)
+- [docs/permission-model.html](docs/permission-model.html)
+
+## Plugins
+
+Plugin examples live in `plugins/`. Current plugin folders include:
+
+- `agent-sdk-dev`
+- `claude-opus-4-5-migration`
+- `code-review`
+- `commit-commands`
+- `explanatory-output-style`
+- `feature-dev`
+- `frontend-design`
+- `hookify`
+- `learning-output-style`
+- `plugin-dev`
+- `pr-review-toolkit`
+- `ralph-wiggum`
+- `security-guidance`
+
+Plugins can contribute commands, agents, skills, hooks, MCP servers, and output styles depending on their manifest and file layout.
+
+See:
+
+- [plugins/README.md](plugins/README.md)
+- [docs/plugins.html](docs/plugins.html)
+- [docs/plugin-system.html](docs/plugin-system.html)
+
+## MCP
+
+MCP support is implemented under `src/services/mcp` and exposed through CLI commands and tool integration. The codebase includes MCP config loading, OAuth/auth flows, transport support, channel notifications, official registry helpers, and in-process transport utilities.
+
+See [docs/mcp-integration.html](docs/mcp-integration.html).
+
+## Project Layout
+
+```text
 src/
-├── commands/           # 90+ slash commands
-│   ├── agent/          # Subagent commands
-│   ├── git/            # Git operations
-│   ├── model/          # Model switching
-│   ├── mcp/            # MCP server management
-│   └── ...
-├── services/ai/        # AI Provider Layer
-│   ├── providers/      # 11 provider adapters
-│   │   ├── AnthropicProvider.ts
-│   │   ├── OpenAIProvider.ts
-│   │   ├── GoogleProvider.ts
-│   │   ├── OpenRouterProvider.ts
-│   │   ├── OllamaProvider.ts
-│   │   ├── xAIProvider.ts
-│   │   ├── MistralProvider.ts
-│   │   ├── OpenAICompatibleProvider.ts
-│   │   ├── ChatGPTSessionProvider.ts
-│   │   ├── CopilotProvider.ts
-│   │   └── KiloCodeProvider.ts
-│   ├── ProviderManager.ts
-│   └── providerRegistry.ts
-├── tools/              # 40+ built-in tools
-│   ├── AgentTool/      # Subagent execution
-│   ├── BashTool/       # Shell commands
-│   ├── WebSearchTool/  # Web search
-│   ├── WebFetchTool/   # URL fetching
-│   ├── FileEditTool/   # File editing
-│   └── ...
-├── plugins/            # Plugin system
-├── skills/             # Skill system
-├── components/         # React UI components
-└── utils/              # Utilities
+  commands/          Slash commands and command UI
+  components/        Terminal UI components
+  context/           React contexts and shared app state
+  services/          AI providers, MCP, analytics, search, plugins, voice, VCR
+  skills/            Built-in skill loading and skill helpers
+  tools/             Built-in tool implementations
+  utils/             Config, permissions, telemetry, shell, plugins, filesystem
+  native-ts/         TypeScript ports/replacements for native helpers
 
-docs/                   # HTML documentation
-plugins/                # Community plugins
+docs/                Static HTML documentation site
+plugins/             Bundled/example plugin directories
+examples/            Example settings, hooks, and policy files
+scripts/             Utility and automation scripts
+assets/              Media assets
 ```
-
-### Provider Adapter Pattern
-
-Each provider implements a common interface, enabling seamless switching:
-
-```typescript
-interface Provider {
-  streamMsg(messages: Message[], options: StreamOptions): AsyncIterable<any>
-  nonStreamingMsg(messages: Message[], options: NonStreamOptions): Promise<any>
-  getModels(): Promise<Model[]>
-  getToolResultSchema(): JSONSchema
-}
-```
-
----
 
 ## Documentation
 
-Full HTML documentation available at [docs/](docs/):
+Open [docs/index.html](docs/index.html) in a browser.
 
-| Page | Description |
-|------|-------------|
-| [Installation](docs/installation.html) | Setup guide |
-| [Quick Start](docs/quick-start.html) | 5-minute start guide |
-| [Configuration](docs/configuration.html) | Settings reference |
-| [Commands](docs/commands.html) | All 90+ commands |
-| [Tools](docs/tools.html) | All 40+ tools |
-| [Providers](docs/providers.html) | All 11 providers |
-| [Agents](docs/agents.html) | Subagent system |
-| [Plugins](docs/plugins.html) | Plugin directory |
-| [Skills](docs/skills.html) | Skill reference |
-| [Permissions](docs/permissions.html) | YOLO modes explained |
-| [FAQ](docs/faq.html) | Common questions |
-| [Troubleshooting](docs/troubleshooting.html) | Problem solving |
+Useful pages:
 
----
+- [Installation](docs/installation.html)
+- [Quick Start](docs/quick-start.html)
+- [Configuration](docs/configuration.html)
+- [Providers](docs/providers.html)
+- [Commands](docs/commands.html)
+- [Tools](docs/tools.html)
+- [Agents](docs/agents.html)
+- [Plugins](docs/plugins.html)
+- [Architecture](docs/architecture.html)
+- [Troubleshooting](docs/troubleshooting.html)
 
-## Tech Stack
+## Notes For Windows
 
-| Component | Technology |
-|-----------|------------|
-| Runtime | Bun |
-| UI | React 19 + Ink 6 |
-| AI SDK | Vercel AI SDK |
-| Validation | Zod 3, Valibot |
-| CLI | Commander.js |
+This repo is intended to run with Bun on Windows as well as Unix-like environments. If you see repeated module resolution errors after dependency changes, refresh `node_modules`:
 
----
-
-## Development
-
-```bash
-# Start development mode (with hot reload)
+```powershell
+Remove-Item -Recurse -Force node_modules
+bun install
 bun run dev
-
-# Build for production
-bun run build
-
-# Run all tests
-bun test
-
-# TypeScript check
-bun x tsc --noEmit
 ```
 
----
+## Status
 
-## What We Learned
-
-This project provided hands-on experience with:
-
-1. **Multi-Provider AI Routing**
-   - How to abstract different AI APIs behind a unified interface
-   - Request routing and failover strategies
-   - Model discovery and caching
-
-2. **Provider Adapter Pattern**
-   - Implementing consistent interfaces across different services
-   - Handling provider-specific quirks and limitations
-   - Token counting and cost management
-
-3. **Plugin System Design**
-   - Creating extensible architecture
-   - Hook points and event systems
-   - Skill-based instruction sets
-
-4. **Permission Models**
-   - Balancing safety with usability
-   - Progressive permission bypass
-   - Security consideration in AI tools
-
-5. **Terminal UI Development**
-   - Building CLI tools with React/Ink
-   - Real-time updates and progress indicators
-   - Keyboard navigation and shortcuts
-
-6. **Agent Orchestration**
-   - Subagent lifecycle management
-   - Background task handling
-   - Inter-agent communication
-
----
-
-## Contributing
-
-This is a learning project. Contributions are welcome:
-
-1. Fork the repository
-2. Make your changes
-3. Submit a pull request
-
-Please ensure code is properly typed and tested.
-
----
+This is an active experimental fork. Some features are research-oriented, some are platform-specific, and some integrations may require private configuration, environment flags, or external services.
 
 ## License
 
-See [LICENSE.md](LICENSE.md)
-
----
-
-## Disclaimer
-
-This is not Claude Code. This is our attempt to understand Claude Code by studying its implementation.
-
-This project comes from an npm disclosure and may have legal implications. Use at your own risk.
-
----
-
-**Built with curiosity, not competition.**
-
-[GitHub](https://github.com/anomalyco/claude-code) • [Docs](docs/)
+See [LICENSE.md](LICENSE.md).
