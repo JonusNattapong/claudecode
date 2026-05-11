@@ -23,7 +23,7 @@ export function pwd(): string {
 /**
  * Get the project root (respects runWithCwdOverride).
  * When inside a runWithCwdOverride context, returns the override instead of the
- * stable project root. This ensures Kanban CLI commands see the test workspace.
+ * stable project root.
  */
 export function getProjectRoot(): string {
   return cwdOverrideStorage.getStore() ?? getProjectRootBase()

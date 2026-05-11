@@ -1,19 +1,21 @@
 import { feature } from 'bun:bundle';
 import chalk from 'chalk';
+import { existsSync } from 'fs';
+import { homedir } from 'os';
+import { dirname, join } from 'path';
 import * as React from 'react';
 import { memo, useCallback, useEffect, useRef } from 'react';
 import { logEvent } from 'src/services/analytics/index.js';
-import { getProviderRegistryEntry } from 'src/services/ai/providerRegistry.js';
 import { useAppState, useSetAppState } from 'src/state/AppState.js';
-import { ProviderManager } from 'src/services/ai/ProviderManager.js';
 import type { PermissionMode } from 'src/utils/permissions/PermissionMode.js';
 import { getKairosActive, getMainThreadAgentType, getOriginalCwd, getSdkBetas, getSessionId } from '../bootstrap/state.js';
 import { DEFAULT_OUTPUT_STYLE_NAME } from '../constants/outputStyles.js';
 import { useNotifications } from '../context/notifications.js';
-import { getTotalAPIDuration, getTotalCost, getTotalDuration, getTotalInputTokens, getTotalLinesAdded, getTotalLinesRemoved, getTotalOutputTokens } from '../cost-tracker.js';
+import { getTotalAPIDuration, getTotalDuration, getTotalInputTokens, getTotalLinesAdded, getTotalLinesRemoved, getTotalOutputTokens } from '../cost-tracker.js';
 import { useMainLoopModel } from '../hooks/useMainLoopModel.js';
 import { type ReadonlySettings, useSettings } from '../hooks/useSettings.js';
 import { Ansi, Box, Text } from '../ink.js';
+import { ProviderManager } from '../services/ai/ProviderManager.js';
 import { getRawUtilization } from '../services/claudeAiLimits.js';
 import type { Message } from '../types/message.js';
 import type { StatusLineCommandInput } from '../types/statusLine.js';
@@ -31,7 +33,6 @@ import { doesMostRecentAssistantMessageExceed200k, getCurrentUsage } from '../ut
 import { roughTokenCountEstimationForMessages } from '../services/tokenEstimation.js';
 import { getCurrentWorktreeSession } from '../utils/worktree.js';
 import { isVimModeEnabled } from './PromptInput/utils.js';
-import { getBranch } from '../utils/git.js';
 
 export function statusLineShouldDisplay(settings: ReadonlySettings): boolean {
   if (feature('KAIROS') && getKairosActive()) return false;
@@ -154,7 +155,7 @@ function coloredBar(percent: number, width: number = 10): string {
   const filled = Math.round((safePercent / 100) * width);
   const empty = width - filled;
 
-  let colorFn: typeof chalk.hex;
+  let colorFn: (text: string) => string;
   if (percent > 85) colorFn = chalk.hex('#ff4444');       // red
   else if (percent > 70) colorFn = chalk.hex('#ffaa00');  // yellow/warning
   else colorFn = chalk.white;                              // white
@@ -169,6 +170,8 @@ interface ToolActivity {
   target?: string;
   status: 'running' | 'completed' | 'error';
   isMcp?: boolean;
+  startedAt?: number;
+  endedAt?: number;
 }
 
 interface AgentActivity {
@@ -176,6 +179,8 @@ interface AgentActivity {
   type: string;
   description?: string;
   status: 'running' | 'completed';
+  startedAt?: number;
+  endedAt?: number;
 }
 
 interface TodoState {
@@ -219,6 +224,71 @@ interface ActivityBlock {
   todos?: Array<{ content: string; status: string }>;
 }
 
+function messageContent(message: Message): unknown[] {
+  const wrappedContent = (message as any).message?.content;
+  if (Array.isArray(wrappedContent)) return wrappedContent;
+  const directContent = (message as any).content;
+  if (Array.isArray(directContent)) return directContent;
+  return [];
+}
+
+function messageTimestamp(message: Message): number | undefined {
+  const raw = (message as any).timestamp ?? (message as any).createdAt ?? (message as any).created_at;
+  if (typeof raw !== 'string' && typeof raw !== 'number') return undefined;
+  const parsed = typeof raw === 'number' ? raw : Date.parse(raw);
+  return Number.isFinite(parsed) ? parsed : undefined;
+}
+
+function formatCompactDuration(ms: number): string {
+  const seconds = Math.max(0, Math.floor(ms / 1000));
+  const minutes = Math.floor(seconds / 60);
+  const hours = Math.floor(minutes / 60);
+  if (hours > 0) return `${hours}h`;
+  if (minutes > 0) return `${minutes}m`;
+  return `${seconds}s`;
+}
+
+function formatActivityDuration(item: { startedAt?: number; endedAt?: number }): string {
+  if (!item.startedAt || !item.endedAt || item.endedAt < item.startedAt) return '';
+  return chalk.dim(` (${formatCompactDuration(item.endedAt - item.startedAt)})`);
+}
+
+function countHooks(settings: ReadonlySettings): number {
+  const hooks = settings?.hooks;
+  if (!hooks) return 0;
+  return Object.values(hooks).reduce((total, matchers) => {
+    if (!Array.isArray(matchers)) return total;
+    return total + matchers.reduce((sum, matcher) => sum + (Array.isArray((matcher as any).hooks) ? (matcher as any).hooks.length : 0), 0);
+  }, 0);
+}
+
+function countPermissionRules(settings: ReadonlySettings): number {
+  const permissions = settings?.permissions;
+  if (!permissions) return 0;
+  return (
+    (permissions.allow?.length ?? 0) +
+    (permissions.deny?.length ?? 0) +
+    (permissions.ask?.length ?? 0)
+  );
+}
+
+function countClaudeFiles(cwd: string): number {
+  const seen = new Set<string>();
+  const addIfExists = (path: string) => {
+    if (existsSync(path)) seen.add(path);
+  };
+
+  let dir = cwd;
+  while (dir && dirname(dir) !== dir) {
+    addIfExists(join(dir, 'CLAUDE.md'));
+    addIfExists(join(dir, '.claude', 'CLAUDE.md'));
+    dir = dirname(dir);
+  }
+  addIfExists(join(dir, 'CLAUDE.md'));
+  addIfExists(join(homedir(), '.claude', 'CLAUDE.md'));
+  return seen.size;
+}
+
 /** Extract tool activity and agent state from all messages.
  *  Mirrors claude-hud's transcript.ts processEntry logic. */
 function extractActivity(messages: Message[]): {
@@ -232,8 +302,8 @@ function extractActivity(messages: Message[]): {
   let latestTodos: Array<{ content: string; status: string }> = [];
 
   for (const msg of messages) {
-    const content = (msg as any).content;
-    if (!Array.isArray(content)) continue;
+    const content = messageContent(msg);
+    const timestamp = messageTimestamp(msg);
 
     for (const block of content as ActivityBlock[]) {
       // Tool use => running tool
@@ -245,6 +315,7 @@ function extractActivity(messages: Message[]): {
           target: extractTarget(block.name, block.input),
           status: 'running',
           isMcp: isMcpTool,
+          startedAt: timestamp,
         };
 
         if (block.name === 'Task' || block.name === 'Agent') {
@@ -254,6 +325,7 @@ function extractActivity(messages: Message[]): {
             type: (input.subagent_type as string) ?? 'agent',
             description: (input.description as string) ?? undefined,
             status: 'running',
+            startedAt: timestamp,
           });
         } else if (block.name === 'TodoWrite') {
           const input = (block.input ?? {}) as { todos?: Array<{ content: string; status: string }> };
@@ -320,10 +392,12 @@ function extractActivity(messages: Message[]): {
         const tool = toolMap.get(block.tool_use_id);
         if (tool) {
           tool.status = block.is_error ? 'error' : 'completed';
+          tool.endedAt = timestamp;
         }
         const agent = agentMap.get(block.tool_use_id);
         if (agent) {
           agent.status = 'completed';
+          agent.endedAt = timestamp;
         }
       }
     }
@@ -367,9 +441,7 @@ function StatusLineInner({
   const settings = useSettings();
   const { addNotification } = useNotifications();
   const mainLoopModel = useMainLoopModel();
-  const [currentBranch, setCurrentBranch] = React.useState<string | null>(null);
   const mcpCount = useAppState(s => s.mcp.clients.length) as number;
-  const thinkingEnabled = useAppState(s => s.thinkingEnabled);
   const mainLoopProvider = useAppState(s => s.mainLoopProvider);
   const mainLoopProviderForSession = useAppState(s => s.mainLoopProviderForSession);
   const [currentCwd, setCurrentCwd] = React.useState(getCwd());
@@ -430,8 +502,6 @@ function StatusLineInner({
         previousStateRef.current.messageId = currentMessageId;
         previousStateRef.current.exceeds200kTokens = exceeds200kTokens;
       }
-      const branch = await getBranch();
-      setCurrentBranch(branch);
       const activeProvider = mainLoopProviderForSession ?? mainLoopProvider;
       const statusInput = buildStatusLineCommandInput(permissionModeRef.current, exceeds200kTokens, settingsRef.current, msgs, Array.from(addedDirsRef.current.keys()), mainLoopModelRef.current, vimModeRef.current, activeProvider);
       const text = await executeStatusLineCommand(statusInput, controller.signal, undefined, logResult);
@@ -520,32 +590,13 @@ function StatusLineInner({
 
     const contextWindowSize = getContextWindowForModel(runtimeModel, getSdkBetas());
     const contextPercentages = calculateContextPercentages(usageForContext, contextWindowSize);
-    const cacheReadTokens = usageForContext.cache_read_input_tokens ?? 0;
-    const cacheWriteTokens = usageForContext.cache_creation_input_tokens ?? 0;
     const cwd = currentCwd;
-    const projectName = cwd.split(/[/\\]/).pop() || cwd;
-    const gitBranch = currentBranch;
-    const cost = getTotalCost();
     const duration = getTotalDuration();
-
-    const formatDuration = (ms: number): string => {
-      const seconds = Math.floor(ms / 1000);
-      const minutes = Math.floor(seconds / 60);
-      const hours = Math.floor(minutes / 60);
-      if (hours > 0) return `${hours}h ${minutes % 60}m`;
-      if (minutes > 0) return `${minutes}m ${seconds % 60}s`;
-      return `${seconds}s`;
-    };
-
-    const formatCost = (usd: number): string => usd < 0.01 ? '<$0.01' : `$${usd.toFixed(2)}`;
     const usedPercentage = contextPercentages.used ?? 0;
-    const approxContextTokens = inputTokens + cacheReadTokens + cacheWriteTokens;
     const rawModelName = renderModelName(runtimeModel, mainLoopProviderForSession ?? mainLoopProvider);
     // Strip provider prefix (e.g., "KiloCode: ") when showing in status line,
     // since the provider is already displayed separately in brackets below
     const modelName = rawModelName.replace(/^[^:]+:\s*/, '');
-    const branchText = gitBranch ? chalk.dim(`(${gitBranch})`) : '';
-    const statusText = thinkingEnabled ? 'THINKING' : 'IDLE';
 
     // Context bar (claude-hud style)
     const bar = coloredBar(usedPercentage, 10);
@@ -555,6 +606,7 @@ function StatusLineInner({
     const runningTools = tools.filter(t => t.status === 'running');
     const completedTools = tools.filter(t => t.status === 'completed' || t.status === 'error');
     const runningAgents = agents.filter(a => a.status === 'running');
+    const completedAgents = agents.filter(a => a.status === 'completed');
 
     // Build tool count summary for completed tools
     const toolCounts = new Map<string, number>();
@@ -563,80 +615,33 @@ function StatusLineInner({
     }
     const sortedCompletedTools = Array.from(toolCounts.entries())
       .sort((a, b) => b[1] - a[1])
-      .slice(0, 4);
+      .slice(0, 5);
 
-    const showActivity = runningTools.length > 0 || runningAgents.length > 0 || sortedCompletedTools.length > 0;
+    const claudeCount = countClaudeFiles(cwd);
+    const ruleCount = countPermissionRules(settings);
+    const hookCount = countHooks(settings);
+    const percentText = usedPercentage > 85
+      ? chalk.hex('#ff4444')(`${usedPercentage.toFixed(0)}%`)
+      : usedPercentage > 70
+        ? chalk.hex('#ffaa00')(`${usedPercentage.toFixed(0)}%`)
+        : chalk.green(`${usedPercentage.toFixed(0)}%`);
 
-    // ── Provider label for all providers ──
-    const activeProvider = mainLoopProviderForSession ?? mainLoopProvider ?? (typeof window === 'undefined' ? ProviderManager.getInstance().getActiveProviderName() : undefined);
-    let providerLabel = '';
-    if (activeProvider) {
-      const entry = getProviderRegistryEntry(activeProvider);
-      if (entry) providerLabel = chalk.dim(`[${entry.label}]`);
-    }
-
-    // ── Line 1: Identity — model, provider, project, branch ──
+    const activeProvider = mainLoopProviderForSession ?? mainLoopProvider ?? ProviderManager.getInstance().getActiveProviderName()
+    const activeProviderDisplay = activeProvider ? chalk.hex('#888888')(`[${activeProvider}]`) : ''
     const line1 =
-      (thinkingEnabled
-        ? chalk.white(`● ${statusText}`)
-        : chalk.hex('#666666')(`● ${statusText}`)) +
-      '  ' +
-      (providerLabel ? providerLabel + ' ' : '') +
-      chalk.cyan(modelName) +
-      '  ' +
-      chalk.white(projectName) +
-      ' ' + branchText;
-
-    // ── Line 2: Status — context bar, capacity, rate limits, cost, duration ──
-    // Show context window capacity: "Xk / Yk max"
-    const contextTokStr = chalk.dim(`${(approxContextTokens / 1000).toFixed(1)}k / ${(contextWindowSize / 1000).toFixed(0)}k max`);
-
-    const rawUtil = getRawUtilization();
-    const rateParts: string[] = [];
-    if (rawUtil.five_hour) {
-      rateParts.push(
-        chalk.dim('5h:') +
-        (rawUtil.five_hour.utilization > 0.7
-          ? chalk.hex('#ff4444')(`${(rawUtil.five_hour.utilization * 100).toFixed(0)}%`)
-          : rawUtil.five_hour.utilization > 0.4
-            ? chalk.hex('#ffaa00')(`${(rawUtil.five_hour.utilization * 100).toFixed(0)}%`)
-            : chalk.hex('#44aa44')(`${(rawUtil.five_hour.utilization * 100).toFixed(0)}%`))
-      );
-    }
-    if (rawUtil.seven_day) {
-      rateParts.push(
-        chalk.dim('7d:') +
-        (rawUtil.seven_day.utilization > 0.7
-          ? chalk.hex('#ff4444')(`${(rawUtil.seven_day.utilization * 100).toFixed(0)}%`)
-          : rawUtil.seven_day.utilization > 0.4
-            ? chalk.hex('#ffaa00')(`${(rawUtil.seven_day.utilization * 100).toFixed(0)}%`)
-            : chalk.hex('#44aa44')(`${(rawUtil.seven_day.utilization * 100).toFixed(0)}%`))
-      );
-    }
-    const rateLimitStr = rateParts.length > 0 ? '  │  ' + rateParts.join('  ') : '';
-
-    // Color for ● on line 2 based on context usage
-    let line2BulletColor: typeof chalk.hex;
-    if (usedPercentage > 85) line2BulletColor = chalk.hex('#ff4444');
-    else if (usedPercentage > 70) line2BulletColor = chalk.hex('#ffaa00');
-    else line2BulletColor = chalk.white;
-
-    const line2 =
-      line2BulletColor('●') +
+      chalk.cyan(`[${modelName}]`) +
+      activeProviderDisplay +
       ' ' +
       bar +
       ' ' +
-      contextTokStr +
-      rateLimitStr +
-      '  │  ' +
-      chalk.green(formatCost(cost)) +
-      '  ' +
-      chalk.dim(formatDuration(duration)) +
-      (mcpCount > 0 ? '  ' + chalk.hex('#AA88FF')(`MCP:${mcpCount}`) : '');
+      percentText +
+      chalk.dim(` | ${claudeCount} CLAUDE.md | ${ruleCount} rules | ${mcpCount} MCPs | ${hookCount} hooks | `) +
+      chalk.white('◷') +
+      chalk.dim(` ${formatCompactDuration(duration)}`);
 
     // ── Build activity line string ──
     let activityLine = '';
-    if (showActivity) {
+    if (runningTools.length > 0 || sortedCompletedTools.length > 0) {
       const parts: string[] = [];
       for (const t of runningTools.slice(-3)) {
         if (t.isMcp) {
@@ -651,43 +656,40 @@ function StatusLineInner({
           );
         }
       }
-      if ((runningTools.length > 0 || runningAgents.length > 0) && sortedCompletedTools.length > 0) {
-        parts.push('  │  ');
-      }
       for (const [name, count] of sortedCompletedTools) {
-        parts.push(chalk.green('✓') + ' ' + name + ' ' + chalk.dim(`×${count}`) + '  ');
+        parts.push(chalk.green('✓') + ' ' + name + ' ' + chalk.dim(`×${count}`));
       }
-      for (const a of runningAgents.slice(0, 2)) {
-        parts.push(
-          chalk.yellow('◐') + ' ' + chalk.magenta(a.type) +
-          (a.description ? chalk.dim(`: ${truncate(a.description, 30)}`) : '') + '  '
-        );
-      }
-      activityLine = parts.join('');
+      activityLine = parts.join(' | ');
     }
 
-    // ── Build todo line string ──
-    const todoLine = (todos && todos.inProgress)
-      ? chalk.yellow('▸') + ' ' + truncate(todos.inProgress, 60) + ' ' + chalk.dim(`(${todos.completed}/${todos.total})`)
+    const agentLines = [
+      ...runningAgents.slice(-2).map(a =>
+        chalk.yellow('◐') + ' ' + chalk.magenta(a.type) +
+        (a.description ? chalk.dim(`: ${truncate(a.description, 54)}`) : '')
+      ),
+      ...completedAgents.slice(-3).map(a =>
+        chalk.green('✓') + ' ' + chalk.magenta(a.type) +
+        (a.description ? chalk.dim(`: ${truncate(a.description, 54)}`) : '') +
+        formatActivityDuration(a)
+      ),
+    ];
+
+    const todoLine = todos
+      ? todos.total > 0 && todos.completed === todos.total
+        ? chalk.green('✓') + ' All todos complete ' + chalk.dim(`(${todos.completed}/${todos.total})`)
+        : todos.inProgress
+          ? chalk.green('✓') + ' ' + truncate(todos.inProgress, 60) + ' ' + chalk.dim(`(${todos.completed}/${todos.total})`)
+          : chalk.green('✓') + ' Todos ' + chalk.dim(`(${todos.completed}/${todos.total})`)
       : '';
 
     return (
       <Box flexDirection="column" gap={0} marginTop={0}>
-        {/* Line 1 — Identity: model, provider, project, branch */}
         <Box>
           <Text>
             <Ansi>{line1}</Ansi>
           </Text>
         </Box>
 
-        {/* Line 2 — Status: context bar, tokens, rate limits, cost, duration */}
-        <Box>
-          <Text>
-            <Ansi>{line2}</Ansi>
-          </Text>
-        </Box>
-
-        {/* Activity line — tools & agents (claude-hud style) */}
         {activityLine && (
           <Box>
             <Text>
@@ -696,7 +698,14 @@ function StatusLineInner({
           </Box>
         )}
 
-        {/* Todo progress line */}
+        {agentLines.map((line, index) => (
+          <Box key={`agent-line-${index}`}>
+            <Text>
+              <Ansi>{line}</Ansi>
+            </Text>
+          </Box>
+        ))}
+
         {todoLine && (
           <Box>
             <Text>

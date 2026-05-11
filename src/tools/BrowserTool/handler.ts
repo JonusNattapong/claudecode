@@ -52,6 +52,9 @@ let browserContext: BrowserContext | null = null;
 let pageInstance: Page | null = null;
 
 const SESSION_DIR = join(process.cwd(), "scratch");
+const DEFAULT_ACTION_TIMEOUT_MS = 3_000;
+const DEFAULT_NAVIGATION_TIMEOUT_MS = 10_000;
+const DEFAULT_SCREENSHOT_TIMEOUT_MS = 2_500;
 
 const BLOCKED_DOMAINS = [
   "datadome.co",
@@ -65,6 +68,10 @@ const BLOCKED_DOMAINS = [
 // Performance: humanDelay is now optional, defaults to 0 for speed
 function humanDelay(min = 0, max = 0) {
   return Math.floor(Math.random() * (max - min + 1) + min);
+}
+
+function shouldSelfHealNavigation(): boolean {
+  return process.env.BROWSER_TOOL_SELF_HEAL === "true";
 }
 
 async function getBrowser(input?: BrowserActionInput) {
@@ -131,57 +138,16 @@ async function getBrowser(input?: BrowserActionInput) {
 
 const VIRTUAL_CURSOR_ID = "claude-virtual-cursor";
 const STOP_BUTTON_ID = "claude-stop-button";
-const NEON_FRAME_ID = "claude-neon-frame";
 
 async function ensureVirtualControls(page: Page) {
   await page
     .evaluate(
-      ({ cursorId, stopId, frameId }) => {
-        // 1. Ensure Neon Frame (Indicator) via 4 Fixed Bars
+      ({ cursorId, stopId }) => {
+        // Remove the old viewport frame. It was useful as an automation
+        // indicator, but it visually covered real pages and made screenshots
+        // look like the website was not using the full browser viewport.
         const frameClass = "claude-neon-bar";
-        if (!document.querySelector("." + frameClass)) {
-          const style = document.createElement("style");
-          style.innerHTML = `
-        @keyframes claude-neon-pulse {
-          0% { opacity: 0.6; box-shadow: 0 0 10px #d97757, 0 0 20px #d97757; }
-          50% { opacity: 1; box-shadow: 0 0 20px #d97757, 0 0 40px #d97757, 0 0 60px #d97757; }
-          100% { opacity: 0.6; box-shadow: 0 0 10px #d97757, 0 0 20px #d97757; }
-        }
-        @keyframes claude-alarm-pulse {
-          0% { background: #ff0000; box-shadow: 0 0 20px #ff0000; }
-          50% { background: #ff4444; box-shadow: 0 0 50px #ff0000; }
-          100% { background: #ff0000; box-shadow: 0 0 20px #ff0000; }
-        }
-        .${frameClass} {
-          position: fixed;
-          background: #d97757;
-          z-index: 2147483640;
-          pointer-events: none;
-          animation: claude-neon-pulse 2s infinite ease-in-out;
-          box-shadow: 0 0 15px #d97757, 0 0 30px #d97757;
-          transition: all 0.5s ease;
-        }
-        .${frameClass}.alarm {
-          animation: claude-alarm-pulse 1s infinite ease-in-out !important;
-          background: #ff0000 !important;
-        }
-      `;
-          document.documentElement.appendChild(style);
-
-          const bars = [
-            { top: 0, left: 0, width: "100vw", height: "10px" }, // Top
-            { bottom: 0, left: 0, width: "100vw", height: "10px" }, // Bottom
-            { top: 0, left: 0, width: "10px", height: "100vh" }, // Left
-            { top: 0, right: 0, width: "10px", height: "100vh" }, // Right
-          ];
-
-          bars.forEach((b) => {
-            const bar = document.createElement("div");
-            bar.className = frameClass;
-            Object.assign(bar.style, b);
-            document.documentElement.appendChild(bar);
-          });
-        }
+        document.querySelectorAll("." + frameClass).forEach((bar) => bar.remove());
 
         // 2. Ensure Cursor
         if (!document.getElementById(cursorId)) {
@@ -236,7 +202,6 @@ async function ensureVirtualControls(page: Page) {
       {
         cursorId: VIRTUAL_CURSOR_ID,
         stopId: STOP_BUTTON_ID,
-        frameId: NEON_FRAME_ID,
       },
     )
     .catch(() => {});
@@ -303,9 +268,9 @@ async function successResult(
 
       const screenshot = await page.screenshot({
         type: "jpeg",
-        quality: 60, // Reduced from 80 to 60 (huge token saving!)
+        quality: 45,
         scale: "css", // Ensure it's not super-high DPI
-        timeout: 5000,
+        timeout: DEFAULT_SCREENSHOT_TIMEOUT_MS,
       });
       result.screenshot = screenshot.toString("base64");
     } catch (error: any) {
@@ -325,7 +290,7 @@ export async function handleBrowserAction(
 ): Promise<BrowserResult> {
   let page: Page | undefined;
   let context: BrowserContext | undefined;
-  const timeout = input.timeout || 8000;
+  const timeout = input.timeout || DEFAULT_ACTION_TIMEOUT_MS;
 
   try {
     logForDebugging(`BrowserTool: Handling action "${input.action}"`);
@@ -342,6 +307,9 @@ export async function handleBrowserAction(
       page = await context.newPage();
       pageInstance = page;
     }
+    page.setDefaultTimeout(timeout);
+    page.setDefaultNavigationTimeout(input.timeout || DEFAULT_NAVIGATION_TIMEOUT_MS);
+
     switch (input.action) {
       // ═══════════════════════════════════════════════════════════
       // NAVIGATION
@@ -349,12 +317,11 @@ export async function handleBrowserAction(
       case "navigate": {
         if (!input.url) throw new Error("URL required");
         logForDebugging(`BrowserTool: Navigating to ${input.url}`);
-        await page.waitForTimeout(humanDelay(200, 500));
         
         try {
           const response = await page.goto(input.url, {
             waitUntil: "domcontentloaded",
-            timeout: 30000,
+            timeout: input.timeout || DEFAULT_NAVIGATION_TIMEOUT_MS,
           });
           
           // If the response is an error (4xx/5xx) or null (DNS error, etc.)
@@ -362,11 +329,13 @@ export async function handleBrowserAction(
             throw new Error(`Failed to load ${input.url} (Status: ${response?.status() || 'Unknown'})`);
           }
           
-          await page.waitForTimeout(humanDelay(500, 1500));
-          // Skip screenshot for navigation to save tokens
           return successResult(page, { skipScreenshot: true });
           
         } catch (error: any) {
+          if (!shouldSelfHealNavigation()) {
+            throw error;
+          }
+
           logForDebugging(`BrowserTool: Navigation failed: ${error.message}. Attempting Self-Healing...`);
           
           // --- SELF-HEALING LOGIC ---
@@ -376,7 +345,7 @@ export async function handleBrowserAction(
           logForDebugging(`BrowserTool: Searching Google for a working link: "${searchQuery}"`);
           
           // 1. Go to Google
-          await page.goto(`https://www.google.com/search?q=${encodeURIComponent(searchQuery)}`, { waitUntil: "domcontentloaded" });
+          await page.goto(`https://www.google.com/search?q=${encodeURIComponent(searchQuery)}`, { waitUntil: "domcontentloaded", timeout: input.timeout || DEFAULT_NAVIGATION_TIMEOUT_MS });
           
           // 2. Extract the first official-looking link (skipping ads)
           const healedUrl = await page.evaluate(() => {
@@ -391,7 +360,7 @@ export async function handleBrowserAction(
           
           if (healedUrl && healedUrl !== input.url) {
             logForDebugging(`BrowserTool: Found potential working URL: ${healedUrl}. Attempting recovery...`);
-            await page.goto(healedUrl, { waitUntil: "domcontentloaded", timeout: 30000 });
+            await page.goto(healedUrl, { waitUntil: "domcontentloaded", timeout: input.timeout || DEFAULT_NAVIGATION_TIMEOUT_MS });
             return successResult(page, { skipScreenshot: true, extra: { content: `Healed: Original URL was broken, recovered via Google search to ${healedUrl}` } });
           }
           
@@ -428,36 +397,15 @@ export async function handleBrowserAction(
           selector = `[data-vision-id="${labelMatch[1]}"]`;
         }
 
-        await page.waitForSelector(selector, {
-          state: "visible",
-          timeout,
-        });
-
-        // Move virtual cursor to element before clicking
-        const box = await page.locator(selector).boundingBox();
-        if (box)
-          await moveVirtualCursor(
-            page,
-            box.x + box.width / 2,
-            box.y + box.height / 2,
-            "pointer",
-          );
-
-        await page.hover(selector);
-        await page.waitForTimeout(humanDelay(80, 250));
-        await page.click(selector, { delay: humanDelay(40, 120) });
-        await page.waitForTimeout(humanDelay(200, 500));
-        return successResult(page);
+        await page.click(selector, { timeout });
+        return successResult(page, { skipScreenshot: true });
       }
 
       case "click_text": {
         // Click by visible text content — most human-like
         if (!input.text) throw new Error("text required for click_text");
-        const loc = page.getByText(input.text, { exact: false });
-        await loc.hover();
-        await page.waitForTimeout(humanDelay(80, 250));
-        await loc.click({ delay: humanDelay(40, 120) });
-        return successResult(page);
+        await page.getByText(input.text, { exact: false }).first().click({ timeout });
+        return successResult(page, { skipScreenshot: true });
       }
 
       case "click_role": {
@@ -465,11 +413,8 @@ export async function handleBrowserAction(
         if (!input.role) throw new Error("role required for click_role");
         const opts: any = {};
         if (input.name) opts.name = input.name;
-        const loc2 = page.getByRole(input.role as any, opts);
-        await loc2.hover();
-        await page.waitForTimeout(humanDelay(80, 250));
-        await loc2.click({ delay: humanDelay(40, 120) });
-        return successResult(page);
+        await page.getByRole(input.role as any, opts).first().click({ timeout });
+        return successResult(page, { skipScreenshot: true });
       }
 
       // ═══════════════════════════════════════════════════════════
@@ -484,24 +429,11 @@ export async function handleBrowserAction(
           timeout,
         });
 
-        // Move virtual cursor to input field
-        const box = await page.locator(input.selector).boundingBox();
-        if (box)
-          await moveVirtualCursor(
-            page,
-            box.x + box.width / 2,
-            box.y + box.height / 2,
-            "text",
-          );
-
-        await page.click(input.selector);
-        await page.waitForTimeout(humanDelay(100, 300));
+        await page.click(input.selector, { timeout });
 
         for (const char of input.text) {
           await checkStopped(page);
-          await page.keyboard.type(char, { delay: humanDelay(30, 100) });
-          if (Math.random() > 0.9)
-            await page.waitForTimeout(humanDelay(150, 300));
+          await page.keyboard.type(char);
         }
         return successResult(page, { skipScreenshot: true });
       }
@@ -513,20 +445,20 @@ export async function handleBrowserAction(
           state: "visible",
           timeout,
         });
-        await page.fill(input.selector, input.text);
+        await page.fill(input.selector, input.text, { timeout });
         return successResult(page, { skipScreenshot: true });
       }
 
       case "fill_label": {
         if (!input.label || !input.text)
           throw new Error("label + text required");
-        await page.getByLabel(input.label).fill(input.text);
+        await page.getByLabel(input.label).first().fill(input.text, { timeout });
         return successResult(page, { skipScreenshot: true });
       }
 
       case "clear": {
         if (!input.selector) throw new Error("selector required");
-        await page.fill(input.selector, "");
+        await page.fill(input.selector, "", { timeout });
         return successResult(page, { skipScreenshot: true });
       }
 
@@ -537,9 +469,9 @@ export async function handleBrowserAction(
             state: "visible",
             timeout,
           });
-          await page.focus(input.selector);
+          await page.focus(input.selector, { timeout });
         }
-        await page.keyboard.press(input.key, { delay: humanDelay(50, 150) });
+        await page.keyboard.press(input.key);
         return successResult(page, { skipScreenshot: true });
       }
 
@@ -549,27 +481,27 @@ export async function handleBrowserAction(
       case "select": {
         if (!input.selector || !input.value)
           throw new Error("selector + value required");
-        await page.selectOption(input.selector, input.value);
-        return successResult(page);
+        await page.selectOption(input.selector, input.value, { timeout });
+        return successResult(page, { skipScreenshot: true });
       }
 
       case "check": {
         if (!input.selector) throw new Error("selector required");
-        await page.check(input.selector);
-        return successResult(page);
+        await page.check(input.selector, { timeout });
+        return successResult(page, { skipScreenshot: true });
       }
 
       case "uncheck": {
         if (!input.selector) throw new Error("selector required");
-        await page.uncheck(input.selector);
-        return successResult(page);
+        await page.uncheck(input.selector, { timeout });
+        return successResult(page, { skipScreenshot: true });
       }
 
       case "upload": {
         if (!input.selector || !input.filePath)
           throw new Error("selector + filePath required");
-        await page.setInputFiles(input.selector, input.filePath);
-        return successResult(page);
+        await page.setInputFiles(input.selector, input.filePath, { timeout });
+        return successResult(page, { skipScreenshot: true });
       }
 
       // ═══════════════════════════════════════════════════════════
@@ -579,23 +511,10 @@ export async function handleBrowserAction(
         const amount = input.amount || 500;
         const delta = input.direction === "up" ? -amount : amount;
 
-        // Move virtual cursor to center and show scroll icon
-        const viewport = page.viewportSize() || { width: 800, height: 600 };
-        await moveVirtualCursor(
-          page,
-          viewport.width / 2,
-          viewport.height / 2,
-          "scroll",
-        );
-
         // Multi-strategy scroll: Mouse wheel + JS scroll fallback
         try {
-          const steps = 3 + Math.floor(Math.random() * 3);
-          for (let i = 0; i < steps; i++) {
-            await checkStopped(page); // Check if user clicked STOP
-            await page.mouse.wheel(0, delta / steps);
-            await page.waitForTimeout(humanDelay(60, 150));
-          }
+          await checkStopped(page);
+          await page.mouse.wheel(0, delta);
         } catch (e) {
           if (e.message?.includes("aborted")) throw e;
           // Fallback to JS scroll if mouse wheel fails
@@ -606,13 +525,13 @@ export async function handleBrowserAction(
 
       case "hover": {
         if (!input.selector) throw new Error("selector required");
-        await page.hover(input.selector);
+        await page.hover(input.selector, { timeout });
         return successResult(page, { skipScreenshot: true });
       }
 
       case "focus": {
         if (!input.selector) throw new Error("selector required");
-        await page.focus(input.selector);
+        await page.focus(input.selector, { timeout });
         return successResult(page, { skipScreenshot: true });
       }
 
@@ -625,13 +544,13 @@ export async function handleBrowserAction(
           state: "visible",
           timeout,
         });
-        return successResult(page);
+        return successResult(page, { skipScreenshot: true });
       }
 
       case "wait_for_url": {
         if (!input.url) throw new Error("url pattern required");
         await page.waitForURL(input.url, { timeout });
-        return successResult(page);
+        return successResult(page, { skipScreenshot: true });
       }
 
       // ═══════════════════════════════════════════════════════════
@@ -641,16 +560,16 @@ export async function handleBrowserAction(
         if (!input.frameSelector || !input.selector)
           throw new Error("frameSelector + selector required");
         const frame = page.frameLocator(input.frameSelector);
-        await frame.locator(input.selector).click();
-        return successResult(page);
+        await frame.locator(input.selector).first().click({ timeout });
+        return successResult(page, { skipScreenshot: true });
       }
 
       case "frame_fill": {
         if (!input.frameSelector || !input.selector || !input.text)
           throw new Error("frameSelector + selector + text required");
         const frame2 = page.frameLocator(input.frameSelector);
-        await frame2.locator(input.selector).fill(input.text);
-        return successResult(page);
+        await frame2.locator(input.selector).first().fill(input.text, { timeout });
+        return successResult(page, { skipScreenshot: true });
       }
 
       case "handle_dialog": {
@@ -691,14 +610,16 @@ export async function handleBrowserAction(
 
       case "get_text": {
         if (!input.selector) throw new Error("selector required");
-        const text = await page.locator(input.selector).innerText();
+        const locator = page.locator(input.selector);
+        await locator.first().waitFor({ state: "attached", timeout });
+        const text = (await locator.allInnerTexts()).slice(0, 20).join("\n\n");
         return { url: page.url(), title: await page.title(), content: text };
       }
 
       case "get_attribute": {
         if (!input.selector || !input.attribute)
           throw new Error("selector + attribute required");
-        const val = await page.getAttribute(input.selector, input.attribute);
+        const val = await page.getAttribute(input.selector, input.attribute, { timeout });
         return {
           url: page.url(),
           title: await page.title(),
@@ -708,7 +629,7 @@ export async function handleBrowserAction(
 
       case "get_value": {
         if (!input.selector) throw new Error("selector required");
-        const v = await page.inputValue(input.selector);
+        const v = await page.inputValue(input.selector, { timeout });
         return { url: page.url(), title: await page.title(), content: v };
       }
 
@@ -726,6 +647,7 @@ export async function handleBrowserAction(
             }));
         });
         return successResult(page, {
+          skipScreenshot: true,
           extra: { content: JSON.stringify(links, null, 2) },
         });
       }
@@ -754,6 +676,7 @@ export async function handleBrowserAction(
             });
         });
         return successResult(page, {
+          skipScreenshot: true,
           extra: { content: JSON.stringify(inputs, null, 2) },
         });
       }
@@ -815,9 +738,8 @@ export async function handleBrowserAction(
         logForDebugging(`BrowserTool: Searching ${engine} for "${query}"`);
         await page.goto(searchUrl, {
           waitUntil: "domcontentloaded",
-          timeout: 60000,
+          timeout: input.timeout || DEFAULT_NAVIGATION_TIMEOUT_MS,
         });
-        await page.waitForTimeout(humanDelay(1500, 3000));
 
         // Extract results using evaluate with multi-strategy fallback selectors.
         // Each engine tries its known selectors first, falls back to generic link+h3 extraction.
@@ -1045,6 +967,7 @@ export async function handleBrowserAction(
 
         logForDebugging(`BrowserTool: Search found ${results.length} results`);
         return successResult(page, {
+          skipScreenshot: true,
           extra: { content: JSON.stringify(results, null, 2) },
         });
       }

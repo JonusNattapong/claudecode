@@ -976,15 +976,21 @@ export function Config({
     }
   }] : []), {
     id: 'searchApiKeys',
-    label: 'Search API Keys (Tavily/Brave)',
+    label: 'Search API Keys',
     value: (() => {
       const settings = getSettings_DEPRECATED();
       const hasTavily = !!settings?.env?.TAVILY_API_KEY;
       const hasBrave = !!settings?.env?.BRAVE_API_KEY;
-      if (hasTavily && hasBrave) return 'Both configured';
-      if (hasTavily) return 'Tavily only';
-      if (hasBrave) return 'Brave only';
-      return 'Not configured';
+      const hasSerper = !!settings?.env?.SERPER_API_KEY;
+      const hasDuckDuckGo = true; // No API key needed
+
+      const configured = []
+      if (hasTavily) configured.push('Tavily')
+      if (hasBrave) configured.push('Brave')
+      if (hasSerper) configured.push('Serper')
+      configured.push('DuckDuckGo')
+
+      return configured.length > 0 ? configured.join(', ') : 'Not configured'
     })(),
     type: 'managedEnum' as const,
     onChange() {}

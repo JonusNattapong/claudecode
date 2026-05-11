@@ -19,7 +19,6 @@ import { getAgentTranscriptPath } from '../../utils/sessionStorage.js';
 import { evictTaskOutput, getTaskOutputPath, initTaskOutputAsSymlink } from '../../utils/task/diskOutput.js';
 import { PANEL_GRACE_MS, registerTask, updateTaskState } from '../../utils/task/framework.js';
 import { emitTaskProgress } from '../../utils/task/sdkProgress.js';
-import { addKanbanTask, commentKanbanTask, completeKanbanTask, editKanbanTask, failKanbanTask, kanbanBoardExists, readKanbanBoard } from '../../utils/kanban/store.js';
 import type { TaskState } from '../types.js';
 export type ToolActivity = {
   toolName: string;
@@ -39,7 +38,6 @@ export type AgentProgress = {
   summary?: string;
 };
 const MAX_RECENT_ACTIVITIES = 5;
-const KANBAN_PROGRESS_COMMENT_MS = 45_000;
 export type ProgressTracker = {
   toolUseCount: number;
   // Track input and output separately to avoid double-counting.
@@ -147,12 +145,6 @@ export type LocalAgentTaskState = TaskStateBase & {
   // timestamp = hide + GC-eligible after this time. Set at terminal transition
   // and on unselect; cleared on retain.
   evictAfter?: number;
-  // Auto-linked kanban task id created from this subagent lifecycle.
-  kanbanTaskId?: string;
-  // Parent kanban task id for auto dependency wiring.
-  parentKanbanTaskId?: string;
-  // Last timestamp we posted progress into linked kanban task.
-  lastKanbanProgressCommentAt?: number;
 };
 export function isLocalAgentTask(task: unknown): task is LocalAgentTaskState {
   return typeof task === 'object' && task !== null && 'type' in task && task.type === 'local_agent';
@@ -345,37 +337,20 @@ export function markAgentsNotified(taskId: string, setAppState: SetAppState): vo
  * results are not clobbered by progress updates from assistant messages.
  */
 export function updateAgentProgress(taskId: string, progress: AgentProgress, setAppState: SetAppState): void {
-  let linkedKanbanTaskId: string | undefined;
-  let shouldPostKanbanProgress = false;
-  let summaryLine = '';
-  const now = Date.now();
   updateTaskState<LocalAgentTaskState>(taskId, setAppState, task => {
     if (task.status !== 'running') {
       return task;
     }
-    linkedKanbanTaskId = task.kanbanTaskId;
     const existingSummary = task.progress?.summary;
     const nextProgress = existingSummary ? {
       ...progress,
       summary: existingSummary
     } : progress;
-    const elapsedSinceLastComment = now - (task.lastKanbanProgressCommentAt ?? 0);
-    if (task.kanbanTaskId && elapsedSinceLastComment >= KANBAN_PROGRESS_COMMENT_MS) {
-      shouldPostKanbanProgress = true;
-      const activity = nextProgress.lastActivity?.activityDescription ?? nextProgress.lastActivity?.toolName ?? 'working';
-      summaryLine = `Progress: tools=${nextProgress.toolUseCount}, tokens=${nextProgress.tokenCount}, last=${activity}`;
-    }
     return {
       ...task,
-      progress: nextProgress,
-      lastKanbanProgressCommentAt: shouldPostKanbanProgress ? now : task.lastKanbanProgressCommentAt
+      progress: nextProgress
     };
   });
-  if (linkedKanbanTaskId && shouldPostKanbanProgress) {
-    void commentKanbanTask(linkedKanbanTaskId, 'subagent', summaryLine).catch(() => {
-      // Best-effort only.
-    });
-  }
 }
 
 /**
@@ -437,12 +412,10 @@ export function updateAgentSummary(taskId: string, summary: string, setAppState:
  */
 export function completeAgentTask(result: AgentToolResult, setAppState: SetAppState): void {
   const taskId = result.agentId;
-  let linkedKanbanTaskId: string | undefined;
   updateTaskState<LocalAgentTaskState>(taskId, setAppState, task => {
     if (task.status !== 'running') {
       return task;
     }
-    linkedKanbanTaskId = task.kanbanTaskId;
     task.unregisterCleanup?.();
     return {
       ...task,
@@ -455,18 +428,6 @@ export function completeAgentTask(result: AgentToolResult, setAppState: SetAppSt
       selectedAgent: undefined
     };
   });
-  if (linkedKanbanTaskId) {
-    void completeKanbanTask(
-      linkedKanbanTaskId,
-      `Subagent completed: ${result.totalToolUseCount} tools, ${result.totalTokenCount} tokens`,
-      {
-        tokenCount: result.totalTokenCount,
-        toolUseCount: result.totalToolUseCount,
-      },
-    ).catch(() => {
-      // Best-effort sync only; never fail agent completion on kanban write errors.
-    });
-  }
   void evictTaskOutput(taskId);
   // Note: Notification is sent by AgentTool via enqueueAgentNotification
 }
@@ -475,12 +436,10 @@ export function completeAgentTask(result: AgentToolResult, setAppState: SetAppSt
  * Fail an agent task with error.
  */
 export function failAgentTask(taskId: string, error: string, setAppState: SetAppState): void {
-  let linkedKanbanTaskId: string | undefined;
   updateTaskState<LocalAgentTaskState>(taskId, setAppState, task => {
     if (task.status !== 'running') {
       return task;
     }
-    linkedKanbanTaskId = task.kanbanTaskId;
     task.unregisterCleanup?.();
     return {
       ...task,
@@ -493,11 +452,6 @@ export function failAgentTask(taskId: string, error: string, setAppState: SetApp
       selectedAgent: undefined
     };
   });
-  if (linkedKanbanTaskId) {
-    void failKanbanTask(linkedKanbanTaskId, `Subagent failed: ${error}`, taskId).catch(() => {
-      // Best-effort sync only; never fail agent state transitions on kanban write errors.
-    });
-  }
   void evictTaskOutput(taskId);
   // Note: Notification is sent by AgentTool via enqueueAgentNotification
 }
@@ -518,7 +472,6 @@ export function registerAsyncAgent({
   setAppState,
   parentAbortController,
   toolUseId,
-  parentKanbanTaskId,
 }: {
   agentId: string;
   description: string;
@@ -527,7 +480,6 @@ export function registerAsyncAgent({
   setAppState: SetAppState;
   parentAbortController?: AbortController;
   toolUseId?: string;
-  parentKanbanTaskId?: string;
 }): LocalAgentTaskState {
   void initTaskOutputAsSymlink(agentId, getAgentTranscriptPath(asAgentId(agentId)));
 
@@ -549,8 +501,7 @@ export function registerAsyncAgent({
     // registerAsyncAgent immediately backgrounds
     pendingMessages: [],
     retain: false,
-    diskLoaded: false,
-    parentKanbanTaskId
+    diskLoaded: false
   };
 
   // Register cleanup handler
@@ -561,7 +512,6 @@ export function registerAsyncAgent({
 
   // Register task in AppState
   registerTask(taskState, setAppState);
-  void linkAgentTaskToKanban(agentId, description, selectedAgent.agentType, setAppState, parentKanbanTaskId);
   return taskState;
 }
 
@@ -582,7 +532,6 @@ export function registerAgentForeground({
   setAppState,
   autoBackgroundMs,
   toolUseId,
-  parentKanbanTaskId,
 }: {
   agentId: string;
   description: string;
@@ -591,7 +540,6 @@ export function registerAgentForeground({
   setAppState: SetAppState;
   autoBackgroundMs?: number;
   toolUseId?: string;
-  parentKanbanTaskId?: string;
 }): {
   taskId: string;
   backgroundSignal: Promise<void>;
@@ -619,8 +567,7 @@ export function registerAgentForeground({
     // Not yet backgrounded - running in foreground
     pendingMessages: [],
     retain: false,
-    diskLoaded: false,
-    parentKanbanTaskId
+    diskLoaded: false
   };
 
   // Create background signal promise
@@ -630,7 +577,6 @@ export function registerAgentForeground({
   });
   backgroundSignalResolvers.set(agentId, resolveBackgroundSignal!);
   registerTask(taskState, setAppState);
-  void linkAgentTaskToKanban(agentId, description, selectedAgent.agentType, setAppState, parentKanbanTaskId);
 
   // Auto-background after timeout if configured
   let cancelAutoBackground: (() => void) | undefined;
@@ -666,46 +612,6 @@ export function registerAgentForeground({
     backgroundSignal,
     cancelAutoBackground
   };
-}
-
-async function linkAgentTaskToKanban(
-  agentId: string,
-  description: string,
-  agentType: string,
-  setAppState: SetAppState,
-  parentKanbanTaskId?: string,
-): Promise<void> {
-  try {
-    if (!(await kanbanBoardExists())) return;
-    const title = description.trim() || `Subagent ${agentType}`;
-    const { task } = await addKanbanTask(
-      {
-        title,
-        status: 'running',
-        owner: 'subagent',
-        assignedAgent: agentId,
-        tags: ['subagent', agentType.toLowerCase()],
-      },
-    );
-    updateTaskState<LocalAgentTaskState>(agentId, setAppState, prev => ({
-      ...prev,
-      kanbanTaskId: task.id,
-    }));
-    if (parentKanbanTaskId) {
-      try {
-        const board = await readKanbanBoard();
-        const parent = board.tasks.find(t => t.id === parentKanbanTaskId);
-        if (parent) {
-          const nextBlockers = Array.from(new Set([...(parent.blockers ?? []), task.id]));
-          await editKanbanTask(parentKanbanTaskId, { blockers: nextBlockers });
-        }
-      } catch {
-        // Best-effort: dependency link should not break spawn flow.
-      }
-    }
-  } catch {
-    // Best-effort sync only; skip silently when kanban is unavailable.
-  }
 }
 
 /**

@@ -1,6 +1,5 @@
 // biome-ignore-all assist/source/organizeImports: ANT-ONLY import markers must not be reordered
 import { toolMatchesName, type Tool, type Tools } from "./Tool.js";
-import { AgentTool } from "./tools/AgentTool/AgentTool.js";
 import { SkillTool } from "./tools/SkillTool/SkillTool.js";
 import { BashTool } from "./tools/BashTool/BashTool.js";
 import { FileEditTool } from "./tools/FileEditTool/FileEditTool.js";
@@ -8,7 +7,6 @@ import { FileReadTool } from "./tools/FileReadTool/FileReadTool.js";
 import { FileWriteTool } from "./tools/FileWriteTool/FileWriteTool.js";
 import { GlobTool } from "./tools/GlobTool/GlobTool.js";
 import { NotebookEditTool } from "./tools/NotebookEditTool/NotebookEditTool.js";
-import { WebFetchTool } from "./tools/WebFetchTool/WebFetchTool.js";
 import { TaskStopTool } from "./tools/TaskStopTool/TaskStopTool.js";
 import { BriefTool } from "./tools/BriefTool/BriefTool.js";
 
@@ -52,6 +50,7 @@ const getWorkflowTool = () => {
 // Stable static imports
 import { TaskOutputTool } from "./tools/TaskOutputTool/TaskOutputTool.js";
 import { WebSearchTool } from "./tools/WebSearchTool/WebSearchTool.js";
+import { MultiSearchTool } from "./tools/MultiSearchTool/MultiSearchTool.js";
 import { JsonPathTool } from "./tools/JsonPathTool/JsonPathTool.js";
 import { TodoWriteTool } from "./tools/TodoWriteTool/TodoWriteTool.js";
 import { ExitPlanModeV2Tool } from "./tools/ExitPlanModeTool/ExitPlanModeV2Tool.js";
@@ -66,7 +65,6 @@ import { LSPTool } from "./tools/LSPTool/LSPTool.js";
 import { ListMcpResourcesTool } from "./tools/ListMcpResourcesTool/ListMcpResourcesTool.js";
 import { ReadMcpResourceTool } from "./tools/ReadMcpResourceTool/ReadMcpResourceTool.js";
 import { ToolSearchTool } from "./tools/ToolSearchTool/ToolSearchTool.js";
-import { ResearchTool } from "./tools/ResearchTool/index.js";
 import { EnterPlanModeTool } from "./tools/EnterPlanModeTool/EnterPlanModeTool.js";
 import { EnterWorktreeTool } from "./tools/EnterWorktreeTool/EnterWorktreeTool.js";
 import { ExitWorktreeTool } from "./tools/ExitWorktreeTool/ExitWorktreeTool.js";
@@ -75,7 +73,6 @@ import { TaskCreateTool } from "./tools/TaskCreateTool/TaskCreateTool.js";
 import { TaskGetTool } from "./tools/TaskGetTool/TaskGetTool.js";
 import { TaskUpdateTool } from "./tools/TaskUpdateTool/TaskUpdateTool.js";
 import { TaskListTool } from "./tools/TaskListTool/TaskListTool.js";
-import { BrowserTool } from "./tools/BrowserTool/BrowserTool.js";
 import { CodeIndexTool } from "./tools/CodeIndexTool/CodeIndexTool.js";
 import uniqBy from "lodash-es/uniqBy.js";
 import { isToolSearchEnabledOptimistic } from "./utils/toolSearch.js";
@@ -159,7 +156,6 @@ export function getAllBaseTools(): Tools {
   const workflowTool = getWorkflowTool();
 
   return [
-    AgentTool,
     TaskOutputTool,
     BashTool,
     ...(hasEmbeddedSearchTools() ? [] : [GlobTool, GrepTool]),
@@ -168,9 +164,9 @@ export function getAllBaseTools(): Tools {
     FileEditTool,
     FileWriteTool,
     NotebookEditTool,
-    WebFetchTool,
     TodoWriteTool,
-    // WebSearchTool, // Hidden to favor ResearchTool
+    // WebSearchTool, // Hidden in favor of faster dedicated search tools
+    MultiSearchTool,
     JsonPathTool,
     TaskStopTool,
     AskUserQuestionTool,
@@ -209,9 +205,7 @@ export function getAllBaseTools(): Tools {
     ListMcpResourcesTool,
     ReadMcpResourceTool,
     ...(isToolSearchEnabledOptimistic() ? [ToolSearchTool] : []),
-    ResearchTool,
     ...(getComputerUseTool() ? [getComputerUseTool()] : []),
-    BrowserTool,
     ...(feature("CODE_INDEX") ? [CodeIndexTool] : []),
   ];
 }
@@ -237,7 +231,7 @@ export const getTools = (permissionContext: ToolPermissionContext): Tools => {
     }
     const simpleTools: Tool[] = [BashTool, FileReadTool, FileEditTool];
     if (feature("COORDINATOR_MODE") && isCoordinatorMode()) {
-      simpleTools.push(AgentTool, TaskStopTool, SendMessageTool);
+      simpleTools.push(TaskStopTool, SendMessageTool);
     }
     return filterToolsByDenyRules(simpleTools, permissionContext);
   }

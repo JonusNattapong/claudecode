@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Agents - Claude Code Docs</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="header">
+    <div class="header-content">
+      <a href="index.html" class="logo">
+        <span class="logo-icon">⚡</span>
+        <span class="logo-text">Claude Code</span>
+      </a>
+      <nav class="nav">
+        <a href="index.html" class="nav-link">Home</a>
+        <a href="installation.html" class="nav-link">Installation</a>
+        <a href="configuration.html" class="nav-link">Configuration</a>
+        <a href="commands.html" class="nav-link">Commands</a>
+        <a href="providers.html" class="nav-link">Providers</a>
+        <a href="plugins.html" class="nav-link">Plugins</a>
+      </nav>
+    </div>
+  </header>
+
+  <div class="container">
+    <aside class="sidebar">
+      <div class="sidebar-section">
+        <h3 class="sidebar-title">Features</h3>
+        <ul class="sidebar-nav">
+          <li><a href="commands.html" class="sidebar-link">Commands</a></li>
+          <li><a href="tools.html" class="sidebar-link">Tools</a></li>
+          <li><a href="agents.html" class="sidebar-link active">Agents</a></li>
+          <li><a href="plugins.html" class="sidebar-link">Plugins</a></li>
+          <li><a href="skills.html" class="sidebar-link">Skills</a></li>
+        </ul>
+      </div>
+    </aside>
+
+    <main class="main-content page-content">
+      <h1>Agents</h1>
+      <p>Claude Code supports subagents for parallel task execution. Create AI agents that work independently in the background.</p>
+
+      <h2>Using Agents</h2>
+
+      <h3>Create an Agent</h3>
+      <pre><code>/agent Create a new component for the dashboard</code></pre>
+
+      <h3>List Agents</h3>
+      <pre><code>/agents</code></pre>
+
+      <h3>Resume Agent</h3>
+      <pre><code>/resume</code></pre>
+
+      <h2>Built-in Agents</h2>
+
+      <table>
+        <thead>
+          <tr><th>Agent</th><th>Description</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>general-purpose</strong></td><td>General coding tasks</td></tr>
+          <tr><td><strong>explore</strong></td><td>Explore codebase and answer questions</td></tr>
+          <tr><td><strong>plan</strong></td><td>Plan and structure complex tasks</td></tr>
+          <tr><td><strong>verification</strong></td><td>Verify code correctness</td></tr>
+          <tr><td><strong>claude-code-guide</strong></td><td>Help learn Claude Code</td></tr>
+        </tbody>
+      </table>
+
+      <h2>Agent Features</h2>
+      <ul>
+        <li><strong>Background Execution</strong> - Agents run in background while you continue</li>
+        <li><strong>Parallel Agents</strong> - Run multiple agents simultaneously</li>
+        <li><strong>Memory</strong> - Agents can maintain context across tasks</li>
+        <li><strong>Worktree Support</strong> - Agents can use git worktrees</li>
+      </ul>
+
+      <h2>Agent Commands</h2>
+      <pre><code>/agent [prompt]          # Create agent with prompt
+/agents list              # List running agents
+/agent kill [id]          # Kill an agent
+/resume                   # Resume previous agent</code></pre>
+
+      <div class="callout callout-tip">
+        <strong>Tip:</strong> Use agents for parallel file operations or complex tasks that can run independently.
+      </div>
+    </main>
+  </div>
+
+  <footer class="footer">
+    <p>Claude Code Documentation • <a href="https://github.com/anomalyco/claude-code">GitHub</a></p>
+  </footer>
+</body>
+</html>

@@ -21,26 +21,186 @@ import {
   MAX_MARKDOWN_LENGTH,
 } from './utils.js'
 
+const DEFAULT_PROMPT = 'Extract and summarize the main content'
+const WEB_FETCH_TOTAL_TIMEOUT_MS = 15_000
+
+type FetchSingleUrlResult = {
+  url: string
+  bytes: number
+  code: number
+  codeText: string
+  result: string
+  durationMs: number
+  error?: string
+}
+
+function createChildAbortController(parentSignal: AbortSignal): AbortController {
+  const child = new AbortController()
+  if (parentSignal.aborted) {
+    child.abort(parentSignal.reason)
+    return child
+  }
+
+  const abortChild = () => child.abort(parentSignal.reason)
+  parentSignal.addEventListener('abort', abortChild, { once: true })
+  child.signal.addEventListener(
+    'abort',
+    () => parentSignal.removeEventListener('abort', abortChild),
+    { once: true },
+  )
+  return child
+}
+
+async function withTimeout<T>(
+  promise: Promise<T>,
+  controller: AbortController,
+  timeoutMs: number,
+  message: string,
+): Promise<T> {
+  let timeout: ReturnType<typeof setTimeout> | undefined
+  const timeoutPromise = new Promise<T>((_, reject) => {
+    timeout = setTimeout(() => {
+      controller.abort(message)
+      reject(new Error(message))
+    }, timeoutMs)
+    if (typeof timeout === 'object' && 'unref' in timeout) {
+      timeout.unref()
+    }
+  })
+
+  try {
+    return await Promise.race([promise, timeoutPromise])
+  } finally {
+    if (timeout) clearTimeout(timeout)
+  }
+}
+
+// Helper function for single URL fetch
+async function fetchSingleUrl(
+  url: string,
+  prompt: string,
+  abortController: { signal: AbortSignal },
+  isNonInteractiveSession: boolean,
+): Promise<FetchSingleUrlResult> {
+  const start = Date.now()
+  const childAbortController = createChildAbortController(abortController.signal)
+
+  try {
+    const timeoutMessage = `WebFetch timed out after ${WEB_FETCH_TOTAL_TIMEOUT_MS / 1000}s`
+    const response = await withTimeout(
+      getURLMarkdownContent(url, childAbortController),
+      childAbortController,
+      WEB_FETCH_TOTAL_TIMEOUT_MS,
+      timeoutMessage,
+    )
+
+    if ('type' in response && response.type === 'redirect') {
+      const statusText =
+        response.statusCode === 301
+          ? 'Moved Permanently'
+          : response.statusCode === 308
+            ? 'Permanent Redirect'
+            : response.statusCode === 307
+              ? 'Temporary Redirect'
+              : 'Found'
+
+      return {
+        url,
+        bytes: 0,
+        code: response.statusCode,
+        codeText: statusText,
+        result: `REDIRECT: ${response.originalUrl} → ${response.redirectUrl}`,
+        durationMs: Date.now() - start,
+      }
+    }
+
+    const {
+      content,
+      bytes,
+      code,
+      codeText,
+    } = response as FetchedContent
+
+    const elapsedMs = Date.now() - start
+    const remainingMs = Math.max(1, WEB_FETCH_TOTAL_TIMEOUT_MS - elapsedMs)
+    const promptApplied = await withTimeout(
+      applyPromptToMarkdown(
+        prompt,
+        content,
+        childAbortController.signal,
+        isNonInteractiveSession,
+        isPreapprovedUrl(url),
+      ),
+      childAbortController,
+      remainingMs,
+      timeoutMessage,
+    )
+    const truncated = promptApplied.slice(0, MAX_MARKDOWN_LENGTH)
+
+    return {
+      url,
+      bytes,
+      code,
+      codeText,
+      result: truncated,
+      durationMs: Date.now() - start,
+    }
+  } catch (error) {
+    return {
+      url,
+      bytes: 0,
+      code: 0,
+      codeText: 'Error',
+      result: '',
+      durationMs: Date.now() - start,
+      error: error instanceof Error ? error.message : String(error),
+    }
+  } finally {
+    childAbortController.abort('web_fetch_done')
+  }
+}
+
 const inputSchema = lazySchema(() =>
   z.strictObject({
-    url: z.string().url().describe('The URL to fetch content from'),
-    prompt: z.string().describe('The prompt to run on the fetched content'),
-  }),
+    url: z
+      .string()
+      .url()
+      .optional()
+      .describe('Single URL to fetch (use urls for multiple)'),
+    urls: z
+      .array(z.string().url())
+      .optional()
+      .describe('Multiple URLs to fetch in parallel (max 10)'),
+    prompt: z
+      .string()
+      .optional()
+      .default('Extract and summarize the main content')
+      .describe('The prompt to run on the fetched content'),
+  }).refine(data => data.url || data.urls, {
+    message: 'Either url or urls must be provided',
+  })
 )
 type InputSchema = ReturnType<typeof inputSchema>
 
 const outputSchema = lazySchema(() =>
   z.object({
-    bytes: z.number().describe('Size of the fetched content in bytes'),
-    code: z.number().describe('HTTP response code'),
-    codeText: z.string().describe('HTTP response code text'),
-    result: z
-      .string()
-      .describe('Processed result from applying the prompt to the content'),
-    durationMs: z
-      .number()
-      .describe('Time taken to fetch and process the content'),
-    url: z.string().describe('The URL that was fetched'),
+    results: z
+      .array(
+        z.object({
+          url: z.string(),
+          bytes: z.number(),
+          code: z.number(),
+          codeText: z.string(),
+          result: z.string(),
+          durationMs: z.number(),
+          error: z.string().optional(),
+        }),
+      )
+      .describe('Array of fetch results'),
+    totalUrls: z.number(),
+    successful: z.number(),
+    failed: z.number(),
+    totalDurationMs: z.number(),
   }),
 )
 type OutputSchema = ReturnType<typeof outputSchema>
@@ -189,15 +349,39 @@ export const WebFetchTool = buildTool({
 ${DESCRIPTION}`
   },
   async validateInput(input) {
-    const { url } = input
-    try {
-      new URL(url)
-    } catch {
-      return {
-        result: false,
-        message: `Error: Invalid URL "${url}". The URL provided could not be parsed.`,
-        meta: { reason: 'invalid_url' },
-        errorCode: 1,
+    const { url, urls } = input
+    if (url) {
+      try {
+        new URL(url)
+      } catch {
+        return {
+          result: false,
+          message: `Error: Invalid URL "${url}". The URL provided could not be parsed.`,
+          meta: { reason: 'invalid_url' },
+          errorCode: 1,
+        }
+      }
+    }
+    if (urls) {
+      if (urls.length > 10) {
+        return {
+          result: false,
+          message: `Error: Maximum 10 URLs allowed, got ${urls.length}`,
+          meta: { reason: 'too_many_urls' },
+          errorCode: 2,
+        }
+      }
+      for (const u of urls) {
+        try {
+          new URL(u)
+        } catch {
+          return {
+            result: false,
+            message: `Error: Invalid URL "${u}". The URL provided could not be parsed.`,
+            meta: { reason: 'invalid_url' },
+            errorCode: 1,
+          }
+        }
       }
     }
     return { result: true }
@@ -206,102 +390,75 @@ ${DESCRIPTION}`
   renderToolUseProgressMessage,
   renderToolResultMessage,
   async call(
-    { url, prompt },
+    { url, urls, prompt },
     { abortController, options: { isNonInteractiveSession } },
   ) {
     const start = Date.now()
+    const urlsToFetch = urls || (url ? [url] : [])
+    const maxUrls = 10
+    const limitedUrls = urlsToFetch.slice(0, maxUrls)
 
-    const response = await getURLMarkdownContent(url, abortController)
-
-    // Check if we got a redirect to a different host
-    if ('type' in response && response.type === 'redirect') {
-      const statusText =
-        response.statusCode === 301
-          ? 'Moved Permanently'
-          : response.statusCode === 308
-            ? 'Permanent Redirect'
-            : response.statusCode === 307
-              ? 'Temporary Redirect'
-              : 'Found'
-
-      const message = `REDIRECT DETECTED: The URL redirects to a different host.
-
-Original URL: ${response.originalUrl}
-Redirect URL: ${response.redirectUrl}
-Status: ${response.statusCode} ${statusText}
-
-To complete your request, I need to fetch content from the redirected URL. Please use WebFetch again with these parameters:
-- url: "${response.redirectUrl}"
-- prompt: "${prompt}"`
-
-      const output: Output = {
-        bytes: Buffer.byteLength(message),
-        code: response.statusCode,
-        codeText: statusText,
-        result: message,
-        durationMs: Date.now() - start,
-        url,
-      }
-
-      return {
-        data: output,
-      }
-    }
-
-    const {
-      content,
-      bytes,
-      code,
-      codeText,
-      contentType,
-      persistedPath,
-      persistedSize,
-    } = response as FetchedContent
-
-    const isPreapproved = isPreapprovedUrl(url)
-
-    let result: string
-    if (
-      isPreapproved &&
-      contentType.includes('text/markdown') &&
-      content.length < MAX_MARKDOWN_LENGTH
-    ) {
-      result = content
-    } else {
-      result = await applyPromptToMarkdown(
-        prompt,
-        content,
-        abortController.signal,
+    // Fetch through one normalized output shape so single and multi URL calls
+    // share timeout/error handling and result rendering.
+    const fetchPromises = limitedUrls.map(u =>
+      fetchSingleUrl(
+        u,
+        prompt || DEFAULT_PROMPT,
+        abortController,
         isNonInteractiveSession,
-        isPreapproved,
-      )
-    }
+      ).catch(err => ({
+        url: u,
+        bytes: 0,
+        code: 0,
+        codeText: 'Error',
+        result: '',
+        durationMs: 0,
+        error: err.message || 'Fetch failed',
+      }))
+    )
 
-    // Binary content (PDFs, etc.) was additionally saved to disk with a
-    // mime-derived extension. Note it so Claude can inspect the raw file
-    // if the Haiku summary above isn't enough.
-    if (persistedPath) {
-      result += `\n\n[Binary content (${contentType}, ${formatFileSize(persistedSize ?? bytes)}) also saved to ${persistedPath}]`
-    }
+    const results = await Promise.all(fetchPromises)
+
+    const successful = results.filter(r => !r.error).length
+    const failed = results.filter(r => r.error).length
+    const totalDurationMs = Date.now() - start
 
     const output: Output = {
-      bytes,
-      code,
-      codeText,
-      result,
-      durationMs: Date.now() - start,
-      url,
+      results: results.map(r => ({
+        url: r.url,
+        bytes: r.bytes,
+        code: r.code,
+        codeText: r.codeText,
+        result: r.result,
+        durationMs: r.durationMs,
+        error: r.error,
+      })),
+      totalUrls: limitedUrls.length,
+      successful,
+      failed,
+      totalDurationMs,
     }
 
-    return {
-      data: output,
-    }
+    return { data: output }
   },
-  mapToolResultToToolResultBlockParam({ result }, toolUseID) {
+  mapToolResultToToolResultBlockParam(output, toolUseID) {
+    const lines = [`Fetched ${output.totalUrls} URLs (${output.successful} successful, ${output.failed} failed):\n`]
+    for (const r of output.results) {
+      lines.push(`## ${r.url}`)
+      lines.push(`Status: ${r.code} ${r.codeText}`)
+      if (r.error) {
+        lines.push(`Error: ${r.error}`)
+      } else {
+        lines.push(r.result.slice(0, 500))
+        if (r.result.length > 500) lines.push('... (truncated)')
+      }
+      lines.push('')
+    }
+
     return {
       tool_use_id: toolUseID,
       type: 'tool_result',
-      content: result,
+      content: lines.join('\n'),
     }
   },
 } satisfies ToolDef<InputSchema, Output>)

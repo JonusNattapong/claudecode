@@ -22,8 +22,6 @@ import { logForDebugging } from '../../utils/debug.js';
 import { isEnvTruthy } from '../../utils/envUtils.js';
 import { AbortError, errorMessage, toError } from '../../utils/errors.js';
 import type { CacheSafeParams } from '../../utils/forkedAgent.js';
-import { kanbanBoardExists } from '../../utils/kanban/store.js';
-import { openKanbanDashboard } from '../../utils/kanban/server.js';
 import { lazySchema } from '../../utils/lazySchema.js';
 import { createUserMessage, extractTextContent, isSyntheticMessage, normalizeMessages } from '../../utils/messages.js';
 import { getAgentModel } from '../../utils/model/agent.js';
@@ -196,8 +194,6 @@ import type { AgentToolProgress, ShellProgress } from '../../types/tools.js';
 // events from the sub-agent so the SDK receives tool_progress updates during bash/powershell runs.
 export type Progress = AgentToolProgress | ShellProgress;
 
-let kanbanAutoOpened = false;
-
 export const AgentTool = buildTool({
   async prompt({
     agents,
@@ -253,16 +249,6 @@ export const AgentTool = buildTool({
     isolation,
     cwd
   }: AgentToolInput, toolUseContext, canUseTool, assistantMessage, onProgress?) {
-    // Auto-open Kanban dashboard once per session when a subagent is launched
-    if (!kanbanAutoOpened && getIsInteractive() && !isInForkChild(toolUseContext.messages)) {
-      void kanbanBoardExists().then(exists => {
-        if (exists) {
-          void openKanbanDashboard().catch(() => {});
-          kanbanAutoOpened = true;
-        }
-      }).catch(() => {});
-    }
-
     const startTime = Date.now();
     const model = isCoordinatorMode() ? undefined : modelParam;
 
@@ -272,13 +258,6 @@ export const AgentTool = buildTool({
     // In-process teammates get a no-op setAppState; setAppStateForTasks
     // reaches the root store so task registration/progress/kill stay visible.
     const rootSetAppState = toolUseContext.setAppStateForTasks ?? toolUseContext.setAppState;
-    const parentKanbanTaskId = (() => {
-      const parentAgentId = toolUseContext.agentId;
-      if (!parentAgentId) return undefined;
-      const parentTask = appState.tasks[parentAgentId];
-      if (!isLocalAgentTask(parentTask)) return undefined;
-      return parentTask.kanbanTaskId;
-    })();
 
     // Check if user is trying to use agent teams without access
     if (team_name && !isAgentSwarmsEnabled()) {
@@ -713,7 +692,6 @@ export const AgentTool = buildTool({
         prompt,
         selectedAgent,
         setAppState: rootSetAppState,
-        parentKanbanTaskId,
         // Don't link to parent's abort controller -- background agents should
         // survive when the user presses ESC to cancel the main thread.
         // They are killed explicitly via chat:killAgents.
@@ -845,7 +823,6 @@ export const AgentTool = buildTool({
             prompt,
             selectedAgent,
             setAppState: rootSetAppState,
-            parentKanbanTaskId,
             toolUseId: toolUseContext.toolUseId,
             autoBackgroundMs: getAutoBackgroundMs() || undefined
           });

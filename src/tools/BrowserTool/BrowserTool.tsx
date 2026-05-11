@@ -77,7 +77,7 @@ export const BrowserTool = buildTool({
   },
 
   async prompt(): Promise<string> {
-    return `Control a stealth web browser (Playwright). After each action you get a screenshot.
+    return `Control a stealth web browser (Playwright). Most actions return URL/title/text only for speed; call screenshot when you need to inspect the page visually.
 
 TARGETING (choose the best strategy):
 - click: Click by CSS selector
@@ -108,7 +108,7 @@ IFRAME & DIALOG:
 - handle_dialog: Auto-accept or dismiss alert/confirm/prompt dialogs
 
 CONTENT EXTRACTION:
-- screenshot: Capture current page
+- screenshot: Capture current page visually
 - extract: Get full HTML
 - get_text: Get innerText of an element
 - get_attribute: Get any attribute value

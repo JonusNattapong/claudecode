@@ -70,3 +70,6 @@ bun-linux-x64/
 tmp/
 temp/
 .docs/
+
+
+scratch/

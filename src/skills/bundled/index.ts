@@ -11,9 +11,7 @@ import { registerSkillifySkill } from './skillify.js'
 import { registerStuckSkill } from './stuck.js'
 import { registerUpdateConfigSkill } from './updateConfig.js'
 import { registerVerifySkill } from './verify.js'
-import { registerWebSearchSkill } from './webSearch.js'
 import { registerScraplingSkill } from './scrapling.js'
-import { registerUseKanbanRuntimeSkill } from './useKanbanRuntime.js'
 
 /**
  * Initialize all bundled skills.
@@ -35,9 +33,7 @@ export function initBundledSkills(): void {
   registerSimplifySkill()
   registerBatchSkill()
   registerStuckSkill()
-  registerWebSearchSkill()
   registerScraplingSkill()
-  registerUseKanbanRuntimeSkill()
   if (feature('KAIROS') || feature('KAIROS_DREAM')) {
     /* eslint-disable @typescript-eslint/no-require-imports */
     const { registerDreamSkill } = require('./dream.js')

@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Claude Code - Documentation</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="header">
+    <div class="header-content">
+      <a href="index.html" class="logo">
+        <span class="logo-icon">⚡</span>
+        <span class="logo-text">Claude Code</span>
+      </a>
+      <nav class="nav">
+        <a href="index.html" class="nav-link active">Home</a>
+        <a href="installation.html" class="nav-link">Installation</a>
+        <a href="configuration.html" class="nav-link">Configuration</a>
+        <a href="commands.html" class="nav-link">Commands</a>
+        <a href="providers.html" class="nav-link">Providers</a>
+        <a href="plugins.html" class="nav-link">Plugins</a>
+      </nav>
+    </div>
+  </header>
+
+  <div class="container">
+    <aside class="sidebar">
+      <div class="sidebar-section">
+        <h3 class="sidebar-title">Getting Started</h3>
+        <ul class="sidebar-nav">
+          <li><a href="index.html" class="sidebar-link active">Introduction</a></li>
+          <li><a href="installation.html" class="sidebar-link">Installation</a></li>
+          <li><a href="quick-start.html" class="sidebar-link">Quick Start</a></li>
+        </ul>
+      </div>
+      <div class="sidebar-section">
+        <h3 class="sidebar-title">Configuration</h3>
+        <ul class="sidebar-nav">
+          <li><a href="configuration.html" class="sidebar-link">Settings</a></li>
+          <li><a href="providers.html" class="sidebar-link">AI Providers</a></li>
+          <li><a href="permissions.html" class="sidebar-link">Permissions</a></li>
+        </ul>
+      </div>
+      <div class="sidebar-section">
+        <h3 class="sidebar-title">Features</h3>
+        <ul class="sidebar-nav">
+          <li><a href="commands.html" class="sidebar-link">Commands</a></li>
+          <li><a href="tools.html" class="sidebar-link">Tools</a></li>
+          <li><a href="agents.html" class="sidebar-link">Agents</a></li>
+          <li><a href="plugins.html" class="sidebar-link">Plugins</a></li>
+          <li><a href="skills.html" class="sidebar-link">Skills</a></li>
+        </ul>
+      </div>
+      <div class="sidebar-section">
+        <h3 class="sidebar-title">Reference</h3>
+        <ul class="sidebar-nav">
+          <li><a href="faq.html" class="sidebar-link">FAQ</a></li>
+          <li><a href="troubleshooting.html" class="sidebar-link">Troubleshooting</a></li>
+          <li><a href="changelog.html" class="sidebar-link">Changelog</a></li>
+        </ul>
+      </div>
+    </aside>
+
+    <main class="main-content">
+      <h1>Welcome to Claude Code</h1>
+      <p class="lead">A research-focused fork of Anthropic's Claude Code CLI with multi-provider routing, extensible plugin architecture, and enhanced AI capabilities.</p>
+
+      <div class="hero">
+        <h2>Get Started</h2>
+        <p>Start using Claude Code in minutes:</p>
+        <div class="code-block">
+          <pre><code># Install dependencies
+bun install
+
+# Build the project
+bun run build
+
+# Start a session
+bun run src/main.tsx session</code></pre>
+        </div>
+      </div>
+
+      <h2>What's New (2025)</h2>
+      <ul>
+        <li><strong>11 AI Providers</strong> - Anthropic, OpenAI, Google Gemini, OpenRouter, Ollama, xAI, Mistral, and more</li>
+        <li><strong>90+ Commands</strong> - File ops, git, search, npm, agents, MCP, and more</li>
+        <li><strong>40+ Built-in Tools</strong> - Read, Edit, Write, Glob, Grep, Bash, WebSearch, Agent, and more</li>
+        <li><strong>Plugin System</strong> - Extend functionality with plugins and skills</li>
+        <li><strong>YOLO Modes</strong> - Progressive permission bypass (yoloLite → yolo → yoloMax → yoloGod)</li>
+        <li><strong>Bridge Mode</strong> - Remote collaboration via session URLs</li>
+        <li><strong>Subagents</strong> - Background AI agents for parallel work</li>
+      </ul>
+
+      <div class="features-grid">
+        <div class="feature-card">
+          <h3>🤖 11 AI Providers</h3>
+          <p>Switch between Anthropic, OpenAI, Google Gemini, OpenRouter, Ollama, xAI, Mistral, and more.</p>
+          <a href="providers.html" class="feature-link">Learn more →</a>
+        </div>
+        <div class="feature-card">
+          <h3>⚡️ 90+ Commands</h3>
+          <p>File operations, git, search, npm, agents, MCP, and more.</p>
+          <a href="commands.html" class="feature-link">Browse commands →</a>
+        </div>
+        <div class="feature-card">
+          <h3>🔌 Plugin System</h3>
+          <p>Extend functionality with 12+ plugins and custom skills.</p>
+          <a href="plugins.html" class="feature-link">Explore plugins →</a>
+        </div>
+        <div class="feature-card">
+          <h3>🛡️ YOLO Modes</h3>
+          <p>Progressive permission bypass from read-only to full autonomy.</p>
+          <a href="permissions.html" class="feature-link">Configure →</a>
+        </div>
+        <div class="feature-card">
+          <h3>🔧 40+ Tools</h3>
+          <p>Built-in tools for file ops, shell, web, development, and more.</p>
+          <a href="tools.html" class="feature-link">View tools →</a>
+        </div>
+        <div class="feature-card">
+          <h3>👥 Subagents</h3>
+          <p>Create background AI agents for parallel task execution.</p>
+          <a href="agents.html" class="feature-link">Learn more →</a>
+        </div>
+      </div>
+
+      <h2>Quick Links</h2>
+      <ul class="quick-links">
+        <li><a href="installation.html">Installation Guide →</a></li>
+        <li><a href="configuration.html">Configuration Options →</a></li>
+        <li><a href="providers.html#api-keys">API Keys Setup →</a></li>
+        <li><a href="commands.html">All Commands →</a></li>
+        <li><a href="plugins.html">Plugin List →</a></li>
+        <li><a href="faq.html">Frequently Asked Questions →</a></li>
+      </ul>
+    </main>
+  </div>
+
+  <footer class="footer">
+    <p>Claude Code Documentation • <a href="https://github.com/anomalyco/claude-code">GitHub</a></p>
+  </footer>
+</body>
+</html>
