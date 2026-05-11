@@ -844,7 +844,7 @@ function PromptInput({
     if (fixTriggers.length) {
       addNotification({
         key: 'fix-active',
-        text: 'Fix mode enabled - high effort + yolo-lite for bug fixing',
+        text: 'Fix mode enabled - high effort + YOLO Lite for bug fixing',
         priority: 'immediate',
         timeoutMs: 5000
       });

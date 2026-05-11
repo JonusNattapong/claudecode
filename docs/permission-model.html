@@ -10,7 +10,6 @@
   <header class="header">
     <div class="header-content">
       <a href="index.html" class="logo">
-        <span class="logo-icon">⚡</span>
         <span class="logo-text">Claude Code</span>
       </a>
       <nav class="nav">
@@ -50,10 +49,9 @@
         <tbody>
           <tr><td>Default</td><td>Ask before dangerous tools</td><td>Production</td></tr>
           <tr><td>Auto</td><td>Auto-approve safe tools</td><td>Quick workflow</td></tr>
-          <tr><td>yoloLite</td><td>Read-only auto (Glob, Grep, Read)</td><td>Exploration</td></tr>
-          <tr><td>yolo</td><td>Most tools auto</td><td>Automation</td></tr>
-          <tr><td>yoloMax</td><td>Including destructive ops</td><td>Full automation</td></tr>
-          <tr><td>yoloGod</td><td>Complete autonomy + auto web</td><td>Fully autonomous</td></tr>
+          <tr><td>yoloLite</td><td>YOLO Lite with guardian checks</td><td>Fast but cautious</td></tr>
+          <tr><td>yolo</td><td>YOLO ALLOW broad auto-approval</td><td>Trusted automation</td></tr>
+          <tr><td>yoloMax</td><td>YOLO MAX full autonomy + sandbox bypass</td><td>Fully autonomous</td></tr>
         </tbody>
       </table>
 
@@ -88,11 +86,11 @@ if (!checkSecurityRestrictionGate('tengu_disable_bypass_permissions')) {
 }</code></pre>
 
       <h2>YOLO Mode Extension</h2>
-      <p>In this fork, we added YoloGod mode:</p>
-      <pre><code>// YoloGod: Highest level of bypass
-if (process.env.CLAUDE_CODE_YOLO_GOD === 'true') {
-  // Skip ALL safety checks
-  // Allow autonomous web search
+      <p>In this fork, YOLO has three levels:</p>
+      <pre><code>// YOLO MAX: highest autonomy
+if (process.env.CLAUDE_CODE_YOLO_AUTONOMY === 'true') {
+  // Prefer finding answers independently
+  // Use available tools before asking the user
 }</code></pre>
 
       <h2>Key Learnings</h2>
@@ -105,7 +103,7 @@ if (process.env.CLAUDE_CODE_YOLO_GOD === 'true') {
       </ol>
 
       <div class="callout callout-warning">
-        <strong>Warning:</strong> YOLO modes bypass safety. Use with caution — especially YoloGod.
+        <strong>Warning:</strong> YOLO modes can bypass safety. Use with caution, especially YOLO MAX.
       </div>
 
       <div class="callout callout-tip">

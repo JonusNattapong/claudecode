@@ -1144,8 +1144,7 @@ export async function checkRuleBasedPermissions(
   // allow. checkPathSafetyForAutoEdit returns {type:'safetyCheck'} for these.
   // EXCEPT for Yolo mode - bypass everything
   const isYoloMode = appState.toolPermissionContext.mode === 'yolo' ||
-    appState.toolPermissionContext.mode === 'yoloMax' ||
-    appState.toolPermissionContext.mode === 'yoloGod'
+    appState.toolPermissionContext.mode === 'yoloMax'
   if (
     toolPermissionResult?.behavior === 'ask' &&
     toolPermissionResult.decisionReason?.type === 'safetyCheck' &&
@@ -1287,7 +1286,6 @@ async function hasPermissionsToUseToolInner(
     appState.toolPermissionContext.mode === 'dontAsk' ||
     appState.toolPermissionContext.mode === 'yolo' ||
     appState.toolPermissionContext.mode === 'yoloMax' ||
-    appState.toolPermissionContext.mode === 'yoloGod' ||
     (appState.toolPermissionContext.mode === 'plan' &&
       appState.toolPermissionContext.isBypassPermissionsModeAvailable)
   
@@ -1573,7 +1571,7 @@ function getYoloUpdatedInputOrFallback(
 ): Record<string, unknown> {
   const updatedInput = getUpdatedInputOrFallback(permissionResult, fallback)
   if (
-    (mode === 'yoloMax' || mode === 'yoloGod') &&
+    mode === 'yoloMax' &&
     (tool.name === BASH_TOOL_NAME || tool.name === POWERSHELL_TOOL_NAME) &&
     SandboxManager.areUnsandboxedCommandsAllowed()
   ) {

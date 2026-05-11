@@ -47,7 +47,7 @@ import type { PastedContent } from '../../../utils/config.js';
 import type { ImageDimensions } from '../../../utils/imageResizer.js';
 import { maybeResizeAndDownsampleImageBlock } from '../../../utils/imageResizer.js';
 import { cacheImagePath, storeImage } from '../../../utils/imageStore.js';
-type ResponseValue = 'yes-bypass-permissions' | 'yes-accept-edits' | 'yes-accept-edits-keep-context' | 'yes-default-keep-context' | 'yes-resume-auto-mode' | 'yes-auto-clear-context' | 'yes-yolo-lite' | 'yes-yolo' | 'yes-yolo-max' | 'yes-yolo-god' | 'ultraplan' | 'no';
+type ResponseValue = 'yes-bypass-permissions' | 'yes-accept-edits' | 'yes-accept-edits-keep-context' | 'yes-default-keep-context' | 'yes-resume-auto-mode' | 'yes-auto-clear-context' | 'yes-yolo-lite' | 'yes-yolo' | 'yes-yolo-max' | 'ultraplan' | 'no';
 
 /**
  * Build permission updates for plan approval, including prompt-based rules if provided.
@@ -436,7 +436,6 @@ export function ExitPlanModePermissionRequest({
       'yes-yolo-lite': 'yoloLite',
       'yes-yolo': 'yolo',
       'yes-yolo-max': 'yoloMax',
-      'yes-yolo-god': 'yoloGod',
     };
     const keepContextMode = keepContextModes[value];
     if (keepContextMode) {
@@ -732,20 +731,16 @@ export function buildPlanApprovalOptions({
   // Slot 3: YOLO tier options
   if (isBypassPermissionsModeAvailable) {
     options.push({
-      label: 'Yes, and use YOLO Lite (⚡)',
+      label: 'Yes, and use YOLO Lite',
       value: 'yes-yolo-lite'
     });
     options.push({
-      label: 'Yes, and use YOLO (⚡️)',
+      label: 'Yes, and use YOLO ALLOW',
       value: 'yes-yolo'
     });
     options.push({
-      label: 'Yes, and use YOLO Max (⚡⚡)',
+      label: 'Yes, and use YOLO MAX',
       value: 'yes-yolo-max'
-    });
-    options.push({
-      label: 'Yes, and use YOLO God (🔥)',
-      value: 'yes-yolo-god'
     });
   }
   options.push({

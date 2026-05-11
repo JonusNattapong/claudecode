@@ -356,7 +356,7 @@ function extractActivity(messages: Message[]): {
           const desc = typeof input.description === 'string' ? input.description : '';
           const todoContent = subject || desc || 'Untitled task';
           const status = input.status === 'in_progress' ? 'in_progress' :
-                         input.status === 'completed' ? 'completed' : 'pending';
+            input.status === 'completed' ? 'completed' : 'pending';
           latestTodos.push({ content: todoContent, status });
           const taskId = input.taskId ?? block.id;
           if (taskId) taskIdToIndex.set(String(taskId), latestTodos.length - 1);
@@ -376,7 +376,7 @@ function extractActivity(messages: Message[]): {
             if (input.status) {
               const s = String(input.status);
               latestTodos[idx].status = s === 'completed' ? 'completed' :
-                                        s === 'in_progress' ? 'in_progress' : 'pending';
+                s === 'in_progress' ? 'in_progress' : 'pending';
             }
             const newSubject = typeof input.subject === 'string' ? input.subject : '';
             const newDesc = typeof input.description === 'string' ? input.description : '';
@@ -565,7 +565,7 @@ function StatusLineInner({
   const paddingX = settings?.statusLine?.padding ?? 0;
   const filteredStatusLineText = statusLineText && /mode on \([^)]*cycle\)/i.test(statusLineText) ? undefined : statusLineText;
 
-  const defaultStatusLine = !filteredStatusLineText ? (() => {
+  const defaultStatusLine = (() => {
     const runtimeModel = getRuntimeMainLoopModel({
       permissionMode,
       mainLoopModel,
@@ -626,7 +626,7 @@ function StatusLineInner({
         ? chalk.hex('#ffaa00')(`${usedPercentage.toFixed(0)}%`)
         : chalk.green(`${usedPercentage.toFixed(0)}%`);
 
-const activeProvider = mainLoopProviderForSession ?? mainLoopProvider ?? ProviderManager.getInstance().getActiveProviderName()
+    const activeProvider = mainLoopProviderForSession ?? mainLoopProvider ?? ProviderManager.getInstance().getActiveProviderName()
     const activeProviderDisplay = activeProvider ? chalk.hex('#888888')(`[${activeProvider}]`) : ''
     const cwdShort = cwd.length > 40 ? '...' + cwd.slice(-37) : cwd
     const cwdDisplay = chalk.hex('#666666')(cwdShort)
@@ -719,7 +719,7 @@ const activeProvider = mainLoopProviderForSession ?? mainLoopProvider ?? Provide
         )}
       </Box>
     );
-  })() : null;
+  })();
 
   return (
     <Box paddingX={paddingX} flexDirection="column" gap={0} marginTop={0}>

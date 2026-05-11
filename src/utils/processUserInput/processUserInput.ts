@@ -548,7 +548,7 @@ async function processUserInputBase(
     inputString = inputString.replace(/explain/gi, '').trim()
   }
 
-  // Fix keyword — enable high effort + yolo-lite mode for fixing bugs
+  // Fix keyword — enable high effort + YOLO Lite mode for fixing bugs
   if (
     mode === 'prompt' &&
     !context.options.isNonInteractiveSession &&
@@ -559,7 +559,7 @@ async function processUserInputBase(
   ) {
     logEvent('tengu_fix_keyword', {})
     
-    // Switch to yolo-lite mode
+    // Switch to YOLO Lite mode
     context.setAppState(prev => ({
       ...prev,
       toolPermissionContext: {

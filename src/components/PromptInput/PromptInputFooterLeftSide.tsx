@@ -372,8 +372,11 @@ function ModeIndicator({
         <Text color="ansi:white" bold>{(() => {
           if (displayedMode === 'default') return 'normal';
           if (displayedMode === 'dontAsk' || displayedMode === 'bypassPermissions') return 'bypass';
-          return permissionModeTitle(displayedMode);
-        })().toLowerCase()}</Text>
+          const label = permissionModeTitle(displayedMode);
+          return displayedMode === 'yoloLite' || displayedMode === 'yolo' || displayedMode === 'yoloMax'
+            ? label
+            : label.toLowerCase();
+        })()}</Text>
         <Text color="ansi:white" dimColor> on</Text>
         {shouldShowModeHint && <Text dimColor>
             {' '}

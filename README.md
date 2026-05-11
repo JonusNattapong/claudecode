@@ -145,7 +145,7 @@ More command docs are in [docs/commands.html](docs/commands.html).
 
 The project includes an ask-first permission model plus progressive automation modes. Keep the default permission behavior for normal development.
 
-Automation modes such as `yolo`, `yolo-max`, and `yolo-god` can allow broad tool execution. Use them only in trusted repositories or disposable sandboxes.
+Automation modes such as `yolo-lite`, `yolo`, and `yolo-max` can allow broad tool execution. Use them only in trusted repositories or disposable sandboxes.
 
 See:
 
