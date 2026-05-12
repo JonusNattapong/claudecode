@@ -751,6 +751,12 @@ export async function main() {
     // refresh its alt-screen content on the next frame.
     process.stdout.write('\x1b[2J\x1b[1;1H');
   });
+  // SIGTSTP (Ctrl+Z): save terminal state before suspending. Node default
+  // handler suspends the process, but npx/bun run wrappers may swallow it.
+  process.on('SIGTSTP', () => {
+    process.stdout.write('[?1049l');
+    process.kill(process.pid, 'SIGSTOP');
+  });
   // Catch uncaught exceptions and unhandled rejections so terminal-closing
   // events (SSH disconnect, terminal close) don't leave the TTY in a broken
   // state. gracefulShutdown sync handles cleanup before exit.

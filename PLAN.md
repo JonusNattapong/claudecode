@@ -162,12 +162,13 @@ Anthropic released 2.1.120 through 2.1.136 of Claude Code. This plan covers all 
 | **E18** | `editor.ts` | Reset keyboard mode (Kitty protocol) after Ctrl+G to fix Backspace swap |
 | **E62** | `resume.tsx` | Always show picker on `/resume` — prevents tab-complete auto-resume |
 | **E82** | `client.ts` | Skip needs-auth cache for claudeai-proxy servers after `/clear` |
+| **E50** | `main.tsx` | SIGTSTP handler for Ctrl+Z in npx/bun wrappers |
 | **E80** | `agentSummary.ts` | Idle sub-agent summaries skip redundant updates, use 5min idle interval |
 | **E83** | `commit.ts` | Added bundled `/commit` skill for Claude in Chrome compatibility |
 | **E96** | `branch.ts` | Strip dangling tool_use blocks from fork transcript |
 
 ### ❌ Not Yet Implemented
-E1-E7, E11-E13, E17, E20-E22, E24-E25, E28-E29, E32-E34, E37, E43-E44, E46, E49-E55, E60-E61, E63-E67, E69-E70, E74-E79, E81, E87, E90-E92, E94, E97, E99, E104
+E1-E7, E11-E13, E17, E20-E22, E24-E25, E28-E29, E32-E34, E37, E43-E44, E46, E51-E55, E60-E61, E63-E67, E69-E70, E74-E79, E81, E87, E90-E92, E94, E97, E99, E104
 
 (Many of these require component-level or renderer-level changes that are not in the current diff.)
 
