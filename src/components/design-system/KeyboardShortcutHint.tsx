@@ -1,6 +1,7 @@
 import { c as _c } from "react/compiler-runtime";
 import React from 'react';
 import Text from '../../ink/components/Text.js';
+import { getShortcutDisplay } from '../../keybindings/shortcutFormat.js';
 type Props = {
   /** The key or chord to display (e.g., "ctrl+o", "Enter", "↑/↓") */
   shortcut: string;
@@ -10,6 +11,10 @@ type Props = {
   parens?: boolean;
   /** Whether to render the shortcut in bold. Default: false */
   bold?: boolean;
+  /** When set, resolves the shortcut from keybindings.json. The shortcut prop becomes the fallback. */
+  bindingAction?: string;
+  /** The keybinding context (required when bindingAction is set). */
+  bindingContext?: string;
 };
 
 /**
@@ -36,23 +41,38 @@ type Props = {
  * </Text>
  */
 export function KeyboardShortcutHint(t0) {
-  const $ = _c(9);
+  const $ = _c(13);
   const {
     shortcut,
     action,
     parens: t1,
-    bold: t2
+    bold: t2,
+    bindingAction,
+    bindingContext
   } = t0;
   const parens = t1 === undefined ? false : t1;
   const bold = t2 === undefined ? false : t2;
-  let t3;
-  if ($[0] !== bold || $[1] !== shortcut) {
-    t3 = bold ? <Text bold={true}>{shortcut}</Text> : shortcut;
-    $[0] = bold;
-    $[1] = shortcut;
-    $[2] = t3;
+  // Resolve from keybindings if bindingAction is provided, falling back to the shortcut prop
+  let resolvedShortcut;
+  if ($[0] !== bindingAction || $[1] !== bindingContext || $[2] !== shortcut) {
+    resolvedShortcut = bindingAction && bindingContext
+      ? getShortcutDisplay(bindingAction, bindingContext, shortcut)
+      : shortcut;
+    $[0] = bindingAction;
+    $[1] = bindingContext;
+    $[2] = shortcut;
+    $[3] = resolvedShortcut;
   } else {
-    t3 = $[2];
+    resolvedShortcut = $[3];
+  }
+  let t3;
+  if ($[4] !== bold || $[5] !== resolvedShortcut) {
+    t3 = bold ? <Text bold={true}>{resolvedShortcut}</Text> : resolvedShortcut;
+    $[4] = bold;
+    $[5] = resolvedShortcut;
+    $[6] = t3;
+  } else {
+    t3 = $[6];
   }
   const shortcutText = t3;
   if (parens) {

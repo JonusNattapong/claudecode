@@ -232,8 +232,13 @@ function PluginComponentsDisplay({
           return;
         }
         const marketplaceData = await getMarketplace(marketplace);
-        // Find the plugin entry in the array
-        const pluginEntry = marketplaceData.plugins.find(p => p.name === plugin.name);
+        // Find the plugin entry in the array — try by resolved plugin name first,
+        // then fall back to the manifest name (which may differ from the
+        // marketplace registry key for some sources).
+        let pluginEntry = marketplaceData.plugins.find(p => p.name === plugin.name);
+        if (!pluginEntry && plugin.manifest?.name && plugin.manifest.name !== plugin.name) {
+          pluginEntry = marketplaceData.plugins.find(p => p.name === plugin.manifest.name);
+        }
         if (pluginEntry) {
           // Combine commands from both sources
           const commandPathList = [];

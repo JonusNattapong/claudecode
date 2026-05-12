@@ -681,13 +681,26 @@ export function findCommand(
   )
   if (exact) return exact
 
-  // E26: Fall back to prefix match so "term" matches "terminal-setup"
-  return commands.find(
+  // E26 / H7: Fall back to prefix match so "term" matches "terminal-setup"
+  const prefixMatch = commands.find(
     _ =>
       _.name.startsWith(commandName) ||
       getCommandName(_).startsWith(commandName) ||
       _.aliases?.some(a => a.startsWith(commandName)),
   )
+  if (prefixMatch) return prefixMatch
+
+  // H7: Plugin commands with spaces (e.g. "/myplugin review") should resolve
+  // to their namespaced form (e.g. "myplugin:review"). Try replacing the first
+  // space with ":" as a fallback.
+  const colonSepIdx = commandName.indexOf(' ')
+  if (colonSepIdx > 0) {
+    const withColon =
+      commandName.slice(0, colonSepIdx) + ':' + commandName.slice(colonSepIdx + 1)
+    return findCommand(withColon, commands)
+  }
+
+  return undefined
 }
 
 export function hasCommand(commandName: string, commands: Command[]): boolean {

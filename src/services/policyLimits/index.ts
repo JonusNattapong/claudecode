@@ -295,13 +295,26 @@ async function fetchWithRetry(
 }
 
 /**
- * Fetch policy limits (single attempt, no retries)
+ * Fetch policy limits (single attempt, no retries).
+ * Includes a timeout guard on OAuth refresh to prevent deadlock when
+ * credentials are expired but auth commands (login/logout/status) are
+ * needed to fix them — the forceRemoteSettingsRefresh policy would
+ * otherwise block everything while waiting for this fetch.
  */
 async function fetchPolicyLimits(
   cachedChecksum?: string,
 ): Promise<PolicyLimitsFetchResult> {
   try {
-    await checkAndRefreshOAuthTokenIfNeeded()
+    // Timebox the OAuth refresh so expired credentials don't deadlock
+    // auth commands behind forceRemoteSettingsRefresh. If the refresh
+    // takes too long (or can't complete), proceed without auth — the
+    // caller will get skipRetry and fall back to cached restrictions.
+    await Promise.race([
+      checkAndRefreshOAuthTokenIfNeeded(),
+      sleep(FETCH_TIMEOUT_MS).then(() => {
+        logForDebugging('Policy limits: OAuth refresh timed out, proceeding without auth')
+      }),
+    ])
 
     const authHeaders = getAuthHeaders()
     if (authHeaders.error) {

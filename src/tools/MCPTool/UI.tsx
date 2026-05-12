@@ -121,7 +121,23 @@ export function renderToolResultMessage(output: string | MCPToolResult, _progres
           </Box>;
       }
       // For text blocks and any other block types, extract text if available
-      const textContent = item.type === 'text' && 'text' in item && item.text !== null && item.text !== undefined ? String(item.text) : '';
+      let textContent = '';
+      if (item.type === 'text' && 'text' in item && item.text !== null && item.text !== undefined) {
+        textContent = String(item.text);
+      } else if (item.type === 'resource' && 'resource' in item && item.resource) {
+        // MCP resource content block — extract text from nested resource object
+        const resource = item.resource as Record<string, unknown>;
+        textContent = typeof resource.text === 'string' ? resource.text
+          : typeof resource.blob === 'string' ? `[Resource: ${resource.uri ?? resource.mimeType ?? 'binary'}]`
+          : `[Resource${resource.uri ? `: ${resource.uri}` : ''}]`;
+      } else if (item.type !== 'image') {
+        // Unknown content block type — try to stringify it so content isn't invisible
+        try {
+          textContent = JSON.stringify(item);
+        } catch {
+          textContent = `[${item.type} block]`;
+        }
+      }
       return feature('MCP_RICH_OUTPUT') ? <MCPTextOutput key={i} content={textContent} verbose={verbose} /> : <OutputLine key={i} content={textContent} verbose={verbose} />;
     });
 

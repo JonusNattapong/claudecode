@@ -1382,7 +1382,10 @@ export async function createPluginFromPath(
     enabled, // Current enabled state
   };
 
-  // Step 3: Auto-detect optional directories in parallel
+  // Step 3: Auto-detect optional directories in parallel.
+  // Always check for skills/ directory — when plugin.json declares "skills"
+  // entries (specific skill files), those should be additive rather than
+  // hiding the default skills/ directory.
   const [
     commandsDirExists,
     agentsDirExists,
@@ -1392,7 +1395,7 @@ export async function createPluginFromPath(
   ] = await Promise.all([
     !manifest.commands ? pathExists(join(pluginPath, "commands")) : false,
     !manifest.agents ? pathExists(join(pluginPath, "agents")) : false,
-    !manifest.skills ? pathExists(join(pluginPath, "skills")) : false,
+    pathExists(join(pluginPath, "skills")),
     !manifest.outputStyles
       ? pathExists(join(pluginPath, "output-styles"))
       : false,

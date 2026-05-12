@@ -262,7 +262,9 @@ export async function call(
   context: LocalJSXCommandContext,
   args: string,
 ): Promise<React.ReactNode> {
-  const customTitle = args?.trim() || undefined
+  // Collapse internal whitespace (including newlines from pasted multi-line names)
+  // so the title doesn't break the resume hint or session list display.
+  const customTitle = args?.replace(/\s+/g, ' ').trim() || undefined
 
   const originalSessionId = getSessionId()
 

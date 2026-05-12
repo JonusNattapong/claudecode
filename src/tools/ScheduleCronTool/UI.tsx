@@ -51,7 +51,11 @@ export function renderListResultMessage(output: ListOutput): React.ReactNode {
   }
   return <MessageResponse>
       {output.jobs.map(j => <Text key={j.id}>
-          <Text bold>{j.id}</Text> <Text dimColor>{j.humanSchedule}</Text>
+          <Text bold>{j.id}</Text>{' '}
+          <Text dimColor>{j.humanSchedule}</Text>
+          {j.recurring ? <Text dimColor> (recurring)</Text> : <Text dimColor> (one-shot)</Text>}
+          {j.durable === false && <Text dimColor> [session-only]</Text>}
+          {j.prompt ? <>: <Text>{truncate(j.prompt, 80, true)}</Text></> : null}
         </Text>)}
     </MessageResponse>;
 }

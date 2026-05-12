@@ -53,7 +53,7 @@ const UNIQUENESS_REFINE = {
   message: 'Question texts must be unique, option labels must be unique within each question'
 } as const;
 const commonFields = lazySchema(() => ({
-  answers: z.record(z.string(), z.string()).optional().describe('User answers collected by the permission component'),
+  answers: z.record(z.string(), z.union([z.string(), z.array(z.string())])).optional().describe('User answers collected by the permission component (multi-select values can be arrays or comma-separated strings)'),
   annotations: annotationsSchema(),
   metadata: z.object({
     source: z.string().optional().describe('Optional identifier for the source of this question (e.g., "remember" for /remember command). Used for analytics tracking.')
@@ -211,10 +211,17 @@ export const AskUserQuestionTool: Tool<InputSchema, Output> = buildTool({
     answers = {},
     annotations
   }, _context) {
+    // Normalize multi-select answers: if a value is an array, join it into a
+    // comma-separated string. The SDK / permission component may supply arrays
+    // when multiSelect:true, but the output schema expects Record<string,string>.
+    const normalizedAnswers: Record<string, string> = {};
+    for (const [key, value] of Object.entries(answers)) {
+      normalizedAnswers[key] = Array.isArray(value) ? value.join(', ') : value;
+    }
     return {
       data: {
         questions,
-        answers,
+        answers: normalizedAnswers,
         ...(annotations && {
           annotations
         })

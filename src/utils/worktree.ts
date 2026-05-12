@@ -330,6 +330,30 @@ async function getOrCreateWorktree(
   const { code: createCode, stderr: createStderr } =
     await execFileNoThrowWithCwd(gitExe(), addArgs, { cwd: repoRoot })
   if (createCode !== 0) {
+    // Detect common collision/conflict patterns and surface actionable errors.
+    const errMsg = createStderr?.toLowerCase() ?? ''
+    if (
+      errMsg.includes('already exists') ||
+      errMsg.includes('already in use') ||
+      errMsg.includes('existing')
+    ) {
+      // A worktree branch or path already exists — likely from a previous
+      // session that was interrupted before cleanup completed. Suggest the
+      // --force flag or manual removal so the user can recover.
+      if (errMsg.includes('branch')) {
+        throw new Error(
+          `Worktree branch "${worktreeBranch}" already exists. This may be a stale ` +
+            `branch from a previous session. Try removing it first: ` +
+            `git branch -D ${worktreeBranch}`,
+        )
+      }
+      throw new Error(
+        `Worktree "${slug}" already exists at ${worktreePath}. This may be a stale ` +
+          `worktree from a previous session. To remove it, run:\n` +
+          `  git worktree remove --force ${worktreePath}\n` +
+          `or use the /worktree command inside a Claude session.`,
+      )
+    }
     throw new Error(`Failed to create worktree: ${createStderr}`)
   }
 

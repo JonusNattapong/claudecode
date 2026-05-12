@@ -724,7 +724,10 @@ async function loadSkillsFromDirectory(
         directSkillPath,
       )
 
-      const skillName = `${pluginName}:${basename(skillsPath)}`
+      const frontmatterSkillName = typeof frontmatter.name === 'string' ? frontmatter.name : undefined
+      const skillName = frontmatterSkillName
+        ? `${pluginName}:${frontmatterSkillName}`
+        : `${pluginName}:${basename(skillsPath)}`
 
       const file: PluginMarkdownFile = {
         filePath: directSkillPath,
@@ -804,7 +807,10 @@ async function loadSkillsFromDirectory(
           skillFilePath,
         )
 
-        const skillName = `${pluginName}:${entry.name}`
+        const frontmatterSkillName = typeof frontmatter.name === 'string' ? frontmatter.name : undefined
+        const skillName = frontmatterSkillName
+          ? `${pluginName}:${frontmatterSkillName}`
+          : `${pluginName}:${entry.name}`
 
         const file: PluginMarkdownFile = {
           filePath: skillFilePath,

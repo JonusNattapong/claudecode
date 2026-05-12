@@ -145,6 +145,22 @@ export function isAnthropicAuthEnabled(): boolean {
     (hasExternalAuthToken && !isManagedOAuthContext()) ||
     (hasExternalApiKey && !isManagedOAuthContext())
 
+  // Even with ANTHROPIC_API_KEY set, keep auth enabled if the user
+  // has active OAuth login (from `claude auth login`). OAuth takes
+  // priority for features like remote control, /schedule, and
+  // claude.ai MCP connectors. The API key is still available for
+  // inference through getAnthropicApiKeyWithSource().
+  if (shouldDisableAuth && !is3P && !isManagedOAuthContext()) {
+    const oauthTokens = getClaudeAIOAuthTokens()
+    const hasOAuth =
+      oauthTokens?.accessToken &&
+      oauthTokens?.refreshToken &&
+      oauthTokens?.scopes?.includes('user:inference')
+    if (hasOAuth) {
+      return true
+    }
+  }
+
   return !shouldDisableAuth
 }
 

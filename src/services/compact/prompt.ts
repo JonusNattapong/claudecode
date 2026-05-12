@@ -140,6 +140,8 @@ When summarizing the conversation focus on typescript code changes and also reme
 # Summary instructions
 When you are using compact - please focus on test output and code changes. Include file reads verbatim.
 </example>
+
+IMPORTANT: Pay special attention to any sensitive user instructions (such as custom rules, security preferences, or specific behavioral guidelines the user has explicitly stated). These must be preserved verbatim in your summary - do not paraphrase or omit them, even if they seem unusual or redundant.
 `
 
 const PARTIAL_COMPACT_PROMPT = `Your task is to create a detailed summary of the RECENT portion of the conversation — the messages that follow earlier retained context. The earlier messages are being kept intact and do NOT need to be summarized. Focus your summary on what was discussed, learned, and accomplished in the recent messages only.

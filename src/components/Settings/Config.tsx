@@ -1584,6 +1584,7 @@ export function Config({
           <LanguagePicker initialLanguage={currentLanguage} onComplete={language => {
         isDirty.current = true;
         setCurrentLanguage(language);
+        initialLanguage.current = language; // sync initial ref so Escape doesn't revert confirmed changes
         setShowSubmenu(null);
         setTabsHidden(false);
 

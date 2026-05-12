@@ -300,7 +300,7 @@ function AskUserQuestionPermissionRequestBody(t0) {
         } else {
           result = `- "${q_1.question}"\n  (No answer provided)`;
         }
-        if (textInput && (!answer || answer === "__other__")) {
+        if (textInput) {
           result += `\n  User typed: ${textInput}`;
         }
         return result;

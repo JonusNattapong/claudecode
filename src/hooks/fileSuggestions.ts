@@ -69,6 +69,10 @@ let ignorePatternsCacheKey: string | null = null
 let lastRefreshMs = 0
 let lastGitIndexMtime: number | null = null
 
+// Cache for ripgrep fallback results in non-git directories.
+// Stores the path list and its signature to avoid re-scanning on every turn.
+let lastNonGitResult: { paths: string[]; sig: string; timestamp: number } | null = null
+
 // Signatures of the path lists loaded into the Rust index. Two separate
 // signatures because the two loadFromFileList call sites use differently
 // structured arrays — a shared signature would ping-pong and never match.

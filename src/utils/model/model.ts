@@ -348,11 +348,21 @@ export function getCanonicalName(fullModelName: ModelName): ModelShortName {
 export function getClaudeAiUserDefaultModelDescription(
   fastMode = false,
 ): string {
+  // Check for env var overrides first
+  const customOpusModel = process.env.ANTHROPIC_DEFAULT_OPUS_MODEL
+  const customSonnetModel = process.env.ANTHROPIC_DEFAULT_SONNET_MODEL
+
   if (isMaxSubscriber() || isTeamPremiumSubscriber()) {
+    if (customOpusModel) {
+      return `Opus (${customOpusModel}) · Most capable for complex work${fastMode ? getOpus46PricingSuffix(true) : ''}`
+    }
     if (isOpus1mMergeEnabled()) {
       return `Opus with 1M context · Most capable for complex work${fastMode ? getOpus46PricingSuffix(true) : ''}`
     }
     return `Opus · Most capable for complex work${fastMode ? getOpus46PricingSuffix(true) : ''}`
+  }
+  if (customSonnetModel) {
+    return `Sonnet (${customSonnetModel}) · Best for everyday tasks`
   }
   return 'Sonnet · Best for everyday tasks'
 }

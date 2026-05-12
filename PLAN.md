@@ -1,7 +1,7 @@
 # Plan: Implement Upstream Changelog Fixes (2.1.120 → 2.1.140)
 
 ## Context
-Anthropic released 2.1.120 through 2.1.136 of Claude Code. This plan covers all fixes/changes from the actual changelog entries provided. Items requiring external SDK changes, native binary changes, or deep unknown architecture are **deferred**.
+Anthropic released 2.1.120 through 2.1.139 of Claude Code. This plan covers all fixes/changes from the actual changelog entries provided. Items requiring external SDK changes, native binary changes, or deep unknown architecture are **deferred**.
 
 ## Status Summary (audited 2026-05-11)
 
@@ -12,7 +12,9 @@ Anthropic released 2.1.120 through 2.1.136 of Claude Code. This plan covers all 
 | **C** Tooling & Security | 14/14 | 14 | All done ✅ |
 | **D** MCP & Plugin | 26/28 | 28 | All done ✅ (D22-D23 dupe of D18)
 | **E** UI/UX & Rendering | ~42/~112 | 112 | E18/E62/E80/E82/E83/E96 done this session |
-| **F** Settings & Commands | 16/17 | 17 | F1-F9, F11, F12, F14, F16 done; F10/F13/F15/F17 deferred |
+| **F** Settings & Commands | 16/17 | 17 | F1-F9, F11, F12, F14, F16, F15 done; F10/F13/F17 N/A (incompatible architecture) |
+| **G** Upstream Features & Bugfixes | 4/47 | 47 | G7/G8/G9/G19 done; G1/G2 were already ✅ |
+| **H** Additional Items (2.1.136→2.1.139) | 0/40 | 40 | Newly captured from changelog cross-ref |
 
 ---
 
@@ -167,8 +169,22 @@ Anthropic released 2.1.120 through 2.1.136 of Claude Code. This plan covers all 
 | **E83** | `commit.ts` | Added bundled `/commit` skill for Claude in Chrome compatibility |
 | **E96** | `branch.ts` | Strip dangling tool_use blocks from fork transcript |
 
+### 🔄 In Progress (E60-E70)
+
+| Item | File | Fix |
+|------|------|------|
+| **E60** | `fileSuggestions.ts` | Cache ripgrep results in non-git dirs; fall back to ripgrep in fresh git repos |
+| **E61** | `LSPDiagnosticRegistry.ts` | Clear delivered diagnostics for edited files to prevent stale re-delivery |
+| **E63** | `conversation.ts`, `sessionStorage.ts` | Preserve custom session name from `/rename` across `/clear` |
+| **E64** | `useFeedbackSurvey.tsx` | Ensure `timeLastShown` persists on dismissal for proper survey pacing |
+| **E65** | `OutputLine.tsx`, `hyperlink.ts` | Handle OSC8 hyperlinks across wrapped terminal lines |
+| **E66** | `log-update.ts`, `renderer.ts` | Track last written output to avoid scrollback duplication on resize/burst |
+| **E67** | `HistorySearchDialog.tsx` | Add maxHeight + reduced padding so search box is visible at short terminal heights |
+| **E69** | `commands/plugin/` | Deduplicate plugins appearing in multiple categories in Installed tab |
+| **E70** | `terminal.ts` | Use grapheme-aware width for Indic combining marks (Devanagari, etc.) |
+
 ### ❌ Not Yet Implemented
-E1-E7, E11-E13, E17, E20-E22, E24-E25, E28-E29, E32-E34, E37, E43-E44, E46, E51-E55, E60-E61, E63-E67, E69-E70, E74-E79, E81, E87, E90-E92, E94, E97, E99, E104
+E1-E7, E11-E13, E17, E20-E22, E24-E25, E28-E29, E32-E34, E37, E43-E44, E46, E51-E55, E73-E79, E81, E87, E90-E92, E94, E97, E99, E104
 
 (Many of these require component-level or renderer-level changes that are not in the current diff.)
 
@@ -222,7 +238,7 @@ E1-E7, E11-E13, E17, E20-E22, E24-E25, E28-E29, E32-E34, E37, E43-E44, E46, E51-
 
 **G5. Added hook args: string[] field (exec form)** ❌
 **G6. Added hook continueOnBlock config option for PostToolUse** ❌
-**G7. Hook terminal access fixed** ❌
+**G7. ✅ Hook terminal access fixed** ✅ — hooks now run without terminal access to prevent corrupting on-screen interactive prompts
 **G8. ✅ Fixed settings hot-reload not detecting symlinked settings.json** ✅ src/utils/settings/changeDetector.ts
 
 ### 🔧 Low Priority / Bugs
@@ -272,3 +288,79 @@ E1-E7, E11-E13, E17, E20-E22, E24-E25, E28-E29, E32-E34, E37, E43-E44, E46, E51-
 **G45. Fixed claude_code.active_time.total OTEL metric not emitted in -p** ❌
 **G46. [VSCode] Cmd/Ctrl+Shift+T reopen closed session tab** ❌
 **G47. Fixed scroll behavior in WTerminal + VS Code background sessions** ❌
+
+---
+
+## GROUP H — Additional Items from 2.1.136→2.1.139 (not in A-G)
+
+### 🔧 Auth & Config
+| Item | Fix |
+|------|-----|
+| **H1** | Deadlock: expired credentials + `forceRemoteSettingsRefresh` blocking `claude auth login/logout/status` |
+| **H2** | Remote Control, /schedule, claude.ai MCP connectors, notification prefs disabled when `ANTHROPIC_API_KEY` is set (even with active login) |
+
+### 🧠 Model & API
+| Item | Fix |
+|------|-----|
+| **H3** | /model picker "Default" row not reflecting `ANTHROPIC_DEFAULT_OPUS_MODEL` / `ANTHROPIC_DEFAULT_SONNET_MODEL` overrides |
+| **H4** | Legacy Opus picker entry on PAYG 3P providers resolving to same model as default entry |
+
+### 🔌 MCP & Plugins
+| Item | Fix |
+|------|-----|
+| **H5** | Plugin details failing to load when marketplace key differs from manifest name |
+| **H6** | Plugin.json `skills` entry hiding plugin's default `skills/` directory; file path listing now shows error instead of silent fail |
+| **H7** | Plugin slash commands with spaces (e.g. `/myplugin review`) not resolving to namespaced form |
+| **H8** | MCP tool results invisible when server returns content blocks |
+| **H9** | Improved --worktree collision error when name conflicts with existing/stale worktree |
+
+### 🖥️ UI/UX — Dialogs & Input
+| Item | Fix |
+|------|-----|
+| **H10** | AskUserQuestion discarding multi-select answers when supplied as array |
+| **H11** | "Chat about this" on AskUserQuestion erasing the question text |
+| **H12** | /clear &lt;name&gt; not labeling the cleared session for /resume |
+| **H13** | Mid-input slash command autocomplete not working after an initial slash command |
+| **H14** | /settings language change reverted on Escape after confirming |
+| **H15** | Keyboard shortcut hints not reflecting rebound keys from keybindings.json |
+| **H16** | /mcp server list not scrolling with many servers |
+| **H17** | Scrolling to bottom re-engaging auto-follow with `autoScrollEnabled: false` |
+| **H18** | /doctor MCP schema errors not naming missing field or showing source file path |
+| **H19** | CronList output missing qualifiers and the scheduled prompt |
+| **H20** | /branch saving multi-line session title from pasted multi-line name |
+| **H21** | Alt+T (thinking toggle) not working on macOS terminals without "Option as Meta" |
+| **H22** | Dead keyboard input on Windows after re-opening background session from `claude agents` |
+
+### 🖥️ UI/UX — Rendering & Display
+| Item | Fix |
+|------|-----|
+| **H23** | Colors rendering at wrong positions in bash output and markdown code blocks |
+| **H24** | Failed tool calls not click-to-expand in fullscreen when output truncated |
+| **H25** | /insights crash when session history has tool calls with malformed input fields |
+| **H26** | Renderer crash when tool collapsibility classification changes mid-session |
+| **H27** | Wide markdown tables leaving stale bordered render in scrollback while streaming |
+| **H28** | "Jump to bottom" overlay leaving color artifacts on CJK characters in fullscreen |
+| **H29** | Pasted text silently dropped when long prompt with pasted-text placeholder auto-truncated |
+| **H30** | Tool error truncation marker showing negative count for surrogate-pair strings |
+| **H31** | IDE shell-integration lock files not respecting `CLAUDE_CONFIG_DIR` |
+
+### 🖥️ UI/UX — File Picker & Autocomplete
+| Item | Fix |
+|------|-----|
+| **H32** | @ file picker not matching files created mid-session in small non-git directories |
+| **H33** | @-mention file picker not finding files in directories with >100 entries |
+
+### 🪟 Windows-Specific
+| Item | Fix |
+|------|-----|
+| **H34** | WSL2: image paste from Windows clipboard via PowerShell fallback when xclip/wl-paste can't read images |
+| **H35** | [VSCode 2.1.137] Fixed extension failing to activate on Windows |
+| **H36** | /usage Ctrl+S copy hanging on Linux/X11 |
+| **H37** | JetBrains IDE scroll wheel fix (spurious arrow keys, wrong-direction, runaway accel) |
+
+### 🧪 Miscellaneous
+| Item | Fix |
+|------|-----|
+| **H38** | ReasonML diffs rendering corrupted "undefined" text at word-diff boundaries |
+| **H39** | "Pasting…" footer hint while Ctrl+V image paste is being read |
+| **H40** | /terminal-setup contradictory error in Windows Terminal (Shift+Enter natively supported) |
