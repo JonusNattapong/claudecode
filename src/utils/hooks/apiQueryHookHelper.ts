@@ -104,6 +104,7 @@ export function createApiQueryHook<TResult>(
           querySource: config.name,
           mcpTools: [],
           agentId: context.toolUseContext.agentId,
+          parentAgentId: context.toolUseContext.parentAgentId,
         },
       })
 

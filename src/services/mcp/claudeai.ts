@@ -5,7 +5,7 @@ import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
 } from 'src/services/analytics/index.js'
-import { getClaudeAIOAuthTokens } from 'src/utils/auth.js'
+import { getClaudeAIOAuthTokens, getConfiguredApiKeyHelper } from 'src/utils/auth.js'
 import { getGlobalConfig, saveGlobalConfig } from 'src/utils/config.js'
 import { logForDebugging } from 'src/utils/debug.js'
 import { isEnvDefinedFalsy } from 'src/utils/envUtils.js'
@@ -48,6 +48,22 @@ export const fetchClaudeAIMcpConfigsIfEligible = memoize(
         return {}
       }
 
+      // G33: When ANTHROPIC_API_KEY / apiKeyHelper / ANTHROPIC_AUTH_TOKEN is
+      // set, disable claude.ai MCP connectors even if OAuth tokens exist.
+      // The user must unset the API key to use these features.
+      if (
+        process.env.ANTHROPIC_API_KEY ||
+        process.env.ANTHROPIC_AUTH_TOKEN ||
+        getConfiguredApiKeyHelper()
+      ) {
+        logForDebugging('[claudeai-mcp] Disabled via API key override (G33)')
+        logEvent('tengu_claudeai_mcp_eligibility', {
+          state:
+            'disabled_api_key' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
+        })
+        return {}
+      }
+
       const tokens = getClaudeAIOAuthTokens()
       if (!tokens?.accessToken) {
         logForDebugging('[claudeai-mcp] No access token')
@@ -58,11 +74,9 @@ export const fetchClaudeAIMcpConfigsIfEligible = memoize(
         return {}
       }
 
-      // Check for user:mcp_servers scope directly instead of isClaudeAISubscriber().
-      // In non-interactive mode, isClaudeAISubscriber() returns false when ANTHROPIC_API_KEY
-      // is set (even with valid OAuth tokens) because preferThirdPartyAuthentication() causes
-      // isAnthropicAuthEnabled() to return false. Checking the scope directly allows users
-      // with both API keys and OAuth tokens to access claude.ai MCPs in print mode.
+      // G33: When ANTHROPIC_API_KEY / apiKeyHelper / ANTHROPIC_AUTH_TOKEN is
+      // set, disable claude.ai MCP connectors even if OAuth tokens exist.
+      // The user must unset the API key to use these features.
       if (!tokens.scopes?.includes('user:mcp_servers')) {
         logForDebugging(
           `[claudeai-mcp] Missing user:mcp_servers scope (scopes=${tokens.scopes?.join(',') || 'none'})`,

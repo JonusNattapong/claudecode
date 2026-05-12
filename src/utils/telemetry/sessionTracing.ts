@@ -276,6 +276,8 @@ export function startLLMRequestSpan(
   newContext?: LLMRequestNewContext,
   messagesForAPI?: APIMessage[],
   fastMode?: boolean,
+  agentId?: string,
+  parentAgentId?: string,
 ): Span {
   // Start Perfetto span regardless of OTel tracing state
   const perfettoSpanId = isPerfettoTracingEnabled()
@@ -321,6 +323,14 @@ export function startLLMRequestSpan(
   // Add query_source (agent name) if provided
   if (newContext?.querySource) {
     span.setAttribute('query_source', newContext.querySource)
+  }
+
+  // Add agent identification attributes for subagent API requests
+  if (agentId) {
+    span.setAttribute('agent_id', agentId)
+  }
+  if (parentAgentId) {
+    span.setAttribute('parent_agent_id', parentAgentId)
   }
 
   // Add experimental attributes (system prompt, new_context)

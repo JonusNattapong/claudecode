@@ -57,3 +57,5 @@ export async function getAIProviderClient({
 }
 
 export const CLIENT_REQUEST_ID_HEADER = 'x-client-request-id'
+export const AGENT_ID_HEADER = 'x-claude-code-agent-id'
+export const PARENT_AGENT_ID_HEADER = 'x-claude-code-parent-agent-id'

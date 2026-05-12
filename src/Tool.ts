@@ -86,6 +86,8 @@ import type { DeepImmutable } from './types/utils.js'
 import type { AttributionState } from './utils/commitAttribution.js'
 import type { FileHistoryState } from './utils/fileHistory.js'
 import type { Theme, ThemeName } from './utils/theme.js'
+import type { PermissionUpdate } from './utils/permissions/PermissionUpdateSchema.js'
+import type { WorkerBadgeProps } from './components/permissions/WorkerBadge.js'
 
 export type QueryChainTracking = {
   chainId: string
@@ -243,6 +245,10 @@ export type ToolUseContext = {
   ) => void
   setConversationId?: (id: UUID) => void
   agentId?: AgentId // Only set for subagents; use getSessionId() for session ID. Hooks use this to distinguish subagent calls.
+  /** Parent agent's ID — set on subagent contexts so API requests can
+   *  carry x-claude-code-parent-agent-id. Undefined when parent is the
+   *  main session (no parent agent). */
+  parentAgentId?: AgentId
   agentType?: string // Subagent type name. For the main thread's --agent type, hooks fall back to getMainThreadAgentType().
   /** When true, canUseTool must always be called even when hooks auto-approve.
    *  Used by speculation for overlay file path rewriting. */
@@ -297,6 +303,52 @@ export type ToolUseContext = {
    * and bust the cache. See forkSubagent.ts.
    */
   renderedSystemPrompt?: SystemPrompt
+}
+
+export type ToolUseConfirm<Input extends AnyObject = AnyObject> = {
+  assistantMessage: AssistantMessage
+  tool: Tool<Input>
+  description: string
+  input: z.infer<Input>
+  toolUseContext: ToolUseContext
+  toolUseID: string
+  permissionResult: PermissionResult
+  permissionPromptStartTimeMs: number
+  /**
+   * Called when user interacts with the permission dialog (e.g., arrow keys, tab, typing).
+   * This prevents async auto-approval mechanisms (like the bash classifier) from
+   * dismissing the dialog while the user is actively engaging with it.
+   */
+  classifierCheckInProgress?: boolean
+  classifierAutoApproved?: boolean
+  classifierMatchedRule?: string
+  workerBadge?: WorkerBadgeProps
+  onUserInteraction(): void
+  onAbort(): void
+  onDismissCheckmark?(): void
+  onAllow(
+    updatedInput: z.infer<Input>,
+    permissionUpdates: PermissionUpdate[],
+    feedback?: string,
+    contentBlocks?: ContentBlockParam[],
+  ): void
+  onReject(feedback?: string, contentBlocks?: ContentBlockParam[]): void
+  recheckPermission(): Promise<void>
+}
+
+export type PermissionRequestProps<Input extends AnyObject = AnyObject> = {
+  toolUseConfirm: ToolUseConfirm<Input>
+  toolUseContext: ToolUseContext
+  onDone(): void
+  onReject(): void
+  verbose: boolean
+  workerBadge: WorkerBadgeProps | undefined
+  /**
+   * Register JSX to render in a sticky footer below the scrollable area.
+   * Fullscreen mode only (non-fullscreen has no sticky area — terminal
+   * scrollback moves everything together). Call with null to clear.
+   */
+  setStickyFooter?: (jsx: React.ReactNode | null) => void
 }
 
 // Re-export ToolProgressData from centralized location

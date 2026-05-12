@@ -336,6 +336,7 @@ Please perform deep research for the query.
             agents: context.options.agentDefinitions?.activeAgents,
             mcpTools: appState.mcp?.tools,
             agentId: context.agentId,
+            parentAgentId: context.parentAgentId,
             effortValue: appState.effortValue,
           } as any,
         })

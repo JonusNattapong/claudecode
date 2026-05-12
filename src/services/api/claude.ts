@@ -235,7 +235,12 @@ import {
 import { getInitializationStatus } from '../lsp/manager.js'
 import { isToolFromMcpServer } from '../mcp/utils.js'
 import { withStreamingVCR, withVCR } from '../vcr.js'
-import { CLIENT_REQUEST_ID_HEADER, getAIProviderClient } from './client.js'
+import {
+  AGENT_ID_HEADER,
+  CLIENT_REQUEST_ID_HEADER,
+  getAIProviderClient,
+  PARENT_AGENT_ID_HEADER,
+} from './client.js'
 import {
   PROVIDER_REGISTRY,
   type ProviderId,
@@ -797,6 +802,7 @@ export type Options = {
   hasPendingMcpServers?: boolean
   queryTracking?: QueryChainTracking
   agentId?: AgentId // Only set for subagents
+  parentAgentId?: AgentId // Set when the subagent has a parent subagent
   outputFormat?: BetaJSONOutputFormat
   fastMode?: boolean
   advisorModel?: string
@@ -917,11 +923,27 @@ function getNonstreamingFallbackTimeoutMs(): number {
  * Encapsulates the common pattern of creating a withRetry generator,
  * iterating to yield system messages, and returning the final BetaMessage.
  */
+function buildAgentHeaders(
+  agentId?: AgentId,
+  parentAgentId?: AgentId,
+): Record<string, string> {
+  const headers: Record<string, string> = {}
+  if (agentId) {
+    headers[AGENT_ID_HEADER] = agentId
+    if (parentAgentId) {
+      headers[PARENT_AGENT_ID_HEADER] = parentAgentId
+    }
+  }
+  return headers
+}
+
 export async function* executeNonStreamingRequest(
   clientOptions: {
     model: string
     fetchOverride?: Options['fetchOverride']
     source: string
+    agentId?: AgentId
+    parentAgentId?: AgentId
   },
   retryOptions: {
     model: string
@@ -965,6 +987,10 @@ export async function* executeNonStreamingRequest(
       try {
         // biome-ignore lint/plugin: non-streaming API call
         console.error(`[executeNonStreamingRequest] anthropic type: ${typeof anthropic}, has beta: ${anthropic?.beta !== undefined}, beta type: ${typeof anthropic?.beta}, has messages: ${anthropic?.beta?.messages !== undefined}`)
+        const nsAgentHeaders = buildAgentHeaders(
+          clientOptions.agentId,
+          clientOptions.parentAgentId,
+        )
         return await anthropic.beta.messages.create(
           {
             ...adjustedParams,
@@ -973,6 +999,9 @@ export async function* executeNonStreamingRequest(
           {
             signal: retryOptions.signal,
             timeout: fallbackTimeoutMs,
+            ...(Object.keys(nsAgentHeaders).length > 0
+              ? { headers: nsAgentHeaders }
+              : {}),
           },
         )
       } catch (err) {
@@ -2132,6 +2161,8 @@ async function* queryModel(
     newContext,
     messagesForAPI,
     isFastMode,
+    options.agentId,
+    options.parentAgentId,
   )
 
   const startIncludingRetries = Date.now()
@@ -2144,11 +2175,26 @@ async function* queryModel(
   // eslint-disable-next-line eslint-plugin-n/no-unsupported-features/node-builtins -- Response is available in Node 18+ and is used by the SDK
   let streamResponse: Response | undefined = undefined
 
+  let streamIdleWarningTimer: ReturnType<typeof setTimeout> | null = null
+  let streamIdleTimer: ReturnType<typeof setTimeout> | null = null
+
+  function clearStreamIdleTimers(): void {
+    if (streamIdleWarningTimer !== null) {
+      clearTimeout(streamIdleWarningTimer)
+      streamIdleWarningTimer = null
+    }
+    if (streamIdleTimer !== null) {
+      clearTimeout(streamIdleTimer)
+      streamIdleTimer = null
+    }
+  }
+
   // Release all stream resources to prevent native memory leaks.
   // The Response object holds native TLS/socket buffers that live outside the
   // V8 heap (observed on the Node.js/npm path; see GH #32920), so we must
   // explicitly cancel and release it regardless of how the generator exits.
   function releaseStreamResources(): void {
+    clearStreamIdleTimers()
     cleanupStream(stream)
     stream = undefined
     if (streamResponse) {
@@ -2462,14 +2508,28 @@ async function* queryModel(
         // since we handle tool input accumulation ourselves
         // biome-ignore lint/plugin: main conversation loop handles attribution separately
         console.error(`[streaming] anthropic type: ${typeof anthropic}, has beta: ${anthropic?.beta !== undefined}, has messages: ${anthropic?.beta?.messages !== undefined}`)
+        const agentHeaders: Record<string, string> = {}
+        if (options.agentId) {
+          agentHeaders[AGENT_ID_HEADER] = options.agentId
+          if (options.parentAgentId) {
+            agentHeaders[PARENT_AGENT_ID_HEADER] = options.parentAgentId
+          }
+        }
         const result = await anthropic.beta.messages
           .create(
             { ...params, stream: true },
             {
               signal,
-              ...(clientRequestId && {
-                headers: { [CLIENT_REQUEST_ID_HEADER]: clientRequestId },
-              }),
+              ...(clientRequestId || Object.keys(agentHeaders).length > 0
+                ? {
+                    headers: {
+                      ...(clientRequestId && {
+                        [CLIENT_REQUEST_ID_HEADER]: clientRequestId,
+                      }),
+                      ...agentHeaders,
+                    },
+                  }
+                : {}),
             },
           )
           .withResponse()
@@ -2523,21 +2583,10 @@ async function* queryModel(
     let streamIdleAborted = false
     // performance.now() snapshot when watchdog fires, for measuring abort propagation delay
     let streamWatchdogFiredAt: number | null = null
-    let streamIdleWarningTimer: ReturnType<typeof setTimeout> | null = null
-    let streamIdleTimer: ReturnType<typeof setTimeout> | null = null
-    function clearStreamIdleTimers(): void {
-      if (streamIdleWarningTimer !== null) {
-        clearTimeout(streamIdleWarningTimer)
-        streamIdleWarningTimer = null
-      }
-      if (streamIdleTimer !== null) {
-        clearTimeout(streamIdleTimer)
-        streamIdleTimer = null
-      }
-    }
+
     function resetStreamIdleTimer(): void {
       clearStreamIdleTimers()
-      if (!streamWatchdogEnabled) {
+      if (!streamWatchdogEnabled || stopReason) {
         return
       }
       streamIdleWarningTimer = setTimeout(
@@ -2894,6 +2943,10 @@ async function* queryModel(
             // captures the final values.
             stopReason = part.delta.stop_reason
 
+            if (stopReason) {
+              clearStreamIdleTimers()
+            }
+
             const lastMsg = newMessages.at(-1)
             if (lastMsg) {
               lastMsg.message.usage = usage
@@ -2947,6 +3000,11 @@ async function* queryModel(
             break
           }
           case 'message_stop':
+            // Clear idle timeout watchdog immediately — the response is
+            // complete. The for-await loop may still be draining the SDK's
+            // internal buffers, so without this the watchdog could fire a
+            // spurious timeout after the user already saw the final message.
+            clearStreamIdleTimers()
             break
         }
 
@@ -3203,7 +3261,12 @@ async function* queryModel(
           : 'other') as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
       })
       const result = yield* executeNonStreamingRequest(
-        { model: options.model, source: options.querySource },
+        {
+          model: options.model,
+          source: options.querySource,
+          agentId: options.agentId,
+          parentAgentId: options.parentAgentId,
+        },
         {
           model: options.model,
           fallbackModel: options.fallbackModel,
@@ -3303,7 +3366,12 @@ async function* queryModel(
       try {
         // Fall back to non-streaming mode
         const result = yield* executeNonStreamingRequest(
-          { model: options.model, source: options.querySource },
+          {
+            model: options.model,
+            source: options.querySource,
+            agentId: options.agentId,
+            parentAgentId: options.parentAgentId,
+          },
           {
             model: options.model,
             fallbackModel: options.fallbackModel,

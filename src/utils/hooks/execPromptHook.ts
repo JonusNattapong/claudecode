@@ -84,6 +84,7 @@ Your response must be a JSON object matching one of the following schemas:
           querySource: 'hook_prompt',
           mcpTools: [],
           agentId: toolUseContext.agentId,
+          parentAgentId: toolUseContext.parentAgentId,
           outputFormat: {
             type: 'json_schema',
             schema: {

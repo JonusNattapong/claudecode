@@ -446,6 +446,8 @@ export function createSubagentContext(
     messages: overrides?.messages ?? parentContext.messages,
     // Generate new agentId for subagents (each subagent should have its own ID)
     agentId: overrides?.agentId ?? createAgentId(),
+    // Capture parent's agent ID for x-claude-code-parent-agent-id header
+    parentAgentId: parentContext.agentId,
     agentType: overrides?.agentType,
 
     // Create new query tracking chain for subagent with incremented depth

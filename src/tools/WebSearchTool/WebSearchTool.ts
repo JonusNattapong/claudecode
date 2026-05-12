@@ -286,6 +286,7 @@ export const WebSearchTool = buildTool({
         agents: context.options.agentDefinitions.activeAgents,
         mcpTools: [],
         agentId: context.agentId,
+        parentAgentId: context.parentAgentId,
         effortValue: appState.effortValue,
       },
     })
