@@ -458,20 +458,33 @@ function maskModelCodename(baseName: string): string {
   return [masked, ...rest].join('-')
 }
 
-export function renderModelName(model: ModelName, providerOverride?: string): string {
+export function renderModelName(model: ModelName, providerOverride?: string, style?: 'full' | 'short'): string {
   const publicName = getPublicModelDisplayName(model)
   if (publicName) {
     return publicName
   }
 
   // Use the provided override, or get it from ProviderManager (session-aware)
-  const provider = providerOverride || 
+  const provider = providerOverride ||
                  (typeof window === 'undefined' ? ProviderManager.getInstance().getActiveProviderName() : undefined) ||
                  ProviderManager.getInstance().getSelectedProviderConfig()?.provider
 
   if (provider) {
     const registryEntry = PROVIDER_REGISTRY[provider as keyof typeof PROVIDER_REGISTRY]
     if (registryEntry) {
+      // If the model name is just the provider ID/label (no specific model
+      // was selected), show only the label to avoid "DeepSeek: deepseek".
+      if (model === provider || model === registryEntry.label.toLowerCase()) {
+        return registryEntry.label
+      }
+      // If the model name is unknown, show only the provider label
+      if (model === 'unknown') {
+        return registryEntry.label
+      }
+      // 'short' style: bare model name without provider prefix (for stats list)
+      if (style === 'short') {
+        return model
+      }
       return `${registryEntry.label}: ${model}`
     }
   }

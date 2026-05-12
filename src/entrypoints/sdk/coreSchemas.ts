@@ -24,6 +24,7 @@ export const ModelUsageSchema = lazySchema(() =>
     costUSD: z.number(),
     contextWindow: z.number(),
     maxOutputTokens: z.number(),
+    provider: z.string().optional(),
   }),
 )
 

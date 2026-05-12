@@ -25,6 +25,10 @@ import { getAgentTranscript } from '../../utils/sessionStorage.js'
 
 const SUMMARY_INTERVAL_MS = 30_000
 
+// When the sub-agent is idle (summary hasn't changed), use a much longer
+// interval to avoid redundant "still doing X" messages every 30s.
+const SUMMARY_IDLE_INTERVAL_MS = 300_000
+
 function buildSummaryPrompt(previousSummary: string | null): string {
   const prevLine = previousSummary
     ? `\nPrevious: "${previousSummary}" — say something NEW.\n`
@@ -57,6 +61,7 @@ export function startAgentSummarization(
   let timeoutId: ReturnType<typeof setTimeout> | null = null
   let stopped = false
   let previousSummary: string | null = null
+  let idleSummaryCount = 0
 
   async function runSummary(): Promise<void> {
     if (stopped) return
@@ -136,8 +141,18 @@ export function startAgentSummarization(
           logForDebugging(
             `[AgentSummary] Summary result for ${taskId}: ${summaryText}`,
           )
-          previousSummary = summaryText
-          updateAgentSummary(taskId, summaryText, setAppState)
+          // If the summary hasn't changed, the sub-agent is idle. Skip
+          // the update and use the longer idle interval for the next tick.
+          if (summaryText === previousSummary) {
+            idleSummaryCount++
+            logForDebugging(
+              `[AgentSummary] Idle summary (x${idleSummaryCount}) — skipping redundant update`,
+            )
+          } else {
+            previousSummary = summaryText
+            idleSummaryCount = 0
+            updateAgentSummary(taskId, summaryText, setAppState)
+          }
           break
         }
       }
@@ -156,7 +171,10 @@ export function startAgentSummarization(
 
   function scheduleNext(): void {
     if (stopped) return
-    timeoutId = setTimeout(runSummary, SUMMARY_INTERVAL_MS)
+    const interval = idleSummaryCount > 0
+      ? SUMMARY_IDLE_INTERVAL_MS
+      : SUMMARY_INTERVAL_MS
+    timeoutId = setTimeout(runSummary, interval)
   }
 
   function stop(): void {

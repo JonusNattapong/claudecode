@@ -181,3 +181,8 @@ All notable changes to this project will be documented in this file.
 ### Added
 
 - Initial release with core functionality.
+
+[2.1.136]: https://github.com/JonusNattapong/ClaudeCode/compare/v2.1.129...v2.1.136
+[2.1.129]: https://github.com/JonusNattapong/ClaudeCode/compare/v2.1.97...v2.1.129
+[2.1.97]: https://github.com/JonusNattapong/ClaudeCode/compare/v0.0.1...v2.1.97
+[0.0.1]: https://github.com/JonusNattapong/ClaudeCode/releases/tag/v0.0.1

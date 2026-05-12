@@ -253,6 +253,12 @@ function formatActivityDuration(item: { startedAt?: number; endedAt?: number }):
   return chalk.dim(` (${formatCompactDuration(item.endedAt - item.startedAt)})`);
 }
 
+function formatContextSize(tokens: number): string {
+  if (tokens >= 1_000_000) return `${(tokens / 1_000_000).toFixed(1)}M`;
+  if (tokens >= 1_000) return `${Math.round(tokens / 1_000)}K`;
+  return String(tokens);
+}
+
 function countHooks(settings: ReadonlySettings): number {
   const hooks = settings?.hooks;
   if (!hooks) return 0;
@@ -486,6 +492,7 @@ function StatusLineInner({
 
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const logNextResultRef = useRef(true);
+  const lastKnownCtxBarRef = useRef<{ pct: number; bar: string } | null>(null);
 
   const doUpdate = useCallback(async () => {
     abortControllerRef.current?.abort();
@@ -592,7 +599,23 @@ function StatusLineInner({
     const contextPercentages = calculateContextPercentages(usageForContext, contextWindowSize);
     const cwd = currentCwd;
     const duration = getTotalDuration();
-    const usedPercentage = contextPercentages.used ?? 0;
+    let usedPercentage = contextPercentages.used ?? 0;
+
+    // During streaming the assistant message has no token usage yet,
+    // so getCurrentUsage returns null → contextPercentages.used = 0.
+    // Cache the last non-zero value so the bar doesn't collapse to 0
+    // while the model is generating, then snap back after the response lands.
+    if (usedPercentage > 0) {
+      lastKnownCtxBarRef.current = { pct: usedPercentage, bar: '' };
+    } else if (usedPercentage === 0 && lastKnownCtxBarRef.current) {
+      // Only freeze the bar if we're actively streaming (messages have a
+      // pending assistant message). Otherwise the initial 0% is correct.
+      const lastMsg = messagesRef.current[messagesRef.current.length - 1];
+      const isStreaming = lastMsg && (lastMsg as any).type !== 'user';
+      if (isStreaming) {
+        usedPercentage = lastKnownCtxBarRef.current.pct;
+      }
+    }
     const rawModelName = renderModelName(runtimeModel, mainLoopProviderForSession ?? mainLoopProvider);
     // Strip provider prefix (e.g., "KiloCode: ") when showing in status line,
     // since the provider is already displayed separately in brackets below
@@ -639,6 +662,7 @@ function StatusLineInner({
       bar +
       ' ' +
       percentText +
+      chalk.dim(`/${formatContextSize(contextWindowSize)}`) +
       chalk.dim(` | ${claudeCount} CLAUDE.md | ${ruleCount} rules | ${mcpCount} MCPs | ${hookCount} hooks | `) +
       chalk.white('◷') +
       chalk.dim(` ${formatCompactDuration(duration)}`);

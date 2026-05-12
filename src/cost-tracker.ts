@@ -27,6 +27,7 @@ import {
   setCostStateForRestore,
   setHasUnknownModelCost,
 } from './bootstrap/state.js'
+import { ProviderManager } from './services/ai/ProviderManager.js'
 import type { ModelUsage } from './entrypoints/agentSdkTypes.js'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
@@ -251,6 +252,7 @@ function addToTotalModelUsage(
   cost: number,
   usage: Usage,
   model: string,
+  provider?: string,
 ): ModelUsage {
   const modelUsage = getUsageForModel(model) ?? {
     inputTokens: 0,
@@ -261,6 +263,13 @@ function addToTotalModelUsage(
     costUSD: 0,
     contextWindow: 0,
     maxOutputTokens: 0,
+    provider: undefined,
+  }
+  // Record the provider that was used for this model. If multiple providers
+  // serve the same model name, the first one wins (most common case).
+  // Falls back to the currently active provider if not explicitly passed.
+  if (!modelUsage.provider) {
+    modelUsage.provider = provider || ProviderManager.getInstance().getActiveProviderName()
   }
 
   modelUsage.inputTokens += usage.input_tokens
@@ -278,9 +287,10 @@ function addToTotalModelUsage(
 export function addToTotalSessionCost(
   cost: number,
   usage: Usage,
-  model: string,
+    model: string,
+    provider?: string,
 ): number {
-  const modelUsage = addToTotalModelUsage(cost, usage, model)
+  const modelUsage = addToTotalModelUsage(cost, usage, model, provider)
   addToTotalCostState(cost, modelUsage, model)
 
   const attrs =

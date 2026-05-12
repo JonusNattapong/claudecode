@@ -11,8 +11,8 @@ import { logError } from './log.js'
 import { jsonParse, jsonStringify } from './slowOperations.js'
 import type { DailyActivity, DailyModelTokens, SessionStats } from './stats.js'
 
-export const STATS_CACHE_VERSION = 3
-const MIN_MIGRATABLE_VERSION = 1
+export const STATS_CACHE_VERSION = 4
+const MIN_MIGRATABLE_VERSION = 4
 const STATS_CACHE_FILENAME = 'stats-cache.json'
 
 /**
@@ -60,6 +60,8 @@ export type PersistedStatsCache = {
   dailyModelTokens: DailyModelTokens[]
   // Model usage aggregated (bounded by number of models)
   modelUsage: { [modelName: string]: ModelUsage }
+  // Provider usage aggregated (bounded by number of providers)
+  providerUsage: { [providerId: string]: ModelUsage }
   // Session aggregates (replaces unbounded sessionStats array)
   totalSessions: number
   totalMessages: number
@@ -85,6 +87,7 @@ function getEmptyCache(): PersistedStatsCache {
     dailyActivity: [],
     dailyModelTokens: [],
     modelUsage: {},
+    providerUsage: {},
     totalSessions: 0,
     totalMessages: 0,
     longestSession: null,
@@ -128,6 +131,7 @@ function migrateStatsCache(
     dailyActivity: parsed.dailyActivity,
     dailyModelTokens: parsed.dailyModelTokens,
     modelUsage: parsed.modelUsage ?? {},
+    providerUsage: parsed.providerUsage ?? {},
     totalSessions: parsed.totalSessions,
     totalMessages: parsed.totalMessages,
     longestSession: parsed.longestSession ?? null,
@@ -263,6 +267,7 @@ export function mergeCacheWithNewStats(
     dailyActivity: DailyActivity[]
     dailyModelTokens: DailyModelTokens[]
     modelUsage: { [modelName: string]: ModelUsage }
+    providerUsage?: { [providerId: string]: ModelUsage }
     sessionStats: SessionStats[]
     hourCounts: { [hour: number]: number }
     totalSpeculationTimeSavedMs: number
@@ -331,6 +336,37 @@ export function mergeCacheWithNewStats(
     }
   }
 
+  // Merge provider usage
+  const providerUsage = { ...existingCache.providerUsage }
+  for (const [provider, usage] of Object.entries(newStats.providerUsage || {})) {
+    if (providerUsage[provider]) {
+      providerUsage[provider] = {
+        inputTokens: providerUsage[provider]!.inputTokens + usage.inputTokens,
+        outputTokens: providerUsage[provider]!.outputTokens + usage.outputTokens,
+        cacheReadInputTokens:
+          providerUsage[provider]!.cacheReadInputTokens +
+          usage.cacheReadInputTokens,
+        cacheCreationInputTokens:
+          providerUsage[provider]!.cacheCreationInputTokens +
+          usage.cacheCreationInputTokens,
+        webSearchRequests:
+          providerUsage[provider]!.webSearchRequests + usage.webSearchRequests,
+        costUSD: providerUsage[provider]!.costUSD + usage.costUSD,
+        contextWindow: Math.max(
+          providerUsage[provider]!.contextWindow,
+          usage.contextWindow,
+        ),
+        maxOutputTokens: Math.max(
+          providerUsage[provider]!.maxOutputTokens,
+          usage.maxOutputTokens,
+        ),
+        provider,
+      }
+    } else {
+      providerUsage[provider] = { ...usage, provider }
+    }
+  }
+
   // Merge hour counts
   const hourCounts = { ...existingCache.hourCounts }
   for (const [hour, count] of Object.entries(newStats.hourCounts)) {
@@ -371,6 +407,7 @@ export function mergeCacheWithNewStats(
       .map(([date, tokensByModel]) => ({ date, tokensByModel }))
       .sort((a, b) => a.date.localeCompare(b.date)),
     modelUsage,
+    providerUsage,
     totalSessions,
     totalMessages,
     longestSession,

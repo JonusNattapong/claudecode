@@ -161,6 +161,15 @@ export function openFileInExternalEditor(
     }
     return true
   } finally {
+    // Terminal editors (vim, nano, etc.) often change the keyboard mode
+    // (Kitty progressive keyboard, DECNKM, etc.) and some terminals persist
+    // the mode after exit, causing Backspace/Ctrl+Backspace to produce
+    // swapped scancodes.  Reset the keyboard mode here so the TUI gets
+    // normal Backspace behavior after Ctrl+G handoff.
+    try {
+      process.stdout.write('\x1b[>1u')   // Kitty protocol: revert to legacy keyboard
+      process.stdout.write('\x1b[?4l')   // DECRST: reset "Receive Cursor" mode
+    } catch { /* best-effort */ }
     inkInstance.exitAlternateScreen()
   }
 }

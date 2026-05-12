@@ -1,4 +1,4 @@
-# Plan: Implement Upstream Changelog Fixes (2.1.120 → 2.1.136)
+# Plan: Implement Upstream Changelog Fixes (2.1.120 → 2.1.140)
 
 ## Context
 Anthropic released 2.1.120 through 2.1.136 of Claude Code. This plan covers all fixes/changes from the actual changelog entries provided. Items requiring external SDK changes, native binary changes, or deep unknown architecture are **deferred**.
@@ -11,7 +11,7 @@ Anthropic released 2.1.120 through 2.1.136 of Claude Code. This plan covers all 
 | **B** Model & API | 12/12 | 12 | All done ✅ |
 | **C** Tooling & Security | 14/14 | 14 | All done ✅ |
 | **D** MCP & Plugin | 26/28 | 28 | All done ✅ (D22-D23 dupe of D18)
-| **E** UI/UX & Rendering | ~36/~112 | 112 | E47/E68/E84/E86/E101 done this session |
+| **E** UI/UX & Rendering | ~42/~112 | 112 | E18/E62/E80/E82/E83/E96 done this session |
 | **F** Settings & Commands | 16/17 | 17 | F1-F9, F11, F12, F14, F16 done; F10/F13/F15/F17 deferred |
 
 ---
@@ -159,9 +159,15 @@ Anthropic released 2.1.120 through 2.1.136 of Claude Code. This plan covers all 
 | **E47** | `operators.ts` | NFC normalization in `applyOperator` for NFD chars |
 | **E101** | `securityCheck.tsx` | Accept applies settings, only Exit exits session |
 | **E42** | `client.ts` | MCP stdio arg quoting with `CLAUDE_CODE_SHELL_PREFIX` |
+| **E18** | `editor.ts` | Reset keyboard mode (Kitty protocol) after Ctrl+G to fix Backspace swap |
+| **E62** | `resume.tsx` | Always show picker on `/resume` — prevents tab-complete auto-resume |
+| **E82** | `client.ts` | Skip needs-auth cache for claudeai-proxy servers after `/clear` |
+| **E80** | `agentSummary.ts` | Idle sub-agent summaries skip redundant updates, use 5min idle interval |
+| **E83** | `commit.ts` | Added bundled `/commit` skill for Claude in Chrome compatibility |
+| **E96** | `branch.ts` | Strip dangling tool_use blocks from fork transcript |
 
 ### ❌ Not Yet Implemented
-E1-E7, E11-E13, E17-E18, E20-E22, E24-E25, E28-E29, E32-E34, E37, E43-E44, E46, E49-E55, E60-E67, E69-E70, E74-E83, E87, E90-E92, E94, E96-E97, E99, E104
+E1-E7, E11-E13, E17, E20-E22, E24-E25, E28-E29, E32-E34, E37, E43-E44, E46, E49-E55, E60-E61, E63-E67, E69-E70, E74-E79, E81, E87, E90-E92, E94, E97, E99, E104
 
 (Many of these require component-level or renderer-level changes that are not in the current diff.)
 
@@ -199,3 +205,69 @@ E1-E7, E11-E13, E17-E18, E20-E22, E24-E25, E28-E29, E32-E34, E37, E43-E44, E46, 
 ## Verification
 - `bun x tsc --noEmit` — TypeScript check (1 pre-existing error in mcp/client.ts)
 - Changes are uncommitted — 73 files modified
+
+---
+
+## GROUP G — Upstream Features & Bugfixes (2.1.137 → 2.1.140)
+
+### 🔧 High Priority
+
+**G1. MCP stdio servers receive CLAUDE_PROJECT_DIR** ✅ `src/services/mcp/client.ts` — already implemented via subprocessEnv
+**G2. Remote MCP reconnect retry on transient failures** ✅ — already implemented (D24)
+**G3. MCP resources from disconnected servers lingering in @server** ❌
+**G4. MCP stdio unbounded memory growth (16 MB cap per SSE frame)** ❌
+
+### 🔧 Medium Priority
+
+**G5. Added hook args: string[] field (exec form)** ❌
+**G6. Added hook continueOnBlock config option for PostToolUse** ❌
+**G7. Hook terminal access fixed** ❌
+**G8. Fixed settings hot-reload not detecting symlinked settings.json** ❌
+
+### 🔧 Low Priority / Bugs
+
+**G9. Fixed autoAllowBashIfSandboxed with shell expansions ($VAR, $(cmd))** ❌
+**G10. Fixed Skill(name *) permission rules prefix match** ❌
+**G11. Fixed spurious "stream idle timeout" after completion** ❌
+**G12. Fixed silent exit 1 with 10+ MCP servers + unwritable cache** ❌
+**G13. Fixed Grep results Windows drive-letter paths** ❌
+**G14. Fixed fuzzy-match splitting emoji/astral-plane characters** ❌
+**G15. Fixed ProgressBar rendering fractional cell** ❌
+**G16. Fixed task polling/fs.watch resurrection bug** ❌
+**G17. Fixed plugin dependency resolution stale count** ❌
+**G18. Fixed Insights Time-of-Day chart unparseable timestamp** ❌
+**G19. Fixed keybindings cmd/super/win modifier flagged unparseable** ❌
+**G20. Fixed claude plugin update not preserving cross-plugin symlinks** ❌
+
+### 📦 New Commands
+
+**G21. /goal command** ❌
+**G22. /scroll-speed command** ❌
+**G23. claude plugin details <name> (show component inventory + cost)** ❌
+
+### 🖥️ UI/UX
+
+**G24. Agent View (Research Preview)** ❌
+**G25. Transcript view navigation (? for shortcuts, {/} jump prompts)** ❌
+**G26. Compaction prompt preserve sensitive user instructions** ❌
+**G27. /mcp Reconnect picks up .mcp.json edits** ❌
+**G28. /context per-skill token estimates account for model tokenizer** ❌
+**G29. claude plugin install auto-refresh marketplace** ❌
+**G30. /context show providing plugin name** ❌
+**G31. Plugin details show hook event names + MCP server names** ❌
+**G32. Subagent API headers (x-claude-code-agent-id)** ❌
+**G33. Remote Control / API key mode improvements** ❌
+**G34. Fixed typing cursor blinking on tabs/pointers** ❌
+**G35. Fixed transcript view shortcuts after mouse click** ❌
+**G36. Fixed Bash-mode up-arrow history** ❌
+**G37. Fixed pasting multiple images only inserting last** ❌
+**G38. Fixed hyperlinks dark navy on dark themes** ❌
+**G39. Fixed model picker redundant rows for 3P users** ❌
+**G40. Fixed mouse wheel scrolling speed (Cursor/VS Code/WT)** ❌
+**G41. Fixed two-file diff over-reporting truncated lines** ❌
+**G42. Fixed border-embedded text overflowing on CJK/emoji** ❌
+**G43. Fixed ProgressBar rendering full block fractional cell** ❌
+**G44. Fixed skill argument names with regex metacharacters** ❌
+**G45. Fixed claude_code.active_time.total OTEL metric not emitted in -p** ❌
+**G46. [VSCode] Cmd/Ctrl+Shift+T reopen closed session tab** ❌
+**G47. Fixed scroll behavior in WTerminal + VS Code background sessions** ❌

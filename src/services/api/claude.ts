@@ -349,11 +349,11 @@ async function callOpenAICompatibleProvider({
       ...(temperature !== undefined ? { temperature } : {}),
       ...(openAITools ? { tools: openAITools } : {}),
     })
-    const assistantMessage = createAssistantMessageFromOpenAIResponse(response, tools)
+    const assistantMessage = createAssistantMessageFromOpenAIResponse(response, tools, resolvedModel, provider)
     const openAIUsage = extractOpenAIUsage(response)
     if (openAIUsage) {
       const costUSD = calculateUSDCost(resolvedModel, openAIUsage)
-      addToTotalSessionCost(costUSD, openAIUsage, resolvedModel)
+      addToTotalSessionCost(costUSD, openAIUsage, resolvedModel, provider)
     }
     return assistantMessage
   }
@@ -369,11 +369,11 @@ async function callOpenAICompatibleProvider({
       tool_choice: openAIToolChoiceValue as any,
     })
 
-    const assistantMessage = createAssistantMessageFromOpenAIResponse(response, tools)
+    const assistantMessage = createAssistantMessageFromOpenAIResponse(response, tools, resolvedModel, provider)
     const openAIUsage = extractOpenAIUsage(response)
     if (openAIUsage) {
       const costUSD = calculateUSDCost(resolvedModel, openAIUsage)
-      addToTotalSessionCost(costUSD, openAIUsage, resolvedModel)
+      addToTotalSessionCost(costUSD, openAIUsage, resolvedModel, provider)
     }
     return assistantMessage
   }
@@ -1480,6 +1480,8 @@ function extractOpenAIUsage(response: any): Usage | undefined {
 function createAssistantMessageFromOpenAIResponse(
   response: any,
   tools: BetaToolUnion[],
+  model: string,
+  provider: string,
 ): AssistantMessage {
   const choice = response?.choices?.[0]
   const message = choice?.message ?? choice
@@ -1495,6 +1497,8 @@ function createAssistantMessageFromOpenAIResponse(
     content: string | BetaContentBlock[],
   ): AssistantMessage => {
     const assistantMessage = createAssistantMessage({ content, usage })
+    assistantMessage.message.model = response?.model ?? model
+    ;(assistantMessage.message as any).provider = provider
     if (reasoningContent) {
       ;(
         assistantMessage.message as any
@@ -2840,6 +2844,7 @@ async function* queryModel(
             const m: AssistantMessage = {
               message: {
                 ...partialMessage,
+                provider: providerId,
                 content: normalizeContentFromAPI(
                   [contentBlock] as BetaContentBlock[],
                   tools,
@@ -2901,6 +2906,7 @@ async function* queryModel(
               costUSDForPart,
               usage,
               options.model,
+              providerId,
             )
 
             const refusalMessage = getErrorMessageIfRefusal(
@@ -3219,6 +3225,7 @@ async function* queryModel(
       const m: AssistantMessage = {
         message: {
           ...result,
+          provider: providerId,
           content: normalizeContentFromAPI(
             result.content,
             tools,
@@ -3316,6 +3323,7 @@ async function* queryModel(
         const m: AssistantMessage = {
           message: {
             ...result,
+            provider: providerId,
             content: normalizeContentFromAPI(
               result.content,
               tools,
@@ -3474,6 +3482,7 @@ async function* queryModel(
         fallbackCost,
         fallbackUsage,
         options.model,
+        providerId,
       )
     }
   }

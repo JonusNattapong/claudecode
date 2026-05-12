@@ -56,6 +56,10 @@ function getNextDateRange(current: StatsDateRange): StatsDateRange {
   return DATE_RANGE_ORDER[(currentIndex + 1) % DATE_RANGE_ORDER.length]!;
 }
 
+function renderStatsModelName(model: string, provider?: string): string {
+  return provider ? renderModelName(model, provider) : model;
+}
+
 /**
  * Creates a stats loading promise that never rejects.
  * Always loads all-time stats for the heatmap.
@@ -215,7 +219,7 @@ function StatsContent(t0) {
       if (input === "r" && !key.ctrl && !key.meta) {
         setDateRange(getNextDateRange(dateRange));
       }
-      if (key.ctrl && input === "s" && displayStats) {
+      if (((key.ctrl && input === "s") || input === "y") && displayStats) {
         handleScreenshot(displayStats, activeTab, setCopyStatus);
       }
     };
@@ -292,7 +296,7 @@ function StatsContent(t0) {
   const t13 = copyStatus ? ` · ${copyStatus}` : "";
   let t11;
   if ($[29] !== t13) {
-    t11 = <Box paddingLeft={2}><Text dimColor={true}>Esc to cancel · r to cycle dates · ctrl+s to copy{t13}</Text></Box>;
+    t11 = <Box paddingLeft={2}><Text dimColor={true}>Esc to cancel · r to cycle dates · y to copy{t13}</Text></Box>;
     $[29] = t13;
     $[30] = t11;
   } else {
@@ -443,7 +447,7 @@ function OverviewTab({
           {favoriteModel && <Text wrap="truncate">
               Favorite model:{' '}
               <Text color="claude" bold>
-                {renderModelName(favoriteModel[0])}
+                {renderStatsModelName(favoriteModel[0], favoriteModel[1]?.provider)}
               </Text>
             </Text>}
         </Box>
@@ -787,7 +791,7 @@ function ModelsTab(t0) {
     return t3;
   }
   const totalTokens = modelEntries.reduce(_temp9, 0);
-  const chartOutput = generateTokenChart(stats.dailyModelTokens, modelEntries.map(_temp0), terminalWidth);
+  const chartOutput = generateTokenChart(stats.dailyModelTokens, modelEntries.map(_temp0), terminalWidth, stats.modelUsage);
   const visibleModels = modelEntries.slice(scrollOffset, scrollOffset + 4);
   const midpoint = Math.ceil(visibleModels.length / 2);
   const leftModels = visibleModels.slice(0, midpoint);
@@ -862,95 +866,23 @@ type ModelEntryProps = {
     inputTokens: number;
     outputTokens: number;
     cacheReadInputTokens: number;
+    provider?: string;
   };
   totalTokens: number;
 };
 function ModelEntry(t0) {
-  const $ = _c(21);
   const {
     model,
     usage,
     totalTokens
   } = t0;
   const modelTokens = usage.inputTokens + usage.outputTokens;
-  const t1 = modelTokens / totalTokens * 100;
-  let t2;
-  if ($[0] !== t1) {
-    t2 = t1.toFixed(1);
-    $[0] = t1;
-    $[1] = t2;
-  } else {
-    t2 = $[1];
-  }
-  const percentage = t2;
-  let t3;
-  if ($[2] !== model) {
-    t3 = renderModelName(model);
-    $[2] = model;
-    $[3] = t3;
-  } else {
-    t3 = $[3];
-  }
-  let t4;
-  if ($[4] !== t3) {
-    t4 = <Text bold={true}>{t3}</Text>;
-    $[4] = t3;
-    $[5] = t4;
-  } else {
-    t4 = $[5];
-  }
-  let t5;
-  if ($[6] !== percentage) {
-    t5 = <Text color="subtle">({percentage}%)</Text>;
-    $[6] = percentage;
-    $[7] = t5;
-  } else {
-    t5 = $[7];
-  }
-  let t6;
-  if ($[8] !== t4 || $[9] !== t5) {
-    t6 = <Text>{figures.bullet} {t4}{" "}{t5}</Text>;
-    $[8] = t4;
-    $[9] = t5;
-    $[10] = t6;
-  } else {
-    t6 = $[10];
-  }
-  let t7;
-  if ($[11] !== usage.inputTokens) {
-    t7 = formatNumber(usage.inputTokens);
-    $[11] = usage.inputTokens;
-    $[12] = t7;
-  } else {
-    t7 = $[12];
-  }
-  let t8;
-  if ($[13] !== usage.outputTokens) {
-    t8 = formatNumber(usage.outputTokens);
-    $[13] = usage.outputTokens;
-    $[14] = t8;
-  } else {
-    t8 = $[14];
-  }
-  let t9;
-  if ($[15] !== t7 || $[16] !== t8) {
-    t9 = <Text color="subtle">{"  "}In: {t7} · Out:{" "}{t8}</Text>;
-    $[15] = t7;
-    $[16] = t8;
-    $[17] = t9;
-  } else {
-    t9 = $[17];
-  }
-  let t10;
-  if ($[18] !== t6 || $[19] !== t9) {
-    t10 = <Box flexDirection="column">{t6}{t9}</Box>;
-    $[18] = t6;
-    $[19] = t9;
-    $[20] = t10;
-  } else {
-    t10 = $[20];
-  }
-  return t10;
+  const percentage = (modelTokens / totalTokens * 100).toFixed(1);
+  const displayName = renderStatsModelName(model, usage.provider);
+  return <Box flexDirection="column">
+    <Text>{figures.bullet} <Text bold={true}>{displayName}</Text>{" "}<Text color="subtle">({percentage}%)</Text></Text>
+    <Text color="subtle">{"  "}In: {formatNumber(usage.inputTokens)} · Out:{" "}{formatNumber(usage.outputTokens)}</Text>
+  </Box>;
 }
 type ChartLegend = {
   model: string;
@@ -961,7 +893,7 @@ type ChartOutput = {
   legend: ChartLegend[];
   xAxisLabels: string;
 };
-function generateTokenChart(dailyTokens: DailyModelTokens[], models: string[], terminalWidth: number): ChartOutput | null {
+function generateTokenChart(dailyTokens: DailyModelTokens[], models: string[], terminalWidth: number, modelUsage: ClaudeCodeStats['modelUsage'] = {}): ChartOutput | null {
   if (dailyTokens.length < 2 || models.length === 0) {
     return null;
   }
@@ -1008,7 +940,7 @@ function generateTokenChart(dailyTokens: DailyModelTokens[], models: string[], t
       // Use theme colors that match the chart
       const bulletColors = [theme.suggestion, theme.success, theme.warning];
       legend.push({
-        model: renderModelName(model),
+        model: renderStatsModelName(model, modelUsage[model]?.provider),
         coloredBullet: applyColor(figures.bullet, bulletColors[i % bulletColors.length] as Color)
       });
     }
@@ -1157,7 +1089,7 @@ function renderOverviewToAnsi(stats: ClaudeCodeStats): string[] {
 
   // Row 1: Favorite model | Total tokens
   if (favoriteModel) {
-    lines.push(row('Favorite model', renderModelName(favoriteModel[0]), 'Total tokens', formatNumber(totalTokens)));
+    lines.push(row('Favorite model', renderStatsModelName(favoriteModel[0], favoriteModel[1]?.provider), 'Total tokens', formatNumber(totalTokens)));
   }
   lines.push('');
 
@@ -1239,7 +1171,11 @@ function renderModelsToAnsi(stats: ClaudeCodeStats): string[] {
   const totalTokens = modelEntries.reduce((sum, [, usage]) => sum + usage.inputTokens + usage.outputTokens, 0);
 
   // Generate chart if we have data - use fixed width for screenshot
-  const chartOutput = generateTokenChart(stats.dailyModelTokens, modelEntries.map(([model]) => model), 80 // Fixed width for screenshot
+  const chartOutput = generateTokenChart(
+    stats.dailyModelTokens,
+    modelEntries.map(([model]) => model),
+    80,
+    stats.modelUsage,
   );
   if (chartOutput) {
     lines.push(chalk.bold('Tokens per Day'));
@@ -1252,7 +1188,7 @@ function renderModelsToAnsi(stats: ClaudeCodeStats): string[] {
   }
 
   // Summary
-  lines.push(`${figures.star} Favorite: ${chalk.magenta.bold(renderModelName(favoriteModel?.[0] || ''))} · ${figures.circle} Total: ${chalk.magenta(formatNumber(totalTokens))} tokens`);
+  lines.push(`${figures.star} Favorite: ${chalk.magenta.bold(renderStatsModelName(favoriteModel?.[0] || '', favoriteModel?.[1]?.provider))} · ${figures.circle} Total: ${chalk.magenta(formatNumber(totalTokens))} tokens`);
   lines.push('');
 
   // Model breakdown - only show top 3 for screenshot
@@ -1260,7 +1196,7 @@ function renderModelsToAnsi(stats: ClaudeCodeStats): string[] {
   for (const [model, usage] of topModels) {
     const modelTokens = usage.inputTokens + usage.outputTokens;
     const percentage = (modelTokens / totalTokens * 100).toFixed(1);
-    lines.push(`${figures.bullet} ${chalk.bold(renderModelName(model))} ${chalk.gray(`(${percentage}%)`)}`);
+    lines.push(`${figures.bullet} ${chalk.bold(renderStatsModelName(model, usage.provider))} ${chalk.gray(`(${percentage}%)`)}`);
     lines.push(chalk.dim(`  In: ${formatNumber(usage.inputTokens)} · Out: ${formatNumber(usage.outputTokens)}`));
   }
   return lines;

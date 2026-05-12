@@ -395,11 +395,11 @@ function handleRemoteAuthFailure(
     name,
     `Authentication required for ${label[transportType]} server`,
   )
-  // For servers with headersHelper, the auth mechanism is external — the
-  // helper script can be re-run at any time to produce fresh credentials.
-  // Caching them as needs-auth would suppress reconnection for the full TTL
-  // even after valid headers become available, so skip the cache.
-  if (!serverRef.headersHelper) {
+  // For servers with headersHelper or claudeai-proxy, the auth mechanism is
+  // external (helper script or OAuth refresh). Caching them as needs-auth
+  // would suppress reconnection for the full TTL even after valid credentials
+  // become available, so skip the cache.
+  if (!serverRef.headersHelper && serverRef.type !== 'claudeai-proxy') {
     setMcpAuthCacheEntry(name)
   }
   return { name, type: 'needs-auth', config: serverRef }

@@ -59,6 +59,7 @@
     "@opentelemetry/semantic-conventions": "1.40.0",
     "@types/react": "^19.0.8",
     "@types/react-dom": "^19.0.3",
+    "asciichart": "^1.5.25",
     "axios": "^1.14.0",
     "bidi-js": "1.0.3",
     "chalk": "^5.4.1",

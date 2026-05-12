@@ -145,6 +145,44 @@ async function createFork(customTitle?: string): Promise<{
     }
   }
 
+  // Strip dangling tool_use blocks from the last assistant message. When a
+  // fork happens mid-turn (while the model is generating tool calls), the
+  // assistant message has tool_use blocks but no corresponding tool_result.
+  // Resuming from such a transcript is invalid (missing_results) — the SDK
+  // expects every tool_use in the last assistant message to have a matching
+  // tool_result in the following user message. Stripping the dangling blocks
+  // makes the transcript valid.
+  const lastSerialized = serializedMessages[serializedMessages.length - 1]
+  if (
+    lastSerialized?.type === 'assistant' &&
+    lastSerialized.message?.content?.some((c: any) => c.type === 'tool_use')
+  ) {
+    const hasNextToolResult =
+      serializedMessages.length > 1 &&
+      serializedMessages[serializedMessages.length - 2]?.type === 'user' &&
+      (serializedMessages[serializedMessages.length - 2] as any)?.message
+        ?.content?.[0]?.type === 'tool_result'
+    if (!hasNextToolResult) {
+      lastSerialized.message.content = lastSerialized.message.content.filter(
+        (c: any) => c.type !== 'tool_use',
+      )
+      // If filtering removed all content, fall back to a text placeholder
+      if (lastSerialized.message.content.length === 0) {
+        lastSerialized.message.content = [
+          { type: 'text', text: '[forked mid-turn]' },
+        ]
+      }
+      // Also update the last line
+      if (lines.length > 0) {
+        const lastEntry = jsonParse(lines[lines.length - 1]!)
+        if (typeof lastEntry === 'object' && lastEntry !== null) {
+          ;(lastEntry as any).message.content = lastSerialized.message.content
+          lines[lines.length - 1] = jsonStringify(lastEntry)
+        }
+      }
+    }
+  }
+
   // Append content-replacement entry (if any) with the fork's sessionId.
   // Written as a SINGLE entry (same shape as insertContentReplacement) so
   // loadTranscriptFile's content-replacement branch picks it up.

@@ -50,6 +50,23 @@ function extractProviderFromModel(model: string): string {
   return 'unknown'
 }
 
+function extractProviderFromMessage(
+  message: TranscriptMessage,
+  model: string,
+): string {
+  const messageProvider =
+    (message.message as any)?.provider ??
+    (message.message as any)?._provider ??
+    (message as any).provider ??
+    (message as any)._provider
+
+  if (typeof messageProvider === 'string' && messageProvider.trim()) {
+    return messageProvider.trim().toLowerCase()
+  }
+
+  return extractProviderFromModel(model)
+}
+
 export type DailyActivity = {
   date: string // YYYY-MM-DD format
   messageCount: number
@@ -357,6 +374,7 @@ async function processSessionFiles(
                 costUSD: 0,
                 contextWindow: 0,
                 maxOutputTokens: 0,
+                provider: extractProviderFromMessage(message, model),
               }
             }
 
@@ -377,7 +395,9 @@ async function processSessionFiles(
             }
 
             // Track provider usage
-            const provider = extractProviderFromModel(model)
+            const provider =
+              modelUsageAgg[model]!.provider ??
+              extractProviderFromMessage(message, model)
             if (!providerUsageAgg[provider]) {
               providerUsageAgg[provider] = {
                 inputTokens: 0,
@@ -563,7 +583,7 @@ function cacheToStats(
   }
 
   // Merge provider usage
-  const providerUsage = { ...cache.providerUsage }
+  const providerUsage = { ...(cache.providerUsage ?? {}) }
   if (todayStats?.providerUsage) {
     for (const [provider, usage] of Object.entries(todayStats.providerUsage)) {
       if (providerUsage[provider]) {
@@ -906,6 +926,7 @@ function processedStatsToClaudeCodeStats(
     dailyModelTokens: dailyModelTokensSorted,
     longestSession,
     modelUsage: stats.modelUsage,
+    providerUsage: stats.providerUsage,
     firstSessionDate,
     lastSessionDate,
     peakActivityDay,
@@ -1139,6 +1160,7 @@ function getEmptyStats(): ClaudeCodeStats {
     dailyModelTokens: [],
     longestSession: null,
     modelUsage: {},
+    providerUsage: {},
     firstSessionDate: null,
     lastSessionDate: null,
     peakActivityDay: null,

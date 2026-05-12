@@ -64,7 +64,11 @@
       "Bash(python:*)",
       "Bash(grep -n \"parseKanbanArgs\\\\|type.*worker\\\\|type.*fail\\\\|type.*heartbeat\\\\|case ''''worker''''\" src/commands/kanban/kanban.ts)",
       "Bash(grep:*)",
-      "Bash(gh release:*)"
+      "Bash(gh release:*)",
+      "Bash(find src/components -name *Dialog* -o -name *dialog*)",
+      "Bash(echo 'E1: Dialog Consistency - src/components/design-system/Dialog.tsx' echo 'E5/@picker - looking for file picker components' find src -name *picker* -o -name *Picker* -o -name *FuzzyPicker*)",
+      "Bash(head -20 echo \"---\" echo \"E8/E35 - editor.ts already read\" echo \"E10 - Welcome banner\" grep -rl \"welcome\\\\|Welcome\\\\|banner\\\\|Banner\" src/components/ --include=\"*.tsx\")",
+      "Bash(head -30 echo --- echo 'E20 - MCP server list' echo 'E28 - MCP tool results' echo 'E36 - context command' find src/commands/context/ -type f echo --- echo 'E46 - cursor grapheme' echo 'E47 - vim NFD' echo 'E48 - vim space' echo 'E50 - Ctrl+Z signal' echo 'E65 - Bash memory' echo 'E83 - Claude commit skill' echo 'E86 - Bash URL clickability' echo 'E93/E94 - plan command' find src/commands/plan/ -type f echo --- echo 'E100 - fullscreen blank' find src -name *fullscreen* -o -name *Fullscreen*)"
     ]
   },
   "outputStyle": "Explanatory",
