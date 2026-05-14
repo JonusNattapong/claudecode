@@ -2207,11 +2207,26 @@ export function normalizeMessagesForAPI(
           // like 'caller' from tool_use blocks, as these are only valid with the
           // tool search beta header
           const toolSearchEnabled = isToolSearchEnabledOptimistic()
+          const reasoningContent = (message.message as any).reasoning_content
+          const sourceContent = message.message.content
+          const content =
+            typeof reasoningContent === 'string' &&
+            reasoningContent.length > 0 &&
+            !sourceContent.some(block => block.type === 'thinking')
+              ? [
+                  {
+                    type: 'thinking' as const,
+                    thinking: reasoningContent,
+                    signature: '',
+                  },
+                  ...sourceContent,
+                ]
+              : sourceContent
           const normalizedMessage: AssistantMessage = {
             ...message,
             message: {
               ...message.message,
-              content: message.message.content.map(block => {
+              content: content.map(block => {
                 if (block.type === 'tool_use') {
                   const tool = tools.find(t => toolMatchesName(t, block.name))
                   const normalizedInput = tool
