@@ -81,18 +81,35 @@ import { clearToolSchemaCache } from './toolSchemaCache.js'
 const DEFAULT_API_KEY_HELPER_TTL = 5 * 60 * 1000
 
 /**
- * CCR and Claude Desktop spawn the CLI with OAuth and should never fall back
- * to the user's ~/.claude/settings.json API-key config (apiKeyHelper,
- * env.ANTHROPIC_API_KEY, env.ANTHROPIC_AUTH_TOKEN). Those settings exist for
- * the user's terminal CLI, not managed sessions. Without this guard, a user
- * who runs `claude` in their terminal with an API key sees every CCD session
- * also use that key — and fail if it's stale/wrong-org.
+ * CCR, Claude Desktop, third-party provider sessions, and any host-managed
+ * context should never fall back to the user's ~/.claude/settings.json API-key
+ * config (apiKeyHelper, env.ANTHROPIC_API_KEY, env.ANTHROPIC_AUTH_TOKEN).
+ * Those settings exist for the user's terminal CLI, not managed sessions.
+ *
+ * Without this guard:
+ * - A user running `claude` in their terminal with an API key sees every CCD
+ *   session also use that key — and fail if it's stale/wrong-org.
+ * - A managed-settings `apiKeyHelper` set by the host leaks into third-party
+ *   provider sessions, overriding the provider's own auth.
+ * - A host that sets CLAUDE_CODE_PROVIDER_MANAGED_BY_HOST to manage provider
+ *   routing sees its managed-settings auth config leak into CLI sessions.
  */
 function isManagedOAuthContext(): boolean {
-  return (
-    isEnvTruthy(process.env.CLAUDE_CODE_REMOTE) ||
-    process.env.CLAUDE_CODE_ENTRYPOINT === 'claude-desktop'
-  )
+  if (isEnvTruthy(process.env.CLAUDE_CODE_REMOTE)) return true
+  if (process.env.CLAUDE_CODE_ENTRYPOINT === 'claude-desktop') return true
+  if (isEnvTruthy(process.env.CLAUDE_CODE_PROVIDER_MANAGED_BY_HOST)) return true
+
+  // Third-party provider sessions are managed by the host's provider config,
+  // not the user's local settings — skip user-configured apiKeyHelper/auth tokens.
+  if (
+    isEnvTruthy(process.env.CLAUDE_CODE_USE_BEDROCK) ||
+    isEnvTruthy(process.env.CLAUDE_CODE_USE_VERTEX) ||
+    isEnvTruthy(process.env.CLAUDE_CODE_USE_FOUNDRY)
+  ) {
+    return true
+  }
+
+  return false
 }
 
 /**
@@ -754,42 +771,31 @@ async function getAwsCredsFromCredentialExport(): Promise<{
   }
 
   try {
-    logForDebugging(
-      'Fetching AWS caller identity for credential export command',
-    )
-    await checkStsCallerIdentity()
-    logForDebugging(
-      'Fetched AWS caller identity, skipping AWS credential export command',
-    )
-    return null
-  } catch {
-    // only actually do the export if caller-identity calls
-    try {
-      logForDebugging('Running AWS credential export command')
-      const result = await execa(awsCredentialExport, {
-        shell: true,
-        reject: false,
-      })
-      if (result.exitCode !== 0 || !result.stdout) {
-        throw new Error('awsCredentialExport did not return a valid value')
-      }
+    logForDebugging('Running AWS credential export command')
+    const result = await execa(awsCredentialExport, {
+      shell: true,
+      reject: false,
+    })
+    if (result.exitCode !== 0 || !result.stdout) {
+      throw new Error('awsCredentialExport did not return a valid value')
+    }
 
-      // Parse the JSON output from aws sts commands
-      const awsOutput = jsonParse(result.stdout.trim())
+    // Parse the JSON output from aws sts commands
+    const awsOutput = jsonParse(result.stdout.trim())
 
-      if (!isValidAwsStsOutput(awsOutput)) {
-        throw new Error(
-          'awsCredentialExport did not return valid AWS STS output structure',
-        )
-      }
+    if (!isValidAwsStsOutput(awsOutput)) {
+      throw new Error(
+        'awsCredentialExport did not return valid AWS STS output structure',
+      )
+    }
 
-      logForDebugging('AWS credentials retrieved from awsCredentialExport')
-      return {
-        accessKeyId: awsOutput.Credentials.AccessKeyId,
-        secretAccessKey: awsOutput.Credentials.SecretAccessKey,
-        sessionToken: awsOutput.Credentials.SessionToken,
-      }
-    } catch (e) {
+    logForDebugging('AWS credentials retrieved from awsCredentialExport')
+    return {
+      accessKeyId: awsOutput.Credentials.AccessKeyId,
+      secretAccessKey: awsOutput.Credentials.SecretAccessKey,
+      sessionToken: awsOutput.Credentials.SessionToken,
+    }
+  } catch (e) {
       const message = chalk.red(
         'Error getting AWS credentials from awsCredentialExport (in settings or ~/.claude.json):',
       )
@@ -802,7 +808,6 @@ async function getAwsCredsFromCredentialExport(): Promise<{
       }
       return null
     }
-  }
 }
 
 /**

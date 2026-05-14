@@ -40,6 +40,11 @@ function SelectMethod({ onSelect, onCancel }: { onSelect: (method: LoginMethod) 
       <Select
         options={[
           {
+            label: 'OAuth Browser Login (Recommended)',
+            value: 'browser',
+            description: 'Complete login in your browser, auto-callback',
+          },
+          {
             label: 'Use Codex CLI login (if installed)',
             value: 'codex',
             description: 'Use existing login from codex login',
@@ -48,11 +53,6 @@ function SelectMethod({ onSelect, onCancel }: { onSelect: (method: LoginMethod) 
             label: 'Manually enter Session Token',
             value: 'manual',
             description: 'Paste your session token from browser cookies',
-          },
-          {
-            label: 'OAuth Browser (may not work)',
-            value: 'browser',
-            description: 'Open browser to authenticate with OpenAI',
           },
         ]}
         visibleOptionCount={3}
@@ -76,6 +76,9 @@ function WaitingForLogin({ url, method }: { url: string; method: LoginMethod }) 
       <Text color="yellow">Waiting for authorization...</Text>
       <Box marginTop={1}>
         <Text dimColor>Complete authorization in your browser.</Text>
+      </Box>
+      <Box marginTop={1}>
+        <Text dimColor>This window will close automatically after login.</Text>
       </Box>
       {method === 'headless' && (
         <>

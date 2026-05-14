@@ -112,7 +112,7 @@ export class OpenAIOAuthService {
 
       // Handle success redirect
       if (isAutomaticFlow) {
-        const scopes = tokenResponse.scope?.split(' ').filter(Boolean) ?? []
+        const scopes = tokenResponse.scope ?? []
         this.authCodeListener?.handleSuccessRedirect(scopes)
       }
 
@@ -147,7 +147,7 @@ export class OpenAIOAuthService {
       'redirect_uri',
       isManual
         ? OPENAI_OAUTH_CONFIG.MANUAL_REDIRECT_URI
-        : `http://localhost:${port}/callback`,
+        : `http://localhost:${port}/auth/callback`,
     )
     authUrl.searchParams.append('scope', OPENAI_OAUTH_CONFIG.SCOPES.join(' '))
     authUrl.searchParams.append('code_challenge', codeChallenge)
@@ -157,6 +157,11 @@ export class OpenAIOAuthService {
     if (loginHint) {
       authUrl.searchParams.append('login_hint', loginHint)
     }
+
+    // Add Codex-style extra params
+    authUrl.searchParams.append('id_token_add_organizations', OPENAI_OAUTH_CONFIG.EXTRA_AUTHORIZE_PARAMS.id_token_add_organizations)
+    authUrl.searchParams.append('codex_cli_simplified_flow', OPENAI_OAUTH_CONFIG.EXTRA_AUTHORIZE_PARAMS.codex_cli_simplified_flow)
+    authUrl.searchParams.append('origin', OPENAI_OAUTH_CONFIG.EXTRA_AUTHORIZE_PARAMS.origin)
 
     return authUrl.toString()
   }
@@ -171,7 +176,7 @@ export class OpenAIOAuthService {
       code: authorizationCode,
       redirect_uri: useManualRedirect
         ? OPENAI_OAUTH_CONFIG.MANUAL_REDIRECT_URI
-        : `http://localhost:${this.port}/callback`,
+        : `http://localhost:${this.port}/auth/callback`,
       client_id: OPENAI_OAUTH_CONFIG.CLIENT_ID,
       code_verifier: this.codeVerifier,
       state,

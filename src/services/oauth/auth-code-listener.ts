@@ -24,7 +24,7 @@ export class AuthCodeListener {
   private pendingResponse: ServerResponse | null = null // Response object for final redirect
   private callbackPath: string // Configurable callback path
 
-  constructor(callbackPath: string = '/callback') {
+  constructor(callbackPath: string = '/auth/callback') {
     this.localServer = createServer()
     this.callbackPath = callbackPath
   }
