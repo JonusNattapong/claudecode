@@ -1571,7 +1571,22 @@ function createAssistantMessageFromOpenAIResponse(
   const createAssistantMessageWithReasoning = (
     content: string | BetaContentBlock[],
   ): AssistantMessage => {
-    const assistantMessage = createAssistantMessage({ content, usage })
+    const contentWithReasoning =
+      reasoningContent && Array.isArray(content)
+        ? [
+            { type: 'thinking' as const, thinking: reasoningContent, signature: '' },
+            ...content,
+          ]
+        : reasoningContent
+          ? [
+              { type: 'thinking' as const, thinking: reasoningContent, signature: '' },
+              { type: 'text' as const, text: content === '' ? 'No content' : content },
+            ]
+          : content
+    const assistantMessage = createAssistantMessage({
+      content: contentWithReasoning as string | BetaContentBlock[],
+      usage,
+    })
     assistantMessage.message.model = response?.model ?? model
     ;(assistantMessage.message as any).provider = provider
     if (reasoningContent) {

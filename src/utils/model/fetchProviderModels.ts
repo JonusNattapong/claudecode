@@ -163,6 +163,7 @@ export function supportsModelFetching(provider?: ProviderId): boolean {
       'ollama',
       'deepseek',
       'opencode',
+      'opencode-go',
       'kilocode',
       'google',
     ]

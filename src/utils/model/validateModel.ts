@@ -56,7 +56,7 @@ export async function validateModel(
   // since they use different authentication methods and API formats
   const providerManager = ProviderManager.getInstance()
   const activeProvider = providerManager.getActiveProviderName()
-  const nonAnthropicProviders = ['cline', 'openrouter', 'openai', 'gemini', 'groq', 'xai', 'mistral', 'deepseek', 'kilocode', 'opencode', 'ollama', 'copilot']
+  const nonAnthropicProviders = ['cline', 'openrouter', 'openai', 'gemini', 'groq', 'xai', 'mistral', 'deepseek', 'kilocode', 'opencode', 'opencode-go', 'ollama', 'copilot']
   if (nonAnthropicProviders.includes(activeProvider)) {
     // For non-Anthropic providers, accept any model ID that is in the allowlist
     // or matches the provider's model format (e.g., provider/model for Cline/OpenRouter)

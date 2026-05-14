@@ -20,7 +20,9 @@ import {
 import { clearProviderModelsCache, fetchProviderModels } from '../../services/ai/providerModels.js'
 import { ProviderManager, getProjectProviderConfigPath, getEffectiveProviderConfigPath, PROVIDER_CONFIG_PATH } from '../../services/ai/ProviderManager.js'
 import { OpenAIOAuthFlow } from '../../components/OpenAIOAuthFlow.js'
+import { GitHubCopilotAuthFlow } from '../../components/GitHubCopilotAuthFlow.js'
 import type { OpenAIOAuthTokens } from '../../services/openaiOAuth/index.js'
+import type { GitHubOAuthTokens } from '../../services/oauth/githubOAuth.js'
 
 type SerializableProviderRegistryEntry = Omit<ProviderRegistryEntry, 'provider'>
 
@@ -408,6 +410,7 @@ function ProviderPicker({
   const [searchQuery, setSearchQuery] = React.useState('')
   const [searchCursorOffset, setSearchCursorOffset] = React.useState(0)
   const [showOpenAIOAuth, setShowOpenAIOAuth] = React.useState(false)
+  const [showGitHubCopilotAuth, setShowGitHubCopilotAuth] = React.useState(false)
   const setAppState = useSetAppState()
   const currentSessionModel = useAppState(s => (s.mainLoopModelForSession || s.mainLoopModel) as string | null)
 
@@ -518,6 +521,40 @@ function ProviderPicker({
 
     onDone(
       `Set provider to ${provider} (ChatGPT Plus)\nModel: ${currentModel}\n(Session only)`,
+      { display: 'system' },
+    )
+  }
+
+  // Store GitHub Copilot token
+  async function saveCopilotToken(token: string) {
+    if (!provider) return
+
+    const currentConfig = await loadConfig()
+    const nextConfig: ProviderConfig = {
+      provider,
+      model: (currentSessionModel as string) || currentConfig?.model || getDefaultModelForProvider(provider) || '',
+      providerConfig: getSerializableProviderInfo(provider),
+      apiKeys: {
+        ...(currentConfig?.apiKeys ?? {}),
+        copilot: token,
+      },
+    }
+
+    await saveConfig(nextConfig)
+    clearProviderModelsCache(provider)
+
+    // Set the token in environment for immediate use
+    process.env.COPILOT_GITHUB_TOKEN = token
+
+    // Invalidate provider config cache to force reload
+    const providerManager = ProviderManager.getInstance()
+    providerManager.invalidateConfigCache()
+
+    const currentModel = nextConfig.model || getDefaultModelForProvider(provider)
+    applyProviderSelectionToSession(setAppState, { model: currentModel, provider }, false)
+
+    onDone(
+      `Set provider to ${provider} (GitHub Copilot)\nModel: ${currentModel}\n(Session only)`,
       { display: 'system' },
     )
   }
@@ -759,10 +796,15 @@ function ProviderPicker({
       React.createElement(
         Text,
         { marginBottom: 1 },
-        `API key required for ${info.label} (${info.envKey})`,
+        `Login method for ${info.label} (${info.envKey})`,
       ),
       React.createElement(Select, {
         options: [
+          {
+            label: 'Device Flow (Browser)',
+            value: 'device_flow',
+            description: 'Open browser to authenticate, get code from github.com/login/device',
+          },
           {
             label: 'Login with GitHub CLI',
             value: 'gh_login',
@@ -774,9 +816,11 @@ function ProviderPicker({
             description: `Paste ${info.envKey} directly`,
           },
         ],
-        visibleOptionCount: 2,
+        visibleOptionCount: 3,
         onChange: value => {
-          if (value === 'gh_login') {
+          if (value === 'device_flow') {
+            setShowGitHubCopilotAuth(true)
+          } else if (value === 'gh_login') {
             void handleGhLogin()
           } else {
             setShowChangeKey(true)
@@ -802,6 +846,27 @@ function ProviderPicker({
       React.createElement(Text, { color: 'cyan' }, '  gh auth login'),
       React.createElement(Text, { dimColor: true }, 'Then press Enter here to get the token'),
     )
+  }
+
+  // GitHub Copilot Device Flow auth
+  if (provider === 'copilot' && showGitHubCopilotAuth) {
+    return React.createElement(GitHubCopilotAuthFlow, {
+      onDone: (tokens: GitHubOAuthTokens | null) => {
+        setShowGitHubCopilotAuth(false)
+        if (tokens?.accessToken) {
+          // Save the GitHub token and continue
+          void saveCopilotToken(tokens.accessToken)
+        } else {
+          setProvider(null)
+        }
+      },
+      onCancel: () => {
+        setShowGitHubCopilotAuth(false)
+        setProvider(null)
+        setSearchQuery('')
+        setSearchCursorOffset(0)
+      },
+    })
   }
 
   // Show input field when: (no existing key) OR (user chose to change key)

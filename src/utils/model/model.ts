@@ -59,6 +59,12 @@ export function getSmallFastModel(): ModelName {
       return registryEntry.defaultModel
     }
   }
+  // For 3P providers (Bedrock/Vertex/Foundry/gateway), the default Haiku
+  // model ID may not be available. Fall back to the main-loop model so
+  // background side-queries don't fail with an unavailable model.
+  if (getAPIProvider() !== 'firstParty') {
+    return getMainLoopModel()
+  }
   return getDefaultHaikuModel()
 }
 

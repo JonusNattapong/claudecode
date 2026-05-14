@@ -6,6 +6,7 @@ export type ProviderId =
   | 'google'
   | 'openrouter'
   | 'opencode'
+  | 'opencode-go'
   | 'cline'
   | 'groq'
   | 'xai'

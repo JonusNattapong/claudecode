@@ -287,6 +287,13 @@ async function configureApiKeyHeaders(
   if (token) {
     headers['Authorization'] = `Bearer ${token}`
   }
+
+  // ANTHROPIC_WORKSPACE_ID scopes the minted token to a specific workspace
+  // when the workload identity federation rule covers more than one workspace.
+  const workspaceId = process.env.ANTHROPIC_WORKSPACE_ID
+  if (workspaceId) {
+    headers['anthropic-workspace-id'] = workspaceId
+  }
 }
 
 function getCustomHeaders(): Record<string, string> {
