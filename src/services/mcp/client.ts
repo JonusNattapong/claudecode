@@ -227,6 +227,22 @@ export function isMcpSessionExpiredError(error: Error): boolean {
 }
 
 /**
+ * Check if an error represents an HTTP response with the given status code.
+ * StreamableHTTPError and other SDK transport errors expose the HTTP status
+ * via a `code` property (number). Generic fetch errors may have `status`.
+ */
+function isHttpStatusError(error: Error, status: number): boolean {
+  const err = error as Error & { code?: number | string; status?: number }
+  // StreamableHTTPError: code is the numeric HTTP status (401, 403, etc.)
+  if (err.code === status) return true
+  if (err.status === status) return true
+  // Some SDK error wrappers embed the status in the message
+  if (error.message.includes(`HTTP ${status}`)) return true
+  if (error.message.includes(`status ${status}`)) return true
+  return false
+}
+
+/**
  * Default timeout for MCP tool calls (effectively infinite - ~27.8 hours).
  */
 const DEFAULT_MCP_TOOL_TIMEOUT_MS = 100_000_000
@@ -725,6 +741,35 @@ export function wrapFetchWithTimeout(baseFetch: FetchLike): FetchLike {
   }
 }
 
+/**
+ * Wrap a fetch-like to inject the session ingress token on each request.
+ * The token is read dynamically via the `getToken` thunk rather than captured
+ * at transport-creation time, so mid-session token rotation (via
+ * updateSessionIngressAuthToken) is reflected immediately — the old token
+ * continues working for in-flight requests, and the new one is used for
+ * subsequent ones without re-creating the transport.
+ *
+ * Only injects if no Authorization header is already set (e.g. by the SDK's
+ * auth provider), preventing conflicts with OAuth tokens.
+ */
+function wrapFetchWithSessionToken(
+  baseFetch: FetchLike,
+  getToken: () => string | null,
+): FetchLike {
+  return async (url: string | URL, init?: RequestInit) => {
+    const token = getToken()
+    if (!token) {
+      return baseFetch(url, init)
+    }
+    // Don't override an existing Authorization header (e.g. from auth provider)
+    const headers = new Headers(init?.headers)
+    if (!headers.has('Authorization')) {
+      headers.set('Authorization', `Bearer ${token}`)
+    }
+    return baseFetch(url, { ...init, headers })
+  }
+}
+
 export function getMcpServerConnectionBatchSize(): number {
   return parseInt(process.env.MCP_SERVER_CONNECTION_BATCH_SIZE || '', 10) || 3
 }
@@ -1053,19 +1098,24 @@ export const connectToServer = memoize(
           // Step-up detection wraps innermost so the 403 is seen before the
           // SDK's handler calls auth() → tokens().
           // G4: Cap POST response bodies at 16MB — outermost wrapper.
+          // IMPORTANT: Use a fetch wrapper (not requestInit headers) for the
+          // session ingress token so that token rotation mid-session is picked
+          // up on each request. requestInit headers are captured once at
+          // transport creation and never refreshed.
           fetch: wrapFetchWithResponseSizeLimit(
             wrapFetchWithTimeout(
-              wrapFetchWithStepUpDetection(createFetchWithInit(), authProvider),
+              wrapFetchWithStepUpDetection(
+                sessionIngressToken && !hasOAuthTokens
+                  ? wrapFetchWithSessionToken(createFetchWithInit(), () => getSessionIngressAuthToken())
+                  : createFetchWithInit(),
+                authProvider,
+              ),
             ),
           ),
           requestInit: {
             ...proxyOptions,
             headers: {
               'User-Agent': getMCPUserAgent(),
-              ...(sessionIngressToken &&
-                !hasOAuthTokens && {
-                  Authorization: `Bearer ${sessionIngressToken}`,
-                }),
               ...combinedHeaders,
             },
           },
@@ -1340,6 +1390,15 @@ export const connectToServer = memoize(
           if (error instanceof UnauthorizedError) {
             return handleRemoteAuthFailure(name, serverRef, 'sse')
           }
+          // 403 Forbidden — auth credentials are invalid or insufficient,
+          // show as "needs auth" not "failed" so the user knows to fix auth.
+          if (isHttpStatusError(error, 403)) {
+            logMCPDebug(
+              name,
+              `SSE connection failed with 403 Forbidden — routing to needs-auth`,
+            )
+            return handleRemoteAuthFailure(name, serverRef, 'sse')
+          }
           // Servers with headersHelper rely on script-provided credentials;
           // a connection failure likely means the helper returned bad headers.
           // Show as needs-auth so the user knows to re-run the helper script.
@@ -1364,6 +1423,15 @@ export const connectToServer = memoize(
           logMCPError(name, error)
 
           if (error instanceof UnauthorizedError) {
+            return handleRemoteAuthFailure(name, serverRef, 'http')
+          }
+          // 403 Forbidden — auth credentials are invalid or insufficient,
+          // show as "needs auth" not "failed" so the user knows to fix auth.
+          if (isHttpStatusError(error, 403)) {
+            logMCPDebug(
+              name,
+              `HTTP connection failed with 403 Forbidden — routing to needs-auth`,
+            )
             return handleRemoteAuthFailure(name, serverRef, 'http')
           }
           // Servers with headersHelper rely on script-provided credentials;
@@ -1542,6 +1610,19 @@ export const connectToServer = memoize(
         const uptime = Date.now() - connectionStartTime
         hasErrorOccurred = true
         const transportType = serverRef.type || 'stdio'
+
+        // The SDK's StreamableHTTP transport fires this for SSE stream
+        // reconnection failures. The SSE GET stream is OPTIONAL per spec —
+        // tool calls over POST continue to work independently. Don't count
+        // these toward consecutiveConnectionErrors so we don't trigger a
+        // transport close for an inessential stream.
+        if (error.message.includes('Failed to reconnect SSE stream')) {
+          logMCPDebug(
+            name,
+            `SSE stream reconnection failed (non-terminal — tool calls over POST continue)`,
+          )
+          return
+        }
 
         // Log the connection drop with context
         logMCPDebug(

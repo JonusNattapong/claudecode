@@ -1334,33 +1334,63 @@ export function parseMcpConfig(params: {
   errors: ValidationError[]
 } {
   const { configObject, expandVars, scope, filePath } = params
-  const schemaResult = McpJsonConfigSchema().safeParse(configObject)
-  if (!schemaResult.success) {
+
+  // Accept raw unknown input — extract mcpServers map manually so that invalid
+  // entries are skipped individually rather than dropping all servers. A single
+  // malformed entry in .mcp.json should not silence the other (valid) ones.
+  const raw = configObject as Record<string, unknown> | null | undefined
+  const rawServers: Record<string, unknown> =
+    (raw && typeof raw === 'object' && 'mcpServers' in raw
+      ? (raw as Record<string, unknown>).mcpServers
+      : undefined) ?? {}
+
+  if (typeof rawServers !== 'object' || rawServers === null) {
     return {
       config: null,
-      errors: schemaResult.error.issues.map(issue => ({
-        ...(filePath && { file: filePath }),
-        path: issue.path.length > 0 ? issue.path.join('.') : '(root)',
-        message: issue.message === 'Required'
-          ? `Does not adhere to MCP server configuration schema: Missing required field '${issue.path.length > 0 ? issue.path.at(-1) : '(root)'}'`
-          : `Does not adhere to MCP server configuration schema: ${issue.message}`,
-        mcpErrorMetadata: {
-          scope,
-          severity: 'fatal',
+      errors: [
+        {
+          ...(filePath && { file: filePath }),
+          path: 'mcpServers',
+          message: `'mcpServers' must be an object`,
+          mcpErrorMetadata: {
+            scope,
+            severity: 'fatal',
+          },
         },
-      })),
+      ],
     }
   }
 
-  // Validate each server and expand variables if requested
+  // Validate each server independently so a single bad entry doesn't
+  // drop all others (gh#32910, gh#34192).
   const errors: ValidationError[] = []
   const validatedServers: Record<string, McpServerConfig> = {}
 
-  for (const [name, config] of Object.entries(schemaResult.data.mcpServers)) {
-    let configToCheck = config
+  for (const [name, rawConfig] of Object.entries(rawServers)) {
+    const entryResult = McpServerConfigSchema().safeParse(rawConfig)
+    if (!entryResult.success) {
+      for (const issue of entryResult.error.issues) {
+        errors.push({
+          ...(filePath && { file: filePath }),
+          path: `mcpServers.${name}${issue.path.length > 0 ? '.' + issue.path.join('.') : ''}`,
+          message: issue.message === 'Required'
+            ? `Does not adhere to MCP server configuration schema: Missing required field '${issue.path.at(-1) ?? '(root)'}'`
+            : `Does not adhere to MCP server configuration schema: ${issue.message}`,
+          mcpErrorMetadata: {
+            scope,
+            serverName: name,
+            severity: 'fatal',
+          },
+        })
+      }
+      // Skip this entry but continue processing others
+      continue
+    }
+
+    let configToCheck: McpServerConfig = entryResult.data
 
     if (expandVars) {
-      const { expanded, missingVars } = expandEnvVars(config)
+      const { expanded, missingVars } = expandEnvVars(configToCheck)
 
       if (missingVars.length > 0) {
         errors.push({
@@ -1402,6 +1432,16 @@ export function parseMcpConfig(params: {
 
     validatedServers[name] = configToCheck
   }
+
+  if (Object.keys(validatedServers).length === 0 && errors.length > 0) {
+    // All entries were invalid — return null config so callers can
+    // distinguish "no servers" from "all servers had errors".
+    return {
+      config: null,
+      errors,
+    }
+  }
+
   return {
     config: { mcpServers: validatedServers },
     errors,
