@@ -8,6 +8,7 @@
 import { readFileSync, readdirSync, statSync, writeFileSync, existsSync, mkdirSync } from 'fs'
 import { basename, join, relative } from 'path'
 import type { CodeChunk, CodeIndexConfig, SearchResult } from './types.js'
+import { DEFAULT_INDEX_CONFIG } from './types.js'
 import { chunkFile, getLanguage, getSupportedExtensions } from './tokenizer.js'
 import { createCodeSearch, searchCode, searchCodeExact } from './search.js'
 import Fuse from 'fuse.js'

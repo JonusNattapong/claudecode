@@ -16,6 +16,10 @@
 import type { BetaMessageStreamParams, BetaMessage } from '@anthropic-ai/sdk/resources/beta/messages/messages.mjs'
 import type { ProviderContentBlock } from '../../../types/common.js'
 import type { ContentBlockParam } from '@anthropic-ai/sdk/resources/index.mjs'
+import {
+  getProviderModelInfo,
+  getProviderRegistryEntry,
+} from '../providerRegistry.js'
 
 /** Per-provider stream watchdog defaults (seconds). Override per adapter. */
 const DEFAULT_STREAM_TIMEOUT_MS = 30_000
@@ -164,7 +168,7 @@ export interface ProviderAdapter {
 
 // ── Adapter registry ─────────────────────────────────────────────────────────
 
-const adapterRegistry = new Map<string, (client: any) => ProviderAdapter>()
+const adapterRegistry = new Map<string, (client: any, providerId: string) => ProviderAdapter>()
 
 /**
  * Register a factory for a given provider id.
@@ -172,7 +176,7 @@ const adapterRegistry = new Map<string, (client: any) => ProviderAdapter>()
  */
 export function registerAdapter(
   providerId: string,
-  factory: (client: any) => ProviderAdapter,
+  factory: (client: any, providerId: string) => ProviderAdapter,
 ): void {
   adapterRegistry.set(providerId, factory)
 }
@@ -182,7 +186,7 @@ export function registerAdapter(
  * no specialised adapter exists (the caller should fall back to the generic
  * OpenAI-compatible adapter).
  */
-export function getAdapter(providerId: string): ((client: any) => ProviderAdapter) | undefined {
+export function getAdapter(providerId: string): ((client: any, providerId: string) => ProviderAdapter) | undefined {
   return adapterRegistry.get(providerId)
 }
 
@@ -219,12 +223,33 @@ function stringifyReasoningContent(value: unknown): string {
 class OpenAICompatibleAdapter implements ProviderAdapter {
   readonly label: string
   private client: any
+  private providerId: string
   /** OpenAI/OpenRouter rate-limit constantly — shorter watchdog avoids noise. */
   readonly streamTimeoutMs = 45_000
 
-  constructor(client: any, label = 'OpenAI-Compatible') {
+  constructor(client: any, providerId: string, label = 'OpenAI-Compatible') {
     this.client = client
+    this.providerId = providerId
     this.label = label
+  }
+
+  /**
+   * Check whether the target model supports vision (image inputs).
+   * First checks provider-level capability, then model-level capability.
+   */
+  private modelSupportsVision(modelId: string): boolean {
+    try {
+      const entry = getProviderRegistryEntry(this.providerId as any)
+      if (!entry.capabilities.vision) return false
+
+      const modelInfo = getProviderModelInfo(this.providerId as any, modelId)
+      if (modelInfo) return modelInfo.capabilities.vision
+
+      return entry.capabilities.vision
+    } catch {
+      // If registry lookup fails, assume yes — let the provider reject if needed
+      return true
+    }
   }
 
   async createMessage(
@@ -271,6 +296,21 @@ class OpenAICompatibleAdapter implements ProviderAdapter {
       if (status === 400 && (code === 'content_filter' || code === 'content_policy_violation')) {
         const err = new Error(`[${this.label}] Content blocked by safety filter`) as any
         err._providerError = { category: 'content_filter', status }
+        return err
+      }
+
+      // Image not supported — catch provider errors about image_url or vision
+      if (
+        status === 400 &&
+        (message.includes('unknown variant `image_url`') ||
+         message.includes('does not support image input') ||
+         message.includes('No endpoints found that support image') ||
+         message.includes('image_url') && message.includes('not supported'))
+      ) {
+        const err = new Error(
+          `[${this.label}] Image input is not supported by this model. Remove images or switch to a vision-capable model.`,
+        ) as any
+        err._providerError = { category: 'invalid_request', status }
         return err
       }
 
@@ -323,6 +363,11 @@ class OpenAICompatibleAdapter implements ProviderAdapter {
           if (c.type === 'text') {
             textParts.push(c.text)
           } else if (c.type === 'image') {
+            // Skip image if model doesn't support vision
+            if (!this.modelSupportsVision(params.model)) {
+              textParts.push(`[Image not sent — ${params.model} does not support vision]`)
+              continue
+            }
             // Convert Anthropic image block to OpenAI image content part
             const source = c.source
             if (source?.type === 'base64') {
@@ -630,7 +675,7 @@ class OpenAICompatibleAdapter implements ProviderAdapter {
 
 // Register the generic OpenAI-compatible adapter so every provider gets a
 // sensible default unless they register their own specialised adapter.
-registerAdapter('__default__', (client: any) => new OpenAICompatibleAdapter(client))
+registerAdapter('__default__', (client: any, providerId: string) => new OpenAICompatibleAdapter(client, providerId))
 
 // ── AnthropicAdapter (legacy wrapper) ─────────────────────────────────────────
 
@@ -650,7 +695,7 @@ export class AnthropicAdapter {
     this.client = client
     this.providerId = providerId
     const factory = getAdapter(providerId) ?? getAdapter('__default__')!
-    this.adapter = factory(client)
+    this.adapter = factory(client, this.providerId)
   }
 
   get beta() {

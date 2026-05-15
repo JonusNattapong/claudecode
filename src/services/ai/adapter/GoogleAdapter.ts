@@ -208,4 +208,4 @@ class GoogleAdapter implements ProviderAdapter {
 }
 
 // Register for both 'google' and 'gemini' IDs
-registerAdapter('google', (client: any) => new GoogleAdapter(client))
+registerAdapter('google', (client: any, _providerId: string) => new GoogleAdapter(client))

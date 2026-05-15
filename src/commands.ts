@@ -153,7 +153,6 @@ import exit from './commands/exit/index.js'
 import exportCommand from './commands/export/index.js'
 import model from './commands/model/index.js'
 import outputStyle from './commands/output-style/index.js'
-import setpath from './commands/path/index.js'
 import skill from './commands/skill/index.js'
 import powerup from './commands/powerup/index.js'
 import remoteEnv from './commands/remote-env/index.js'
@@ -274,7 +273,6 @@ const COMMANDS = memoize((): Command[] => [
   mobile,
   model,
   outputStyle,
-setpath,
    skill,
    powerup,
   providerSelect,
