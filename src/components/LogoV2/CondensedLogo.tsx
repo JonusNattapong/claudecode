@@ -25,7 +25,7 @@ export function CondensedLogo(): ReactNode {
   const agent = useAppState(s => s.agent);
   const effortValue = useAppState(s => s.effortValue);
   const model = useMainLoopModel();
-  const modelDisplayName = renderModelSetting(model);
+  const modelDisplayName = renderModelSetting(model).replace(/^[^:]+:\s*/, '');
   const { version, cwd, billingType, agentName: agentNameFromSettings } = getLogoDisplayData();
 
   // Prefer AppState.agent (set from --agent CLI flag) over settings

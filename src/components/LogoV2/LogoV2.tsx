@@ -135,7 +135,7 @@ export function LogoV2(): React.ReactNode {
   }, [showOverageCreditUpsell, showOnboarding, showGuestPassesUpsell, isCondensedMode]);
 
   const model = useMainLoopModel();
-  const fullModelDisplayName = renderModelSetting(model);
+  const fullModelDisplayName = renderModelSetting(model).replace(/^[^:]+:\s*/, '');
   const { version, cwd, billingType, agentName: agentNameFromSettings } = getLogoDisplayData();
   // Prefer AppState.agent (set from --agent CLI flag) over settings
   const agentName = agent ?? agentNameFromSettings;
