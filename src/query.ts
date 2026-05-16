@@ -1186,7 +1186,7 @@ async function* queryLoop(
       // This is checked after stop hooks because the goal evaluator runs there.
       // Skip when background shells or delegated subagents are still running.
       {
-        const { getFullGoalState } = await import('../utils/sessionGoalState.js');
+        const { getFullGoalState } = await import('./utils/sessionGoalState.js');
         const goalState = getFullGoalState();
         if (
           goalState &&
