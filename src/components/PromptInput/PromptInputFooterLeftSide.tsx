@@ -274,6 +274,19 @@ function ModeIndicator({
     teamContext !== undefined &&
     count(Object.values(teamContext.teammates), t => t.name !== 'team-lead') > 0;
 
+  // Hooks must be called before any early returns (React rules-of-hooks).
+  // Moved above the mode === 'bash' return to prevent "Rendered fewer hooks
+  // than expected" when switching from prompt → bash mode.
+  const setAppState = useSetAppState();
+  const handleCycleMode = useCallback(() => {
+    const cm = cyclePermissionMode(toolPermissionContext);
+    setAppState(prev => ({
+      ...prev,
+      toolPermissionContext: cm.context,
+    }));
+  }, [toolPermissionContext, setAppState]);
+  const [modeHover, setModeHover] = useState(false);
+
   if (mode === 'bash') {
     return <Text color="bashBorder">! for bash mode</Text>;
   }
@@ -313,15 +326,6 @@ function ModeIndicator({
   // the local permission mode shown here doesn't reflect the agent's state.
   // Rendered before the tasks pill so a long pill label (e.g. ultraplan URL)
   // doesn't push the mode indicator off-screen.
-  const setAppState = useSetAppState();
-  const handleCycleMode = useCallback(() => {
-    const cm = cyclePermissionMode(toolPermissionContext);
-    setAppState(prev => ({
-      ...prev,
-      toolPermissionContext: cm.context,
-    }));
-  }, [toolPermissionContext, setAppState]);
-  const [modeHover, setModeHover] = useState(false);
   const modePart =
     currentMode && hasActiveMode && !getIsRemoteMode() ? (
       <Box
