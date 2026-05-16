@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { isPaneBackend } from './backends/types.js';
+import { isPaneBackend } from './types.js';
 
 describe('backend types', () => {
   test('isPaneBackend returns true for tmux', () => {

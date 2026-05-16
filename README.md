@@ -6,7 +6,7 @@ A research-oriented fork of Anthropic's [Claude Code](https://claude.ai/code) CL
 
 ## Introduction
 
-Claude Code extends the original Claude Code terminal interface into a comprehensive multi-provider AI development platform. It maintains full compatibility with the original tool execution model while introducing support for over 15 AI providers, 55 built-in tools, 100+ slash commands, and a modular plugin ecosystem.
+Claude Code extends the original Claude Code terminal interface into a comprehensive multi-provider AI development platform. It maintains full compatibility with the original tool execution model while introducing support for 15 AI providers, 57+ built-in tools, 100+ slash commands, MCP/LSP integrations, a supervisor agent system, and a modular plugin/skill ecosystem.
 
 The platform is built on [Bun](https://bun.sh) 1.3+ and supports Windows, macOS, and Linux (including WSL2) environments.
 
@@ -45,10 +45,12 @@ Non-Anthropic SDK clients are transparently wrapped into a unified streaming int
 | File Operations | Read, Edit, Write, Glob, Grep, FileEdit, FileRead, FileWrite, NotebookEdit |
 | Shell Execution | Bash, PowerShell, Sleep |
 | Web & Browser | WebFetch, WebSearch, Browser, WebBrowser |
-| Code Intelligence | CodeIndex, LSP, JsonPath |
-| AI & Task Management | Agent, Research, Task (Create/Get/List/Update/Output/Stop) |
+| Code Intelligence | CodeIndex (fuzzy search), LSP, JsonPath |
+| AI & Task Management | Agent, Research, Supervisor, Task (Create/Get/List/Update/Output/Stop) |
 | Planning | EnterPlanMode, ExitPlanMode, VerifyPlanExecution, Workflow |
 | Meta & Configuration | Skill, ToolSearch, Config, TodoWrite, Monitor, RemoteTrigger |
+| Code Analysis | CodeGraph (dependency map), ast-grep (AST search/replace) |
+| Cross-Session | Session Bridge (save/restore context), Preloader (module context) |
 | Communication | SendMessage, AskUserQuestion |
 | MCP Integration | MCP, McpAuth, ListMcpResource, ReadMcpResource |
 | Utilities | REPL, ScheduleCron, SyntheticOutput, ComputerUse, Brief, MultiSearch, Worktree |
@@ -83,11 +85,13 @@ Modular capability packages with progressive disclosure. Bundled skills include 
 
 ### Additional Capabilities
 
-- **MCP Integration** — Model Context Protocol with OAuth, SSE, and stdio transports
+- **MCP Integration** — Model Context Protocol with OAuth, SSE, stdio, and Auth0 transports
+- **Supervisor System** — Hierarchical agent coordination, subagent management, and workflow orchestration
+- **Code Intelligence** — CodeIndex (fuzzy code search), CodeGraph (dependency visualization), LSP integration
+- **Session Bridge** — Cross-session context save/restore for long-running development workflows
 - **Bridge Mode** — WebSocket-based remote collaboration and session sharing
 - **Vim Mode** — Modal editing with motions, operators, and text objects
 - **Custom Keybindings** — Configurable chord-based keybinding engine
-- **LSP Support** — Language Server Protocol integration for code intelligence
 - **Session Memory** — Persistent session lifecycle and memory management
 - **Settings Sync** — Cross-device configuration synchronization
 
@@ -136,6 +140,11 @@ bun run build          # Build production bundle to dist/
 bun test               # Execute all tests
 bun test <path>        # Run specific test file or directory
 bun x tsc --noEmit     # TypeScript type checking only
+bun run preload <mod>  # Preload module context before editing (e.g. `bridge`, `query`)
+bun run session <cmd>  # Session Bridge: save/list/restore cross-session context
+bun run codeindex <cmd># CodeIndex: index and fuzzy-search the codebase
+bun run codegraph      # Generate module dependency graph
+bun run ast-grep -- <args>  # AST-based code search and rewrite
 ```
 
 ### Debug Logging
@@ -162,7 +171,7 @@ DEBUG=provider:anthropic bun run src/main.tsx  # Per-provider debug logging
 |  AnthropicAdapter, GoogleAdapter          |
 +-------------------------------------------+
 |      Core Query & Streaming Engine        |
-|  main.tsx, QueryEngine, query.ts          |
+|  main.tsx, QueryEngine, query.ts, query/  |
 |  ToolExecution, Orchestration, Hooks      |
 +-------------------------------------------+
 |      Services & Infrastructure            |
@@ -183,6 +192,11 @@ DEBUG=provider:anthropic bun run src/main.tsx  # Per-provider debug logging
 | `src/tools/` | Built-in tool implementations |
 | `src/services/tools/` | Tool execution and orchestration |
 | `src/plugins/` | Plugin lifecycle management |
+| `src/services/mcp/` | MCP client and connection management |
+| `src/services/Supervisor/` | Agent supervision and coordination |
+| `src/services/SessionLifecycle/` | Session lifecycle management |
+| `src/services/SessionMemory/` | Session memory management |
+| `src/coordinator/` | Multi-agent coordination |
 | `src/bridge/` | WebSocket remote collaboration |
 | `src/state/` | Lightweight reactive store |
 
@@ -213,7 +227,7 @@ src/
 ├── commands.ts              Command registry
 ├── tools.ts                 Tool registry
 ├── commands/                100+ slash command implementations
-├── tools/                   55+ built-in tool implementations
+├── tools/                   57+ built-in tool implementations
 ├── services/
 │   ├── ai/                  ProviderManager, adapters, providers, registry
 │   ├── mcp/                 MCP client and connection management
@@ -224,7 +238,8 @@ src/
 │   ├── SessionLifecycle/    Session lifecycle management
 │   ├── SessionMemory/       Session memory management
 │   ├── settingsSync/        Cross-device settings synchronization
-│   └── analytics/           Usage analytics and telemetry
+│   ├── analytics/           Usage analytics and telemetry
+│   └── codeIndex/           CodeIndex search and indexing
 ├── skills/                  Skill loading and bundled skills
 ├── cli/                     App.tsx (root component), transports, handlers
 ├── components/              React/Ink UI components

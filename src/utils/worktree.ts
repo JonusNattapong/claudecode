@@ -171,7 +171,7 @@ function worktreesDir(repoRoot: string): string {
 //     uncommitted work.
 // `+` is valid in git branch names and filesystem paths but NOT in the
 // slug-segment allowlist ([a-zA-Z0-9._-]), so the mapping is injective.
-function flattenSlug(slug: string): string {
+export function flattenSlug(slug: string): string {
   return slug.replaceAll('/', '+');
 }
 

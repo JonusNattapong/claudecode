@@ -5,12 +5,14 @@
  */
 
 import { beforeAll, describe, expect, test } from 'bun:test';
+import { enableConfigs } from '../../utils/config.js';
 
 let resolveTeammateModel: typeof import('./spawnMultiAgent.js')['resolveTeammateModel'];
 
 beforeAll(async () => {
   // Set dummy API key to satisfy module load-time auth guard
   process.env.ANTHROPIC_API_KEY ??= 'test-key';
+  enableConfigs();
   const mod = await import('./spawnMultiAgent.js');
   resolveTeammateModel = mod.resolveTeammateModel;
 });
