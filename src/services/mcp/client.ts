@@ -33,7 +33,7 @@ import pMap from 'p-map';
 // when a server streams non-protocol data without newline delimiters.
 // Must use relative path since this module isn't in the SDK's package.json exports.
 // eslint-disable-next-line import/no-unresolved
-import { ReadBuffer as MCPReadBuffer } from '../../../../node_modules/@modelcontextprotocol/sdk/dist/esm/shared/stdio.js';
+import { ReadBuffer as MCPReadBuffer } from '../../../node_modules/@modelcontextprotocol/sdk/dist/esm/shared/stdio.js';
 import { getOriginalCwd, getSessionId } from '../../bootstrap/state.js';
 import type { Command } from '../../commands.js';
 import { getOauthConfig } from '../../constants/oauth.js';
