@@ -28,7 +28,16 @@
 
 **Verification:** `/resume` shows bg sessions with `[bg]` label
 
-**Status:** ⬜
+**Status:** ✅
+
+**Files touched:**
+- `src/utils/backgroundSessionsForResume.ts` (new)
+- `src/commands/resume/resume.tsx`
+- `src/components/LogSelector.tsx`
+- `src/types/logs.ts`
+- `src/utils/format.ts`
+
+**Verification:** `/resume` shows bg sessions with `[bg]` label
 
 ---
 
@@ -44,7 +53,10 @@
 
 **Verification:** Background agent completion message includes elapsed time
 
-**Status:** ⬜
+**Status:** ✅
+
+**Files touched:**
+- `src/tasks/LocalAgentTask/LocalAgentTask.tsx` — `enqueueAgentNotification` includes `formatDuration(usage.durationMs)`
 
 ---
 
@@ -57,7 +69,11 @@
 
 **Verification:** Plugin listing shows "Updated: X ago" or similar
 
-**Status:** ⬜
+**Status:** ✅
+
+**Files touched:**
+- `src/commands/plugin/BrowseMarketplace.tsx`
+- `src/commands/plugin/DiscoverPlugins.tsx`
 
 ---
 
@@ -71,7 +87,11 @@
 
 **Verification:** `/model` changes apply to current session only; `d` sets default
 
-**Status:** ⬜
+**Status:** ✅
+
+**Files touched:**
+- `src/commands/model/model.tsx` — session-only via `mainLoopModelForSession`; `d` calls `onSetDefault`
+- `src/components/ModelPicker.tsx` — `d` shortcut + hint
 
 ---
 
@@ -110,7 +130,10 @@
 
 **Verification:** Startup completes within ~15s when api.anthropic.com is blocked
 
-**Status:** ⬜
+**Status:** ✅
+
+**Files touched:**
+- `src/services/claudeAiLimits.ts` — 15s `AbortSignal.timeout`
 
 ---
 
@@ -181,7 +204,10 @@
 
 **Verification:** Reading `fake.png` (containing HTML) shows text, not crash
 
-**Status:** ⬜
+**Status:** ✅
+
+**Files touched:**
+- `src/tools/FileReadTool/FileReadTool.ts` — MIME mismatch fallback to text
 
 ---
 
@@ -224,7 +250,10 @@
 
 **Verification:** `/branch` works after `EnterWorktree`
 
-**Status:** ⬜
+**Status:** ✅
+
+**Files touched:**
+- `src/commands/branch/branch.ts` — transcript fallback from original CWD
 
 ---
 
@@ -237,7 +266,10 @@
 
 **Verification:** Escape in notes field goes back to answers
 
-**Status:** ⬜
+**Status:** ✅
+
+**Files touched:**
+- `src/components/permissions/ExitPlanModePermissionRequest/PreviewQuestionView.tsx`
 
 ---
 
@@ -277,7 +309,10 @@
 
 **Verification:** Bedrock/Vertex users see and can select Opus 1M
 
-**Status:** ⬜
+**Status:** ✅
+
+**Files touched:**
+- `src/utils/model/modelOptions.ts` — include `getOpus46_1MOption` for 3P when custom model is `opus[1m]`
 
 ---
 
@@ -307,7 +342,10 @@
 
 **Verification:** MCP server with 100+ tools returns all of them
 
-**Status:** ⬜
+**Status:** ✅
+
+**Files touched:**
+- `src/services/mcp/client.ts` — paginated `tools/list` loop
 
 ---
 
@@ -320,7 +358,10 @@
 
 **Verification:** SVG from MCP tool doesn't crash, saved as file
 
-**Status:** ⬜
+**Status:** ✅
+
+**Files touched:**
+- `src/services/mcp/client.ts` — unsupported MIME saved to disk
 
 ---
 
@@ -335,7 +376,10 @@
 
 **Verification:** Running build inside skill directory doesn't leak FDs
 
-**Status:** ⬜
+**Status:** ✅
+
+**Files touched:**
+- `src/skills/skillChangeDetector.ts`
 
 ---
 
@@ -348,7 +392,10 @@
 
 **Verification:** Session title uses user's first prompt, not plugin noise
 
-**Status:** ⬜
+**Status:** ✅
+
+**Files touched:**
+- `src/screens/REPL.tsx`
 
 ---
 
@@ -361,20 +408,24 @@
 
 **Verification:** Skill tool works in headless mode
 
-**Status:** ⬜
+**Status:** ✅
+
+**Files touched:**
+- `src/tools/SkillTool/SkillTool.ts`
 
 ---
 
-### 8.4 Plugin "not cached" on fresh machine
+### 8.4 Plugin "not cached" on fresh machine ✅
 
 **Desc:** Plugins enabled in your own settings showing "not cached" errors after first load. Project-only plugins show actionable `claude plugin install` hint.
 
-**Files to touch:**
-- Plugin cache/loading logic
+**Files touched:**
+- `src/commands/plugin/PluginErrors.tsx` — actionable hint with `claude plugin install`
+- `src/types/plugin.ts` — error message includes install command
 
 **Verification:** Fresh machine loads plugins without "not cached" error
 
-**Status:** ⬜
+**Status:** ✅
 
 ---
 
@@ -387,7 +438,10 @@
 
 **Verification:** Invalid `.mcp.json` shows error message
 
-**Status:** ⬜
+**Status:** ✅
+
+**Files touched:**
+- `src/cli/handlers/mcp.tsx`
 
 ---
 
@@ -400,7 +454,10 @@
 
 **Verification:** Background queries use Haiku when configured
 
-**Status:** ⬜
+**Status:** ✅
+
+**Files touched:**
+- `src/utils/model/model.ts` — `getSmallFastModel()` fallback
 
 ---
 
@@ -522,7 +579,10 @@
 
 **Verification:** `claude respawn <id>` runs a stopped session
 
-**Status:** ⬜
+**Status:** ✅
+
+**Files touched:**
+- `src/services/Supervisor/supervisor.ts` — `handleRespawn`
 
 ---
 
@@ -627,7 +687,10 @@
 
 **Verification:** `claude --bg --name mytask` shows name after spawn
 
-**Status:** ⬜
+**Status:** ✅
+
+**Files touched:**
+- `src/cli/sessionManager.ts`
 
 ---
 
@@ -667,7 +730,10 @@
 
 **Verification:** Plugin install uses HTTPS when env var is set
 
-**Status:** ⬜
+**Status:** ✅
+
+**Files touched:**
+- `src/utils/plugins/pluginLoader.ts`, `marketplaceManager.ts`
 
 ---
 
@@ -680,7 +746,10 @@
 
 **Verification:** After toggle action, back in Installed list
 
-**Status:** ⬜
+**Status:** ✅
+
+**Files touched:**
+- `src/commands/plugin/ManagePlugins.tsx` — `setViewState('plugin-list')` after enable/disable/uninstall
 
 ---
 
@@ -746,7 +815,10 @@
 
 **Verification:** After survey response, follow-up hint shown
 
-**Status:** ⬜
+**Status:** ✅
+
+**Files touched:**
+- `src/components/FeedbackSurvey.tsx`
 
 ---
 
@@ -754,15 +826,26 @@
 
 | Phase | Items | Status |
 |-------|-------|--------|
-| 1: CLI & Commands | 5 | ⬜⬜⬜⬜✅ |
+| 1: CLI & Commands | 5 | ✅✅✅✅✅ |
 | 2: Startup & Connection | 2 | ✅⬜ |
 | 3: Terminal & Display | 3 | ⬜⬜⬜ |
 | 4: File & Tool | 3 | ✅✅✅ |
-| 5: Session & Model | 5 | ✅✅⬜⬜⬜ |
+| 5: Session & Model | 5 | ✅✅⬜⬜✅ |
 | 6: Auth & Remote Login | 1 | ⬜ |
 | 7: MCP | 2 | ✅✅ |
-| 8: Infrastructure | 6 | ✅✅✅⬜✅✅ |
+| 8: Infrastructure | 6 | ✅✅✅✅✅✅ |
 | 9: Windows | 5 | ⬜⬜⬜⬜⬜ |
-| 10: Agent View & BG Sessions | 9 | ⬜⬜⬜⬜⬜⬜⬜⬜⬜ |
-| 11: Improvements & Polish | 12 | ✅⬜⬜✅✅✅✅✅✅⬜⬜✅ |
-| **Total** | **53** | **✅ 24/53** |
+| 10: Agent View & BG Sessions | 9 | ⬜⬜⬜⬜✅⬜⬜⬜⬜ |
+| 11: Improvements & Polish | 12 | ✅⬜✅✅✅✅✅✅⬜⬜✅ |
+| **Total** | **53** | **✅ 34/53** |
+
+### Remaining (20)
+
+- **2.2** macOS bg Full Disk Access crash
+- **3.1–3.3** Terminal resize / corruption / VS Code spinner
+- **5.3–5.4** IDE model picker, resumed session model persistence
+- **6.1** Remote login org error
+- **8.4** Plugin not-cached on fresh machine (partial)
+- **9.1–9.5** Windows scroll, crash, Ctrl+C, agents arrow, CJK ghosts
+- **10.1–10.3, 10.5–10.9** Agent view / bg session UX (except 10.4 respawn)
+- **11.2, 11.9–11.11** Gate naming, skill truncation in /doctor, stream stall retry, MCP startup overlap
