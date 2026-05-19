@@ -830,21 +830,19 @@
 | 2: Startup & Connection | 2 | ✅⬜ |
 | 3: Terminal & Display | 3 | ⬜⬜⬜ |
 | 4: File & Tool | 3 | ✅✅✅ |
-| 5: Session & Model | 5 | ✅✅⬜✅✅ |
-| 6: Auth & Remote Login | 1 | ⬜ |
+| 5: Session & Model | 5 | ✅✅✅✅✅ |
+| 6: Auth & Remote Login | 1 | ✅ |
 | 7: MCP | 2 | ✅✅ |
 | 8: Infrastructure | 6 | ✅✅✅✅✅✅ |
 | 9: Windows | 5 | ⬜⬜⬜⬜⬜ |
 | 10: Agent View & BG Sessions | 9 | ⬜⬜⬜⬜✅⬜⬜⬜⬜ |
 | 11: Improvements & Polish | 12 | ✅⬜✅✅✅✅✅✅⬜⬜✅ |
-| **Total** | **53** | **✅ 35/53** |
+| **Total** | **53** | **✅ 38/53** |
 
-### Remaining (18)
+### Remaining (15)
 
 - **2.2** macOS bg Full Disk Access crash
 - **3.1–3.3** Terminal resize / corruption / VS Code spinner
-- **5.3** IDE model picker (code exists, needs PLAN sync)
-- **6.1** Remote login org error
 - **9.1–9.5** Windows scroll, crash, Ctrl+C, agents arrow, CJK ghosts
 - **10.2–10.3, 10.5–10.9** Agent view / bg session UX
 - **11.9–11.11** Skill truncation in /doctor, stream stall retry, MCP startup overlap
