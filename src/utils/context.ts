@@ -237,7 +237,6 @@ function getContextWindowFromRegistry(model: string): number | null {
     groq: 'groq',
     xai: 'xai',
     mistral: 'mistral',
-    chatgpt_plus: 'chatgpt_plus',
   };
 
   // Try each provider to find matching model

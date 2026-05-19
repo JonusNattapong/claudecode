@@ -1,6 +1,6 @@
 import type React from 'react';
 import { useEffect, useMemo, useState } from 'react';
-import { extraUsage } from 'src/commands/extra-usage/index.js';
+import { usageCredits } from 'src/commands/usage-credits/index.js';
 import { Box, Text } from 'src/ink.js';
 import { useClaudeAiLimits } from 'src/services/claudeAiLimitsHook.js';
 import { shouldProcessMockLimits } from 'src/services/rateLimitMocking.js'; // Used for /mock-limits command
@@ -93,7 +93,7 @@ export function RateLimitMessage({ text, onOpenRateLimitOptions }: RateLimitMess
     const message = getUpsellMessage({
       shouldShowUpsell,
       isMax20x,
-      isExtraUsageCommandEnabled: extraUsage.isEnabled(),
+      isExtraUsageCommandEnabled: usageCredits.isEnabled(),
       shouldAutoOpenRateLimitOptionsMenu: !!shouldAutoOpenRateLimitOptionsMenu,
       isTeamOrEnterprise,
       hasBillingAccess: hasClaudeAiBillingAccess(),

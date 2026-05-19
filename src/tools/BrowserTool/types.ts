@@ -5,7 +5,9 @@
 export type BrowserAction =
   | 'navigate'
   | 'click'
+  | 'click_at'
   | 'type'
+  | 'type_at'
   | 'fill'
   | 'clear'
   | 'press'
@@ -32,6 +34,7 @@ export type BrowserAction =
   | 'focus'
   | 'wait_for'
   | 'wait_for_url'
+  | 'wait'
   // ── iFrame & popup ──
   | 'frame_click'
   | 'frame_fill'
@@ -45,7 +48,11 @@ export type BrowserAction =
   | 'evaluate'
   | 'search'
   | 'request_help'
-  | 'vision_map';
+  | 'vision_map'
+  | 'extract_data'
+  | 'switch_tab'
+  | 'open_new_tab'
+  | 'drag_and_drop';
 
 export interface BrowserActionInput {
   action: BrowserAction;
@@ -55,6 +62,8 @@ export interface BrowserActionInput {
   key?: string;
   direction?: 'up' | 'down';
   amount?: number;
+  x?: number;
+  y?: number;
   // Extended fields
   role?: string; // ARIA role (button, link, textbox, checkbox, etc.)
   name?: string; // Accessible name for getByRole

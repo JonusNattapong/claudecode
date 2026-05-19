@@ -110,7 +110,11 @@ Modular capability packages with progressive disclosure. Bundled skills include 
 | Markdown       | marked + highlight.js + turndown                                          |
 | Terminal       | chalk + ora + ink-spinner + ink-text-input                                |
 
-### Installation
+#### 🌌 Multi-Provider AI Support
+Claude Code now supports 30+ AI providers including Anthropic, OpenAI, Gemini, Together, NVIDIA, and more. 
+Check out our [**AI Providers Guide (PROVIDERS.md)**](./PROVIDERS.md) for full setup instructions and supported models.
+
+## Installation
 
 #### Option 1: Global Installation (Recommended)
 

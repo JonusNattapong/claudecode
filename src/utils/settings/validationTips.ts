@@ -78,6 +78,17 @@ const TIP_MATCHERS: TipMatcher[] = [
     },
   },
   {
+    matches: (ctx): boolean =>
+      ctx.path.includes('hooks') &&
+      ctx.path.endsWith('command') &&
+      ctx.code === 'invalid_type' &&
+      ctx.expected === 'string',
+    tip: {
+      suggestion:
+        'The "command" field must be a string. For the exec form (no shell), use "command" with an executable path and "args" as an array. Example: {"type": "command", "command": "/usr/bin/node", "args": ["script.js"]}',
+    },
+  },
+  {
     matches: (ctx): boolean => ctx.code === 'invalid_type' && ctx.expected === 'boolean',
     tip: {
       suggestion: 'Use true or false without quotes. Example: "includeCoAuthoredBy": true',

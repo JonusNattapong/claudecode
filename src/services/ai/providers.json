@@ -396,6 +396,39 @@
           "reasoning": true,
           "supportsSystemPrompt": true
         }
+      },
+      {
+        "id": "claude-sonnet-4.5",
+        "label": "Claude Sonnet 4.5 (Copilot)",
+        "tags": [
+          "tools",
+          "vision",
+          "recommended"
+        ],
+        "capabilities": {
+          "toolCalling": "native",
+          "vision": true,
+          "streaming": "full",
+          "maxContext": 1000000,
+          "reasoning": true,
+          "supportsSystemPrompt": true
+        }
+      },
+      {
+        "id": "claude-haiku-4.5",
+        "label": "Claude Haiku 4.5 (Copilot)",
+        "tags": [
+          "tools",
+          "vision"
+        ],
+        "capabilities": {
+          "toolCalling": "native",
+          "vision": true,
+          "streaming": "full",
+          "maxContext": 1000000,
+          "reasoning": true,
+          "supportsSystemPrompt": true
+        }
       }
     ]
   },
@@ -930,6 +963,24 @@
           "reasoning": true,
           "supportsSystemPrompt": true
         }
+      },
+      {
+        "id": "deepseek-v4-flash-free",
+        "label": "DeepSeek V4 Flash Free (Go)",
+        "tags": [
+          "tools",
+          "reasoning",
+          "free"
+        ],
+        "capabilities": {
+          "toolCalling": "native",
+          "vision": false,
+          "streaming": "partial",
+          "maxContext": 1000000,
+          "maxOutput": "varies",
+          "reasoning": true,
+          "supportsSystemPrompt": true
+        }
       }
     ]
   },
@@ -1414,48 +1465,6 @@
       }
     ]
   },
-  "chatgpt_plus": {
-    "providerId": "chatgpt_plus",
-    "label": "ChatGPT Plus",
-    "envKey": "CHATGPT_SUBSCRIPTION_KEY",
-    "defaultBaseUrl": "https://api.openai.com/v1",
-    "defaultModel": "gpt-5.5",
-    "defaultModelVerified": false,
-    "note": "OpenAI Responses API for ChatGPT Plus subscribers. Get key from platform.openai.com",
-    "capabilities": {
-      "chat": true,
-      "streaming": "full",
-      "toolCalling": true,
-      "vision": true,
-      "jsonSchema": true,
-      "reasoningEffort": true,
-      "contextLength": "1M+"
-    },
-    "models": [
-      {
-        "id": "gpt-5.5",
-        "label": "GPT-5.5 (ChatGPT Plus)",
-        "tags": [
-          "tools",
-          "vision",
-          "native",
-          "verified"
-        ],
-        "supportedTypes": [
-          "subscriber"
-        ],
-        "capabilities": {
-          "toolCalling": "native",
-          "vision": true,
-          "streaming": "full",
-          "maxContext": 1050000,
-          "maxOutput": 128000,
-          "reasoning": true,
-          "supportsSystemPrompt": true
-        }
-      }
-    ]
-  },
   "ollama": {
     "providerId": "ollama",
     "label": "Ollama (Local)",
@@ -1524,6 +1533,465 @@
           "maxContext": "varies",
           "maxOutput": "varies",
           "reasoning": true,
+          "supportsSystemPrompt": true
+        }
+      }
+    ]
+  },
+  "together": {
+    "providerId": "together",
+    "label": "Together AI",
+    "envKey": "TOGETHER_API_KEY",
+    "defaultBaseUrl": "https://api.together.ai/v1",
+    "modelsUrl": "https://api.together.xyz/v1/models",
+    "note": "Together AI - OpenAI-compatible endpoint. Updated 2026.",
+    "capabilities": {
+      "chat": true,
+      "streaming": "partial",
+      "toolCalling": true,
+      "vision": true,
+      "jsonSchema": true,
+      "reasoningEffort": true,
+      "contextLength": "128k+"
+    },
+    "models": [
+      {
+        "id": "meta-llama/Llama-4-70b-chat-hf",
+        "label": "Llama 4 70B (Together)",
+        "capabilities": {
+          "toolCalling": "native",
+          "vision": false,
+          "streaming": "partial",
+          "maxContext": 131072,
+          "reasoning": true,
+          "supportsSystemPrompt": true
+        }
+      },
+      {
+        "id": "meta-llama/Llama-4-8b-chat-hf",
+        "label": "Llama 4 8B (Together)",
+        "capabilities": {
+          "toolCalling": "native",
+          "vision": false,
+          "streaming": "partial",
+          "maxContext": 131072,
+          "reasoning": true,
+          "supportsSystemPrompt": true
+        }
+      }
+    ]
+  },
+  "fireworks": {
+    "providerId": "fireworks",
+    "label": "Fireworks AI",
+    "envKey": "FIREWORKS_API_KEY",
+    "defaultBaseUrl": "https://api.fireworks.ai/inference/v1",
+    "modelsUrl": "https://api.fireworks.ai/inference/v1/models",
+    "note": "Fireworks AI - OpenAI-compatible endpoint. Updated 2026.",
+    "capabilities": {
+      "chat": true,
+      "streaming": "partial",
+      "toolCalling": true,
+      "vision": true,
+      "jsonSchema": true,
+      "reasoningEffort": true,
+      "contextLength": "varies"
+    },
+    "models": [
+      {
+        "id": "accounts/fireworks/models/llama-v4-70b-instruct",
+        "label": "Llama 4 70B (Fireworks)",
+        "capabilities": {
+          "toolCalling": "native",
+          "vision": false,
+          "streaming": "partial",
+          "maxContext": 131072,
+          "reasoning": true,
+          "supportsSystemPrompt": true
+        }
+      }
+    ]
+  },
+  "nvidia": {
+    "providerId": "nvidia",
+    "label": "NVIDIA NIM",
+    "envKey": "NVIDIA_API_KEY",
+    "defaultBaseUrl": "https://integrate.api.nvidia.com/v1",
+    "modelsUrl": "https://integrate.api.nvidia.com/v1/models",
+    "note": "NVIDIA NIM (NVIDIA AI Foundation Models) - OpenAI-compatible. Updated 2026.",
+    "capabilities": {
+      "chat": true,
+      "streaming": "partial",
+      "toolCalling": true,
+      "vision": true,
+      "jsonSchema": true,
+      "reasoningEffort": true,
+      "contextLength": "128k"
+    },
+    "models": [
+      {
+        "id": "deepseek-ai/deepseek-v4-pro",
+        "label": "DeepSeek V4 Pro (NVIDIA)",
+        "capabilities": {
+          "toolCalling": "native",
+          "vision": true,
+          "streaming": "partial",
+          "maxContext": 1000000,
+          "reasoning": true,
+          "supportsSystemPrompt": true
+        }
+      },
+      {
+        "id": "meta/llama-3.1-405b-instruct",
+        "label": "Llama 3.1 405B (NVIDIA)",
+        "capabilities": {
+          "toolCalling": "native",
+          "vision": false,
+          "streaming": "partial",
+          "maxContext": 128000,
+          "reasoning": true,
+          "supportsSystemPrompt": true
+        }
+      },
+      {
+        "id": "meta/llama-3.1-70b-instruct",
+        "label": "Llama 3.1 70B (NVIDIA)",
+        "capabilities": {
+          "toolCalling": "native",
+          "vision": false,
+          "streaming": "partial",
+          "maxContext": 128000,
+          "reasoning": true,
+          "supportsSystemPrompt": true
+        }
+      },
+      {
+        "id": "nvidia/nemotron-4-340b-instruct",
+        "label": "Nemotron-4 340B (NVIDIA)",
+        "capabilities": {
+          "toolCalling": "native",
+          "vision": false,
+          "streaming": "partial",
+          "maxContext": 4096,
+          "reasoning": true,
+          "supportsSystemPrompt": true
+        }
+      }
+    ]
+  },
+  "cohere": {
+    "providerId": "cohere",
+    "label": "Cohere",
+    "envKey": "COHERE_API_KEY",
+    "defaultBaseUrl": "https://api.cohere.ai/compatibility/v1",
+    "modelsUrl": "https://api.cohere.ai/v1/models",
+    "note": "Cohere Command models. Updated 2026.",
+    "capabilities": {
+      "chat": true,
+      "streaming": "full",
+      "toolCalling": true,
+      "vision": false,
+      "jsonSchema": true,
+      "reasoningEffort": true,
+      "contextLength": "128k"
+    },
+    "models": [
+      {
+        "id": "command-r-plus",
+        "label": "Command R+ (Latest)",
+        "capabilities": {
+          "toolCalling": "native",
+          "vision": false,
+          "streaming": "full",
+          "maxContext": 128000,
+          "reasoning": true,
+          "supportsSystemPrompt": true
+        }
+      }
+    ]
+  },
+  "deepinfra": {
+    "providerId": "deepinfra",
+    "label": "Deep Infra",
+    "envKey": "DEEPINFRA_API_KEY",
+    "defaultBaseUrl": "https://api.deepinfra.com/v1/openai",
+    "modelsUrl": "https://api.deepinfra.com/v1/openai/models",
+    "note": "DeepInfra OpenAI-compatible gateway. Updated 2026.",
+    "capabilities": {
+      "chat": true,
+      "streaming": "partial",
+      "toolCalling": true,
+      "vision": true,
+      "jsonSchema": true,
+      "reasoningEffort": true,
+      "contextLength": "varies"
+    },
+    "models": [
+      {
+        "id": "meta-llama/Llama-4-Scout-17B",
+        "label": "Llama 4 Scout (DeepInfra)",
+        "capabilities": {
+          "toolCalling": "native",
+          "vision": true,
+          "streaming": "partial",
+          "maxContext": 327680,
+          "reasoning": true,
+          "supportsSystemPrompt": true
+        }
+      }
+    ]
+  },
+  "perplexity": {
+    "providerId": "perplexity",
+    "label": "Perplexity",
+    "envKey": "PERPLEXITY_API_KEY",
+    "defaultBaseUrl": "https://api.perplexity.ai/v1",
+    "modelsUrl": "https://api.perplexity.ai/models",
+    "note": "Perplexity AI chat/search models. Updated 2026.",
+    "capabilities": {
+      "chat": true,
+      "streaming": "partial",
+      "toolCalling": false,
+      "vision": false,
+      "jsonSchema": false,
+      "reasoningEffort": true,
+      "contextLength": "128k"
+    },
+    "models": [
+      {
+        "id": "llama-3.1-sonar-huge-128k-online",
+        "label": "Sonar Huge Online",
+        "capabilities": {
+          "toolCalling": "none",
+          "vision": false,
+          "streaming": "partial",
+          "maxContext": 128000,
+          "reasoning": true,
+          "supportsSystemPrompt": true
+        }
+      }
+    ]
+  },
+  "cerebras": {
+    "providerId": "cerebras",
+    "label": "Cerebras",
+    "envKey": "CEREBRAS_API_KEY",
+    "defaultBaseUrl": "https://api.cerebras.ai/v1",
+    "modelsUrl": "https://api.cerebras.ai/v1/models",
+    "note": "Cerebras Wafer-Scale Engine (Extremely Fast). Updated 2026.",
+    "capabilities": {
+      "chat": true,
+      "streaming": "full",
+      "toolCalling": true,
+      "vision": false,
+      "jsonSchema": true,
+      "reasoningEffort": false,
+      "contextLength": "8k"
+    },
+    "models": [
+      {
+        "id": "qwen/Qwen-3-235B-Instruct",
+        "label": "Qwen 3 235B (Cerebras)",
+        "capabilities": {
+          "toolCalling": "native",
+          "vision": false,
+          "streaming": "full",
+          "maxContext": 128000,
+          "reasoning": true,
+          "supportsSystemPrompt": true
+        }
+      }
+    ]
+  },
+  "siliconflow": {
+    "providerId": "siliconflow",
+    "label": "SiliconFlow",
+    "envKey": "SILICONFLOW_API_KEY",
+    "defaultBaseUrl": "https://api.siliconflow.cn/v1",
+    "modelsUrl": "https://api.siliconflow.cn/v1/models",
+    "note": "SiliconFlow AI platform (China). Updated 2026.",
+    "capabilities": {
+      "chat": true,
+      "streaming": "partial",
+      "toolCalling": true,
+      "vision": true,
+      "jsonSchema": true,
+      "reasoningEffort": true,
+      "contextLength": "varies"
+    },
+    "models": [
+      {
+        "id": "deepseek-ai/DeepSeek-V4-Pro",
+        "label": "DeepSeek V4 Pro (Latest)",
+        "capabilities": {
+          "toolCalling": "native",
+          "vision": true,
+          "streaming": "partial",
+          "maxContext": 1000000,
+          "reasoning": true,
+          "supportsSystemPrompt": true
+        }
+      },
+      {
+        "id": "deepseek-ai/DeepSeek-V4-Flash",
+        "label": "DeepSeek V4 Flash",
+        "capabilities": {
+          "toolCalling": "native",
+          "vision": true,
+          "streaming": "partial",
+          "maxContext": 1000000,
+          "reasoning": true,
+          "supportsSystemPrompt": true
+        }
+      }
+    ]
+  },
+  "moonshot": {
+    "providerId": "moonshot",
+    "label": "Moonshot AI (Kimi)",
+    "envKey": "MOONSHOT_API_KEY",
+    "defaultBaseUrl": "https://api.moonshot.ai/v1",
+    "modelsUrl": "https://api.moonshot.cn/v1/models",
+    "note": "Moonshot AI Kimi models. Updated 2026.",
+    "capabilities": {
+      "chat": true,
+      "streaming": "partial",
+      "toolCalling": true,
+      "vision": true,
+      "jsonSchema": true,
+      "reasoningEffort": true,
+      "contextLength": "128k"
+    },
+    "models": [
+      {
+        "id": "kimi-latest",
+        "label": "Kimi Latest",
+        "capabilities": {
+          "toolCalling": "native",
+          "vision": true,
+          "streaming": "partial",
+          "maxContext": 128000,
+          "reasoning": true,
+          "supportsSystemPrompt": true
+        }
+      }
+    ]
+  },
+  "zhipu": {
+    "providerId": "zhipu",
+    "label": "Zhipu AI (GLM)",
+    "envKey": "ZHIPU_API_KEY",
+    "defaultBaseUrl": "https://api.z.ai/api/paas/v4",
+    "note": "Zhipu AI GLM models. Updated 2026.",
+    "capabilities": {
+      "chat": true,
+      "streaming": "partial",
+      "toolCalling": true,
+      "vision": true,
+      "jsonSchema": true,
+      "reasoningEffort": true,
+      "contextLength": "128k"
+    },
+    "models": [
+      {
+        "id": "glm-4",
+        "label": "GLM-4 (Latest)",
+        "capabilities": {
+          "toolCalling": "native",
+          "vision": true,
+          "streaming": "partial",
+          "maxContext": 128000,
+          "reasoning": true,
+          "supportsSystemPrompt": true
+        }
+      }
+    ]
+  },
+  "huggingface": {
+    "providerId": "huggingface",
+    "label": "Hugging Face",
+    "envKey": "HUGGINGFACE_API_KEY",
+    "defaultBaseUrl": "https://router.huggingface.co/v1",
+    "note": "Hugging Face Inference API. Updated 2026.",
+    "capabilities": {
+      "chat": true,
+      "streaming": "partial",
+      "toolCalling": false,
+      "vision": false,
+      "jsonSchema": false,
+      "reasoningEffort": false,
+      "contextLength": "varies"
+    },
+    "models": [
+      {
+        "id": "meta-llama/Llama-3.1-70B-Instruct",
+        "label": "Llama 3.1 70B (HF)",
+        "capabilities": {
+          "toolCalling": "none",
+          "vision": false,
+          "streaming": "partial",
+          "maxContext": 8192,
+          "reasoning": false,
+          "supportsSystemPrompt": true
+        }
+      }
+    ]
+  },
+  "poe": {
+    "providerId": "poe",
+    "label": "Poe",
+    "envKey": "POE_API_KEY",
+    "defaultBaseUrl": "https://api.poe.com/v1",
+    "note": "Poe API (OpenAI-compatible gateway). Updated 2026.",
+    "capabilities": {
+      "chat": true,
+      "streaming": "partial",
+      "toolCalling": true,
+      "vision": true,
+      "jsonSchema": true,
+      "reasoningEffort": true,
+      "contextLength": "varies"
+    },
+    "models": [
+      {
+        "id": "claude-3-7-sonnet",
+        "label": "Claude 3.7 Sonnet (Poe)",
+        "capabilities": {
+          "toolCalling": "native",
+          "vision": true,
+          "streaming": "partial",
+          "maxContext": 200000,
+          "reasoning": true,
+          "supportsSystemPrompt": true
+        }
+      }
+    ]
+  },
+  "digitalocean": {
+    "providerId": "digitalocean",
+    "label": "DigitalOcean",
+    "envKey": "DIGITALOCEAN_API_KEY",
+    "defaultBaseUrl": "https://inference.do-ai.run/v1",
+    "note": "DigitalOcean Serverless Inference. Updated 2026.",
+    "capabilities": {
+      "chat": true,
+      "streaming": "partial",
+      "toolCalling": true,
+      "vision": false,
+      "jsonSchema": true,
+      "reasoningEffort": false,
+      "contextLength": "varies"
+    },
+    "models": [
+      {
+        "id": "llama-3.1-70b-instruct",
+        "label": "Llama 3.1 70B (DigitalOcean)",
+        "capabilities": {
+          "toolCalling": "native",
+          "vision": false,
+          "streaming": "partial",
+          "maxContext": 131072,
+          "reasoning": false,
           "supportsSystemPrompt": true
         }
       }

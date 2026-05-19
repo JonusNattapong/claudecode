@@ -2,8 +2,7 @@ import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from '
 import { join } from 'path';
 import { getGlobalConfig } from '../../utils/config.js';
 import { getClaudeConfigHomeDir } from '../../utils/envUtils.js';
-import { createProviderInstance, DEFAULT_PROVIDER, getProviderOptions, PROVIDER_REGISTRY } from './providerRegistry.js';
-import { ChatGPTSessionProvider } from './providers/ChatGPTSessionProvider.js';
+import { DEFAULT_PROVIDER, getProviderOptions, PROVIDER_REGISTRY } from './providerRegistry.js';
 import type { ProviderId, ProviderInitOptions, ProviderInterface } from './providers/ProviderInterface.js';
 
 const LEGACY_PROVIDER_CONFIG_PATH = join(
@@ -202,12 +201,6 @@ export class ProviderManager {
 
   getProvider(provider?: ProviderId): ProviderInterface {
     const providerName = provider ?? this.getActiveProviderName();
-    const config = this.getSelectedProviderConfig();
-
-    // Handle OpenAI Subscriber (Web Session)
-    if (providerName === 'openai' && (config.providerConfig as any)?.openaiType === 'subscriber') {
-      return new ChatGPTSessionProvider() as any;
-    }
 
     const providerEntry = PROVIDER_REGISTRY[providerName];
     if (!providerEntry) {
@@ -309,6 +302,20 @@ export class ProviderManager {
       apiKey,
       baseUrl,
       model,
+    });
+  }
+
+  async listModels(provider?: ProviderId, options: ProviderInitOptions = {}): Promise<Array<{ id: string; label: string }>> {
+    const effectiveProvider = provider ?? this.getActiveProviderName();
+    const providerInstance = this.getProvider(effectiveProvider);
+
+    const apiKey = options.apiKey ?? this.getApiKeyForProvider(effectiveProvider);
+    const baseUrl = options.baseUrl ?? this.getBaseUrlForProvider(effectiveProvider);
+
+    return providerInstance.listModels({
+      ...options,
+      apiKey,
+      baseUrl,
     });
   }
 }

@@ -94,9 +94,10 @@ export class CopilotProvider implements ProviderInterface {
 
             // Use mapped model ID
             const modelId = this.mapModel(params.model);
+            const copilotBaseUrl = options.baseUrl ?? 'https://api.githubcopilot.com';
             const requestBody = { ...params, model: modelId, stream: isStreaming };
 
-            const response = await fetch(getChatCompletionsUrl('https://api.githubcopilot.com'), {
+            const response = await fetch(getChatCompletionsUrl(copilotBaseUrl), {
               method: 'POST',
               headers,
               body: JSON.stringify(requestBody),
@@ -129,6 +130,17 @@ export class CopilotProvider implements ProviderInterface {
         },
       },
     };
+  }
+
+  async listModels(_options: ProviderInitOptions): Promise<Array<{ id: string; label: string }>> {
+    // Copilot doesn't have a public models list API, so we return our known supported models.
+    return [
+      { id: 'gpt-5.5', label: 'Copilot GPT-5.5 (Latest)' },
+      { id: 'gpt-4o', label: 'Copilot GPT-4o' },
+      { id: 'claude-sonnet-4.5', label: 'Claude Sonnet 4.5 (Copilot)' },
+      { id: 'claude-haiku-4.5', label: 'Claude Haiku 4.5 (Copilot)' },
+      { id: 'claude-opus-4-7', label: 'Claude Opus 4.7 (Copilot)' },
+    ];
   }
 
   protected async *handleStreamingResponse(response: Response): AsyncGenerator<unknown, void, unknown> {
@@ -185,10 +197,12 @@ export class CopilotProvider implements ProviderInterface {
    */
   private mapModel(model: string): string {
     const modelMap: Record<string, string> = {
-      'claude-opus-4-7': 'claude-3.5-sonnet',
-      'claude-sonnet-4-7': 'claude-3.5-sonnet',
       'gpt-5.5': 'gpt-5-preview',
       'gpt-4o': 'gpt-4o',
+      'claude-sonnet-4-5': 'claude-3-5-sonnet', // Keep legacy mapping just in case
+      'claude-sonnet-4.5': 'claude-sonnet-4.5',
+      'claude-haiku-4.5': 'claude-haiku-4.5',
+      'claude-opus-4-7': 'claude-3-opus',
     };
     return modelMap[model] ?? model;
   }

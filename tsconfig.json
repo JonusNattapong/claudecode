@@ -11,6 +11,7 @@
     "jsx": "react-jsx",
     "jsxImportSource": "react",
     "lib": ["ESNext", "DOM"],
+    "types": ["bun"],
     "strict": true,
     "skipLibCheck": true,
     "esModuleInterop": true,

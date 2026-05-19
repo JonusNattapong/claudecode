@@ -9,7 +9,7 @@ describe('xdg utilities', () => {
 
   test('getXDGStateHome falls back to ~/.local/state', () => {
     const result = getXDGStateHome({ env: {} });
-    expect(result).toContain('.local/state');
+    expect(result.replace(/\\/g, '/')).toContain('.local/state');
   });
 
   test('getXDGCacheHome uses XDG_CACHE_HOME if set', () => {
@@ -29,6 +29,6 @@ describe('xdg utilities', () => {
 
   test('getUserBinDir returns ~/.local/bin', () => {
     const result = getUserBinDir({ env: {} });
-    expect(result).toContain('.local/bin');
+    expect(result.replace(/\\/g, '/')).toContain('.local/bin');
   });
 });

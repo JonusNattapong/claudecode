@@ -137,6 +137,47 @@ export class OpenAICompatibleProvider implements ProviderInterface {
     };
   }
 
+  async listModels(options: ProviderInitOptions): Promise<Array<{ id: string; label: string }>> {
+    const apiKey = options.apiKey ?? process.env[this.envKey];
+    const baseUrl = options.baseUrl ?? process.env[`${this.providerId.toUpperCase()}_BASE_URL`] ?? this.defaultBaseUrl;
+
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      ...this.getExtraHeaders(),
+    };
+
+    if (apiKey) {
+      headers.Authorization = `Bearer ${apiKey}`;
+    }
+
+    const normalizedBaseUrl = baseUrl.replace(/\/$/, '');
+    const modelsUrl = normalizedBaseUrl.endsWith('/models') ? normalizedBaseUrl : `${normalizedBaseUrl}/models`;
+
+    try {
+      const response = await fetch(modelsUrl, {
+        method: 'GET',
+        headers,
+      });
+
+      if (!response.ok) {
+        return [];
+      }
+
+      const data = await response.json();
+      if (!data || !Array.isArray(data.data)) {
+        return [];
+      }
+
+      return data.data.map((m: any) => ({
+        id: m.id,
+        label: m.id,
+      }));
+    } catch (error) {
+      console.error(`[${this.providerId}] Failed to list models:`, error);
+      return [];
+    }
+  }
+
   protected async *handleStreamingResponse(response: Response): AsyncGenerator<unknown, void, unknown> {
     const reader = response.body?.getReader();
     if (!reader) {

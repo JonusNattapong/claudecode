@@ -16,7 +16,9 @@ export const BROWSER_TOOL_NAME = 'browser' as const;
 const ALL_ACTIONS = [
   'navigate',
   'click',
+  'click_at',
   'type',
+  'type_at',
   'fill',
   'clear',
   'press',
@@ -39,6 +41,7 @@ const ALL_ACTIONS = [
   'focus',
   'wait_for',
   'wait_for_url',
+  'wait',
   'frame_click',
   'frame_fill',
   'handle_dialog',
@@ -49,6 +52,10 @@ const ALL_ACTIONS = [
   'get_inputs',
   'evaluate',
   'search',
+  'extract_data',
+  'switch_tab',
+  'open_new_tab',
+  'drag_and_drop'
 ] as const;
 
 const inputSchema = lazySchema(() =>
@@ -60,6 +67,8 @@ const inputSchema = lazySchema(() =>
     key: z.string().optional(),
     direction: z.enum(['up', 'down']).optional(),
     amount: z.number().optional(),
+    x: z.number().optional().describe('Viewport X coordinate for click_at or scroll target'),
+    y: z.number().optional().describe('Viewport Y coordinate for click_at or scroll target'),
     role: z.string().optional().describe('ARIA role: button, link, textbox, checkbox...'),
     name: z.string().optional().describe('Accessible name for getByRole'),
     label: z.string().optional().describe('Label text for getByLabel'),
@@ -93,6 +102,7 @@ export const BrowserTool = buildTool({
   name: BROWSER_TOOL_NAME,
   aliases: ['playwright', 'web_control'],
   searchHint: 'browse web playwright automation browser form click type',
+  maxResultSizeChars: 100000,
 
   get inputSchema() {
     return inputSchema();
@@ -111,6 +121,7 @@ export const BrowserTool = buildTool({
 
 TARGETING (choose the best strategy):
 - click: Click by CSS selector
+- click_at: Click viewport coordinates (x/y) when visual targeting is better than selectors
 - click_text: Click by visible text (most natural)
 - click_role: Click by ARIA role+name, e.g. role="button" name="Submit" (most reliable)
 - hover / focus: Hover or focus an element
@@ -118,6 +129,7 @@ TARGETING (choose the best strategy):
 FORM FILLING:
 - fill: Instantly set input value by CSS selector
 - type: Type character-by-character with human-like delays (stealth)
+- type_at: Click viewport coordinates (x/y), clear existing value, then type text
 - fill_label: Fill by form label text — no CSS needed! e.g. label="Email"
 - clear: Clear an input field
 - select: Select dropdown option by value

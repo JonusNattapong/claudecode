@@ -27,52 +27,19 @@ export async function fetchProviderModels(provider: ProviderId): Promise<Provide
     return cached.data;
   }
 
-  const info = getProviderRegistryEntry(provider);
   const providerManager = ProviderManager.getInstance();
-  const apiKey = providerManager.getApiKeyForProvider(provider);
-
-  if (!info.modelsUrl) {
-    return cacheAndReturn(provider, info.models);
-  }
-
-  if (!apiKey && !info.isLocal) {
-    throw new Error(`API key required. Run: /providers key ${provider} <your-api-key>`);
-  }
-
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-  };
-
-  if (apiKey) {
-    if (provider === 'anthropic') {
-      headers['x-api-key'] = apiKey;
-      headers['anthropic-version'] = '2023-06-01';
-    } else {
-      headers.Authorization = `Bearer ${apiKey}`;
-    }
-  }
 
   try {
-    const response = await fetch(info.modelsUrl, {
-      headers,
-      signal: AbortSignal.timeout(5000), // 5s timeout instead of 30s
-    });
+    const remoteModels = await providerManager.listModels(provider);
 
-    if (!response.ok) {
-      return cacheAndReturn(provider, getFallbackModels(provider));
-    }
+    if (remoteModels.length > 0) {
+      const models = remoteModels
+        .map(model => toProviderModelInfo(provider, model))
+        .filter((model): model is ProviderModelInfo => Boolean(model));
 
-    const data = (await response.json()) as {
-      data?: RemoteModelPayload[];
-      models?: RemoteModelPayload[];
-    };
-
-    const models = (data.data ?? data.models ?? [])
-      .map(model => toProviderModelInfo(provider, model))
-      .filter((model): model is ProviderModelInfo => Boolean(model));
-
-    if (models.length > 0) {
-      return cacheAndReturn(provider, models);
+      if (models.length > 0) {
+        return cacheAndReturn(provider, models);
+      }
     }
   } catch (error) {
     // Fall back to registry models below.

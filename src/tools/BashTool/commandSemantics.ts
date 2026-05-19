@@ -11,6 +11,7 @@ export type CommandSemantic = (
   exitCode: number,
   stdout: string,
   stderr: string,
+  command: string,
 ) => {
   isError: boolean;
   message?: string;
@@ -31,6 +32,23 @@ const COMMAND_SEMANTICS: Map<string, CommandSemantic> = new Map([
   // grep: 0=matches found, 1=no matches, 2+=error
   [
     'grep',
+    (exitCode, _stdout, _stderr) => ({
+      isError: exitCode >= 2,
+      message: exitCode === 1 ? 'No matches found' : undefined,
+    }),
+  ],
+
+  // egrep, fgrep: same as grep
+  [
+    'egrep',
+    (exitCode, _stdout, _stderr) => ({
+      isError: exitCode >= 2,
+      message: exitCode === 1 ? 'No matches found' : undefined,
+    }),
+  ],
+
+  [
+    'fgrep',
     (exitCode, _stdout, _stderr) => ({
       isError: exitCode >= 2,
       message: exitCode === 1 ? 'No matches found' : undefined,
@@ -62,6 +80,21 @@ const COMMAND_SEMANTICS: Map<string, CommandSemantic> = new Map([
       isError: exitCode >= 2,
       message: exitCode === 1 ? 'Files differ' : undefined,
     }),
+  ],
+
+  // git: route to subcommand semantics (git grep → grep-like, git diff → diff-like)
+  [
+    'git',
+    (exitCode, _stdout, _stderr, command) => {
+      const subcommand = command.trim().split(/\s+/)[1];
+      if (subcommand === 'grep') {
+        return { isError: exitCode >= 2, message: exitCode === 1 ? 'No matches found' : undefined };
+      }
+      if (subcommand === 'diff') {
+        return { isError: exitCode >= 2, message: exitCode === 1 ? 'No differences' : undefined };
+      }
+      return { isError: exitCode !== 0 };
+    },
   ],
 
   // test/[: 0=condition true, 1=condition false, 2+=error
@@ -129,7 +162,7 @@ export function interpretCommandResult(
   message?: string;
 } {
   const semantic = getCommandSemantic(command);
-  const result = semantic(exitCode, stdout, stderr);
+  const result = semantic(exitCode, stdout, stderr, command);
 
   return {
     isError: result.isError,

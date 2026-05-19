@@ -15,7 +15,19 @@ export type ProviderId =
   | 'ollama'
   | 'copilot'
   | 'deepseek'
-  | 'chatgpt_plus';
+  | 'together'
+  | 'fireworks'
+  | 'nvidia'
+  | 'cohere'
+  | 'deepinfra'
+  | 'perplexity'
+  | 'cerebras'
+  | 'siliconflow'
+  | 'moonshot'
+  | 'zhipu'
+  | 'huggingface'
+  | 'poe'
+  | 'digitalocean';
 
 export interface ProviderInitOptions {
   apiKey?: string;
@@ -35,4 +47,5 @@ export interface ProviderInterface {
   getProviderLabel(): string;
   getProviderApiKeyEnvVar(): string;
   createClient(options: ProviderInitOptions): Promise<ProviderClient>;
+  listModels(options: ProviderInitOptions): Promise<Array<{ id: string; label: string }>>;
 }

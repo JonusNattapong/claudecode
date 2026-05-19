@@ -150,6 +150,53 @@ const BASH_SILENT_COMMANDS = new Set([
 ]);
 
 /**
+ * After a successful read command (head/tail/cat), register the viewed files
+ * in readFileState so subsequent Edit/Write checks pass without requiring an
+ * explicit FileReadTool call. Only handles simple commands without pipes.
+ */
+function registerReadCommandFiles(command: string, toolUseContext: ToolUseContext): void {
+  // Extract base command (first word)
+  const trimmed = command.trim();
+  const firstWord = trimmed.split(/\s+/)[0] || '';
+  if (!BASH_READ_COMMANDS.has(firstWord)) return;
+
+  // Skip piped commands — too complex to parse file paths reliably
+  if (trimmed.includes('|') || trimmed.includes(';') || trimmed.includes('&&') || trimmed.includes('||')) return;
+
+  // Parse args — skip flags (starting with -), collect remaining as file paths
+  const args = trimmed.split(/\s+/).slice(1);
+  const filePaths: string[] = [];
+  for (const arg of args) {
+    if (arg.startsWith('-')) continue;
+    if (arg.startsWith('>') || arg.startsWith('<')) continue;
+    // Skip redirect targets
+    if (arg === '>' || arg === '>>' || arg === '<') continue;
+    filePaths.push(arg);
+  }
+
+  if (filePaths.length === 0) return;
+
+  const fs = getFsImplementation();
+  for (const filePath of filePaths) {
+    try {
+      const resolved = expandPath(filePath);
+      const stats = fs.statSync(resolved);
+      if (!stats.isFile()) continue;
+
+      const content = fs.readFileSync(resolved, { encoding: 'utf8' }).replaceAll('\r\n', '\n');
+      toolUseContext.readFileState.set(resolved, {
+        content,
+        timestamp: stats.mtimeMs,
+        offset: undefined,
+        limit: undefined,
+      });
+    } catch {
+      // File may not exist or be inaccessible — skip silently
+    }
+  }
+}
+
+/**
  * Checks if a bash command is a search or read operation.
  * Used to determine if the command should be collapsed in the UI.
  * Returns an object indicating whether it's a search or read operation.
@@ -819,6 +866,12 @@ export const BashTool = buildTool({
 
       // Interpret the command result using semantic rules
       interpretationResult = interpretCommandResult(input.command, result.code, result.stdout || '', '');
+
+      // For successful read commands (head/tail/cat/etc.), register the viewed
+      // file in readFileState so subsequent Edit/Write checks pass.
+      if (result.code === 0 && !result.interrupted) {
+        registerReadCommandFiles(input.command, toolUseContext);
+      }
 
       // Check for git index.lock error (stderr is in stdout now)
       if (result.stdout && result.stdout.includes(".git/index.lock': File exists")) {

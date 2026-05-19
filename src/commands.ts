@@ -144,7 +144,7 @@ import skill from './commands/skill/index.js';
 import powerup from './commands/powerup/index.js';
 import remoteEnv from './commands/remote-env/index.js';
 import upgrade from './commands/upgrade/index.js';
-import { extraUsage, extraUsageNonInteractive } from './commands/extra-usage/index.js';
+import { usageCredits, usageCreditsNonInteractive } from './commands/usage-credits/index.js';
 import rateLimitOptions from './commands/rate-limit-options/index.js';
 
 import effort from './commands/effort/index.js';
@@ -279,8 +279,8 @@ const COMMANDS = memoize((): Command[] => [
   securityReview,
   terminalSetup,
   upgrade,
-  extraUsage,
-  extraUsageNonInteractive,
+  usageCredits,
+  usageCreditsNonInteractive,
   rateLimitOptions,
   usage,
   usageReport,

@@ -10,8 +10,8 @@ import type { ToolUseContext } from '../../Tool.js';
 import type { LocalJSXCommandOnDone } from '../../types/command.js';
 import { getOauthAccountInfo, getRateLimitTier, getSubscriptionType } from '../../utils/auth.js';
 import { hasClaudeAiBillingAccess } from '../../utils/billing.js';
-import { call as extraUsageCall } from '../extra-usage/extra-usage.js';
-import { extraUsage } from '../extra-usage/index.js';
+import { call as extraUsageCall } from '../usage-credits/usage-credits.js';
+import { usageCredits } from '../usage-credits/index.js';
 import upgrade from '../upgrade/index.js';
 import { call as upgradeCall } from '../upgrade/upgrade.js';
 
@@ -43,7 +43,7 @@ function RateLimitOptionsMenu({ onDone, context }: RateLimitOptionsMenuProps): R
   const options = useMemo<OptionWithDescription<RateLimitOptionsMenuOptionType>[]>(() => {
     const actionOptions: OptionWithDescription<RateLimitOptionsMenuOptionType>[] = [];
 
-    if (extraUsage.isEnabled()) {
+    if (usageCredits.isEnabled()) {
       const hasBillingAccess = hasClaudeAiBillingAccess();
       const needsToRequestFromAdmin = isTeamOrEnterprise && !hasBillingAccess;
       // Org spend cap depleted - non-admins can't request more since there's nothing to allocate

@@ -1,12 +1,10 @@
 import { AnthropicProvider } from './providers/AnthropicProvider.js';
-import { ChatGPTSessionProvider } from './providers/ChatGPTSessionProvider.js';
 import { CopilotProvider } from './providers/CopilotProvider.js';
 import { GoogleProvider } from './providers/GoogleProvider.js';
 import { KiloCodeProvider } from './providers/KiloCodeProvider.js';
 import { OllamaProvider } from './providers/OllamaProvider.js';
 import { OpenAICompatibleProvider } from './providers/OpenAICompatibleProvider.js';
 import { OpenAIProvider } from './providers/OpenAIProvider.js';
-import { OpenAIResponsesProvider } from './providers/OpenAIResponsesProvider.js';
 import { OpenRouterProvider } from './providers/OpenRouterProvider.js';
 import type { ProviderId, ProviderInterface } from './providers/ProviderInterface.js';
 
@@ -76,10 +74,6 @@ function createProvider(key: string, entry: any): ProviderInterface {
       return new OpenRouterProvider();
     case 'kilocode':
       return new KiloCodeProvider();
-    case 'chatgpt':
-      return new ChatGPTSessionProvider();
-    case 'chatgpt_plus':
-      return new OpenAIResponsesProvider(entry.providerId, entry.label, entry.envKey, entry.defaultBaseUrl);
     case 'ollama':
       return new OllamaProvider();
     default:

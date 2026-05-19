@@ -21,6 +21,7 @@ export type CommandSemantic = (
   exitCode: number,
   stdout: string,
   stderr: string,
+  command?: string,
 ) => {
   isError: boolean;
   message?: string;
@@ -61,7 +62,24 @@ const GREP_SEMANTIC: CommandSemantic = (exitCode, _stdout, _stderr) => ({
 const COMMAND_SEMANTICS: Map<string, CommandSemantic> = new Map([
   // External grep/ripgrep (Git for Windows, scoop, choco)
   ['grep', GREP_SEMANTIC],
+  ['egrep', GREP_SEMANTIC],
+  ['fgrep', GREP_SEMANTIC],
   ['rg', GREP_SEMANTIC],
+
+  // git: handle subcommands (git grep, git diff, etc.)
+  [
+    'git',
+    (exitCode, _stdout, _stderr, command) => {
+      const subcommand = (command ?? '').trim().split(/\s+/)[1];
+      if (subcommand === 'grep') {
+        return { isError: exitCode >= 2, message: exitCode === 1 ? 'No matches found' : undefined };
+      }
+      if (subcommand === 'diff') {
+        return { isError: exitCode >= 2, message: exitCode === 1 ? 'No differences' : undefined };
+      }
+      return { isError: exitCode !== 0 };
+    },
+  ],
 
   // findstr.exe: Windows native text search
   // 0 = match found, 1 = no match, 2 = error
@@ -137,5 +155,5 @@ export function interpretCommandResult(
 } {
   const baseCommand = heuristicallyExtractBaseCommand(command);
   const semantic = COMMAND_SEMANTICS.get(baseCommand) ?? DEFAULT_SEMANTIC;
-  return semantic(exitCode, stdout, stderr);
+  return semantic(exitCode, stdout, stderr, command);
 }
