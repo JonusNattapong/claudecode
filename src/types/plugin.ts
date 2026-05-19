@@ -372,6 +372,6 @@ export function getPluginErrorMessage(error: PluginError): string {
       return `Dependency "${error.dependency}" is ${hint}`;
     }
     case 'plugin-cache-miss':
-      return `Plugin "${error.plugin}" not cached at ${error.installPath} — run /plugins to refresh`;
+      return `Plugin "${error.plugin}" not cached at ${error.installPath} — run /plugins to refresh, or \`claude plugin install ${error.plugin}\` to install it`;
   }
 }

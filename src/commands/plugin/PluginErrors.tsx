@@ -130,7 +130,7 @@ export function getErrorGuidance(error: PluginError): string | null {
     case 'lsp-request-failed':
       return 'Check LSP server logs with --debug for details';
     case 'plugin-cache-miss':
-      return 'Run /plugins to refresh the plugin cache';
+      return 'Run /plugins to refresh the plugin cache, or use \`claude plugin install <name>\` to add it';
     case 'marketplace-load-failed':
     case 'generic-error':
       return null;
