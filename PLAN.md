@@ -847,4 +847,4 @@
 - **6.1** Remote login org error
 - **9.1–9.5** Windows scroll, crash, Ctrl+C, agents arrow, CJK ghosts
 - **10.2–10.3, 10.5–10.9** Agent view / bg session UX
-- **11.2, 11.9–11.11** Gate naming, skill truncation in /doctor, stream stall retry, MCP startup overlap
+- **11.9–11.11** Skill truncation in /doctor, stream stall retry, MCP startup overlap
