@@ -1892,10 +1892,22 @@ export const fetchToolsForClient = memoizeWithLRU(
         return [];
       }
 
-      const result = (await client.client.request({ method: 'tools/list' }, ListToolsResultSchema)) as ListToolsResult;
+      // Handle paginated tools/list — the MCP spec supports nextCursor for
+      // servers with more tools than fit in a single response.
+      const allTools: ListToolsResult['tools'] = [];
+      let cursor: string | undefined;
+      do {
+        const params: { method: 'tools/list'; params?: { cursor: string } } = { method: 'tools/list' };
+        if (cursor) {
+          params.params = { cursor };
+        }
+        const result = (await client.client.request(params, ListToolsResultSchema)) as ListToolsResult;
+        allTools.push(...result.tools);
+        cursor = result.nextCursor;
+      } while (cursor);
 
       // Sanitize tool data from MCP server
-      const toolsToProcess = recursivelySanitizeUnicode(result.tools);
+      const toolsToProcess = recursivelySanitizeUnicode(allTools);
 
       // Check if we should skip the mcp__ prefix for SDK MCP servers
       const skipPrefix = client.config.type === 'sdk' && isEnvTruthy(process.env.CLAUDE_AGENT_SDK_MCP_NO_PREFIX);
