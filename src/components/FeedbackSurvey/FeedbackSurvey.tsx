@@ -108,7 +108,9 @@ function FeedbackSurveyThanks({
   setInputValue,
   onRequestFeedback,
 }: ThanksProps): React.ReactNode {
-  const showFollowUp = onRequestFeedback && lastResponse === 'good';
+  // Show follow-up after every non-dismiss response with context-aware copy.
+  // 'good' → share what went well; 'bad' → share what went wrong; dismiss → none.
+  const showFollowUp = onRequestFeedback && (lastResponse === 'good' || lastResponse === 'bad');
 
   // Listen for "1" keypress to launch /feedback
   useDebouncedDigitInput({
@@ -127,17 +129,16 @@ function FeedbackSurveyThanks({
   });
 
   const feedbackCommand = 'external' === 'ant' ? '/issue' : '/feedback';
+  const followUpText = lastResponse === 'good' ? 'tell us what went well' : 'share what went wrong';
 
   return (
     <Box marginTop={1} flexDirection="column">
       <Text color="success">Thanks for the feedback!</Text>
       {showFollowUp ? (
         <Text dimColor>
-          (Optional) Press [<Text color="ansi:cyan">1</Text>] to tell us what went well {' \u00b7 '}
+          (Optional) Press [<Text color="ansi:cyan">1</Text>] to {followUpText} {' \u00b7 '}
           {feedbackCommand}
         </Text>
-      ) : lastResponse === 'bad' ? (
-        <Text dimColor>Use /issue to report model behavior issues.</Text>
       ) : (
         <Text dimColor>Use {feedbackCommand} to share detailed feedback anytime.</Text>
       )}

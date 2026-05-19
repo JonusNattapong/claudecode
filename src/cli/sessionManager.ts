@@ -238,6 +238,12 @@ export async function bgFlagHandler(
   },
 ): Promise<string> {
   const sessionId = randomBytes(4).toString('hex');
+
+  // Gate check: non-TTY
+  if (!process.stdin.isTTY) {
+    console.log('Background sessions require an interactive terminal. Use a TTY to start --bg sessions.');
+    return sessionId;
+  }
   const cwd = process.cwd();
 
   console.log(`Starting background session in ${cwd}...`);

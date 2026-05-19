@@ -5542,6 +5542,12 @@ async function run(): Promise<CommanderCommand> {
     .option('--effort <level>', 'Effort level for dispatched sessions (low/medium/high)')
     .option('--dangerously-skip-permissions', 'Enable bypass permissions mode for dispatched sessions')
     .action(async (opts: Record<string, unknown>) => {
+      const { getAgentViewDisabledReason } = await import('./commands/agents/index.js');
+      const reason = getAgentViewDisabledReason();
+      if (reason) {
+        console.log(`Agent view is ${reason}.`);
+        process.exit(0);
+      }
       const { agentsHandler } = await import('./cli/handlers/agents.js');
       await agentsHandler();
       process.exit(0);

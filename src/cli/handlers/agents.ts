@@ -27,6 +27,14 @@ function formatAgent(agent: ResolvedAgent): string {
 }
 
 export async function agentsHandler(): Promise<void> {
+  // Check agent view gate before listing agents
+  const { getAgentViewDisabledReason } = await import('../../commands/agents/index.js');
+  const reason = getAgentViewDisabledReason();
+  if (reason) {
+    console.log(`Agent view is ${reason}.`);
+    return;
+  }
+
   const cwd = getCwd();
   const { allAgents } = await getAgentDefinitionsWithOverrides(cwd);
   const activeAgents = getActiveAgentsFromList(allAgents);
