@@ -44,6 +44,7 @@ import {
   recordContentReplacement,
   resetSessionFilePointer,
   restoreSessionMetadata,
+  setSessionModelForTranscript,
   type SessionLogResult,
 } from '../utils/sessionStorage.js';
 import type { ThinkingConfig } from '../utils/thinking.js';
@@ -270,6 +271,16 @@ export function ResumeConversation({
         agentDefinitions,
       );
       setAppState(prev => ({ ...prev, agent: resolvedAgentDef?.agentType }));
+
+      // Restore the session model so resumed sessions keep the model
+      // they were using (e.g. set via /model during the original session).
+      if (log.sessionModel) {
+        setSessionModelForTranscript(log.sessionModel);
+        setAppState(prev => ({
+          ...prev,
+          mainLoopModelForSession: log.sessionModel,
+        }));
+      }
 
       if (feature('COORDINATOR_MODE')) {
         /* eslint-disable @typescript-eslint/no-require-imports */

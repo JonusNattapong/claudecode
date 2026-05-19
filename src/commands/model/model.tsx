@@ -18,6 +18,7 @@ import {
   isFastModeEnabled,
   isFastModeSupportedByModel,
 } from '../../utils/fastMode.js';
+import { setSessionModelForTranscript } from '../../utils/sessionStorage.js';
 import { MODEL_ALIASES } from '../../utils/model/aliases.js';
 import { checkOpus1mAccess, checkSonnet1mAccess } from '../../utils/model/check1mAccess.js';
 import {
@@ -48,34 +49,42 @@ function ModelPickerWrapper({
     });
   }
 
-  function handleSelect(model: string | null, effort: EffortLevel | undefined): void {
+  function handleSelect(model: string | null, effort: EffortLevel | undefined, options?: { persistAsDefault?: boolean }): void {
     logEvent('tengu_model_command_menu', {
       action: model as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
       from_model: mainLoopModel as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
       to_model: model as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
     });
-    setAppState(prev => ({
-      ...prev,
-      mainLoopModel: model,
-      mainLoopModelForSession: null,
-    }));
 
-    // Directly persist model to provider.json so it survives restart.
-    // onChangeAppState also syncs to provider.json, but doing it here
-    // ensures the write happens even if the reactive sync has a timing issue.
-    if (model !== null) {
-      try {
-        const pm = ProviderManager.getInstance();
-        const cfg = pm.getSelectedProviderConfig(true);
-        if (cfg.model !== model) {
-          pm.saveSelectedProviderConfig({ ...cfg, model });
+    if (options?.persistAsDefault) {
+      setAppState(prev => ({
+        ...prev,
+        mainLoopModel: model,
+        mainLoopModelForSession: null,
+      }));
+      if (model !== null) {
+        try {
+          const pm = ProviderManager.getInstance();
+          const cfg = pm.getSelectedProviderConfig(true);
+          if (cfg.model !== model) {
+            pm.saveSelectedProviderConfig({ ...cfg, model });
+          }
+        } catch {
+          // Non-critical: provider.json write is best-effort here.
         }
-      } catch {
-        // Non-critical: provider.json write is best-effort here.
       }
+    } else {
+      setAppState(prev => ({
+        ...prev,
+        mainLoopModelForSession: model,
+      }));
+      // Persist the session model choice to transcript for resume restore
+      setSessionModelForTranscript(model ?? undefined);
     }
 
-    let message = `Set model to ${chalk.bold(renderModelLabel(model))}`;
+    let message = options?.persistAsDefault
+      ? `Set default model to ${chalk.bold(renderModelLabel(model))}`
+      : `Set model to ${chalk.bold(renderModelLabel(model))} for this session`;
     if (effort !== undefined) {
       message += ` with ${chalk.bold(effort)} effort`;
     }
@@ -98,7 +107,7 @@ function ModelPickerWrapper({
     }
 
     if (isBilledAsExtraUsage(model, wasFastModeToggledOn === true, isOpus1mMergeEnabled())) {
-      message += ` · Billed as extra usage`;
+      message += ` · Billed as usage credits`;
     }
 
     if (wasFastModeToggledOn === false) {
@@ -109,11 +118,14 @@ function ModelPickerWrapper({
     onDone(message);
   }
 
+  const activeModel = mainLoopModelForSession ?? mainLoopModel;
+
   return (
     <ModelPicker
-      initial={mainLoopModel}
+      initial={activeModel}
       sessionModel={mainLoopModelForSession}
       onSelect={handleSelect}
+      onSetDefault={model => handleSelect(model, undefined, { persistAsDefault: true })}
       onCancel={handleCancel}
       isStandaloneCommand
       showFastModeNotice={

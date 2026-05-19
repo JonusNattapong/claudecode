@@ -14,6 +14,7 @@ export type SerializedMessage = Message & {
   version: string;
   gitBranch?: string;
   slug?: string; // Session slug for files like plans (used for resume)
+  sessionModel?: string; // Model used for this session (for resume restore)
 };
 
 export type LogOption = {
@@ -52,6 +53,8 @@ export type LogOption = {
   contentReplacements?: ContentReplacementRecord[]; // Replacement decisions for resume reconstruction
   pinnedDate?: string; // Persisted date for system prompt stability
   pinnedGitStatus?: string | null; // Persisted git status for system prompt stability
+  isBackground?: boolean; // Started via claude --bg or listed in agent view
+  sessionModel?: string; // Model used for this session (for resume restore)
 };
 
 export type SummaryMessage = {

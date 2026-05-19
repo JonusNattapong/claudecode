@@ -62,6 +62,20 @@ import { uniq } from './array.js';
 import { registerCleanup } from './cleanupRegistry.js';
 import { updateSessionName } from './concurrentSessions.js';
 import { getCwd } from './cwd.js';
+
+// Module-level cache for the current session model (set by /model command).
+// Used to stamp sessionModel on transcript messages for resume restore.
+let _sessionModelForTranscript: string | undefined;
+
+/** Set the session model to stamp on transcript messages. Called by /model. */
+export function setSessionModelForTranscript(model: string | undefined): void {
+  _sessionModelForTranscript = model;
+}
+
+/** Get the cached session model for transcript stamping. */
+export function getSessionModelForTranscript(): string | undefined {
+  return _sessionModelForTranscript;
+}
 import { logForDebugging } from './debug.js';
 import { logForDiagnosticsNoPII } from './diagLogs.js';
 import { getClaudeConfigHomeDir, isEnvTruthy } from './envUtils.js';
@@ -1009,6 +1023,7 @@ class Project {
           version: VERSION,
           gitBranch,
           slug,
+          ...(_sessionModelForTranscript ? { sessionModel: _sessionModelForTranscript } : {}),
         };
         await this.appendEntry(transcriptMessage);
         if (isChainParticipant(message)) {
@@ -4297,6 +4312,7 @@ type LiteMetadata = {
   prNumber?: number;
   prUrl?: string;
   prRepository?: string;
+  sessionModel?: string; // Model used for this session (for resume restore)
 };
 
 /**
@@ -4484,6 +4500,8 @@ async function readLiteMetadata(filePath: string, fileSize: number, buf: Buffer)
     }
   }
 
+  const sessionModel = extractJsonStringField(head, 'sessionModel');
+
   return {
     firstPrompt,
     gitBranch,
@@ -4497,6 +4515,7 @@ async function readLiteMetadata(filePath: string, fileSize: number, buf: Buffer)
     prNumber,
     prUrl,
     prRepository,
+    sessionModel,
   };
 }
 
@@ -4707,6 +4726,7 @@ async function enrichLog(log: LogOption, readBuf: Buffer): Promise<LogOption | n
     summary: meta.summary,
     tag: meta.tag,
     agentSetting: meta.agentSetting,
+    sessionModel: meta.sessionModel,
     prNumber: meta.prNumber,
     prUrl: meta.prUrl,
     prRepository: meta.prRepository,
