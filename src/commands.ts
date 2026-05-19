@@ -115,6 +115,7 @@ import antTrace from './commands/ant-trace/index.js';
 import perfIssue from './commands/perf-issue/index.js';
 import sandboxToggle from './commands/sandbox-toggle/index.js';
 import chrome from './commands/chrome/index.js';
+import ant from './commands/ant/index.js';
 import stickers from './commands/stickers/index.js';
 import goal from './commands/goal/index.js';
 import scrollSpeed from './commands/scroll-speed/index.js';
@@ -143,6 +144,7 @@ import model from './commands/model/index.js';
 import outputStyle from './commands/output-style/index.js';
 import skill from './commands/skill/index.js';
 import powerup from './commands/powerup/index.js';
+import profile from './commands/profile/index.js';
 import remoteEnv from './commands/remote-env/index.js';
 import upgrade from './commands/upgrade/index.js';
 import { usageCredits, usageCreditsNonInteractive } from './commands/usage-credits/index.js';
@@ -221,6 +223,7 @@ const COMMANDS = memoize((): Command[] => [
   addDir,
   advisor,
   agents,
+  ant,
   branch,
   btw,
   capabilities,
@@ -264,6 +267,7 @@ const COMMANDS = memoize((): Command[] => [
   plugin,
   pluginDetails,
   pr_comments,
+  profile,
   releaseNotes,
   reloadPlugins,
   rename,

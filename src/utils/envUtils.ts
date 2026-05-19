@@ -2,13 +2,40 @@ import memoize from 'lodash-es/memoize.js';
 import { homedir } from 'os';
 import { join } from 'path';
 
-// Memoized: 150+ callers, many on hot paths. Keyed off CLAUDE_CONFIG_DIR so
-// tests that change the env var get a fresh value without explicit cache.clear.
+// Lazy-loaded to avoid circular deps: ProfileManager doesn't import envUtils
+let _profileManager: {
+  ProfileManager: {
+    getInstance: () => { getActiveProfile: () => string | null; getProfileHomeDir: (name: string) => string };
+  };
+  PROFILE_ENV_VAR: string;
+} | null = null;
+function getProfileManager() {
+  if (!_profileManager) {
+    _profileManager = require('./profileManager.js') as typeof import('./profileManager.js');
+  }
+  return _profileManager;
+}
+
+// Memoized: 150+ callers, many on hot paths. Keyed off CLAUDE_CONFIG_DIR or
+// CLAUDECODE_PROFILE so tests that change either get a fresh value.
 export const getClaudeConfigHomeDir = memoize(
   (): string => {
-    return (process.env.CLAUDE_CONFIG_DIR ?? join(homedir(), '.claude')).normalize('NFC');
+    // CLAUDE_CONFIG_DIR env var always wins (backward compat, testing)
+    if (process.env.CLAUDE_CONFIG_DIR) {
+      return process.env.CLAUDE_CONFIG_DIR.normalize('NFC');
+    }
+
+    // Check for active profile (profile isolation)
+    const { ProfileManager, PROFILE_ENV_VAR } = getProfileManager();
+    const envProfile = process.env[PROFILE_ENV_VAR];
+    const activeProfile = envProfile ?? ProfileManager.getInstance().getActiveProfile();
+    if (activeProfile) {
+      return ProfileManager.getInstance().getProfileHomeDir(activeProfile).normalize('NFC');
+    }
+
+    return join(homedir(), '.claude').normalize('NFC');
   },
-  () => process.env.CLAUDE_CONFIG_DIR,
+  () => process.env.CLAUDE_CONFIG_DIR ?? process.env[getProfileManager().PROFILE_ENV_VAR],
 );
 
 export function getTeamsDir(): string {

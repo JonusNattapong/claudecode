@@ -376,7 +376,23 @@ class GoogleAdapter implements ProviderAdapter {
     const request: any = { contents: geminiContents };
     if (systemInstruction) request.systemInstruction = systemInstruction;
     if (geminiTools) request.tools = geminiTools;
-    if (params.max_tokens) request.generationConfig = { maxOutputTokens: params.max_tokens };
+
+    // Build generation config
+    const generationConfig: Record<string, unknown> = {};
+    if (params.max_tokens) generationConfig.maxOutputTokens = params.max_tokens;
+
+    // Map structured output format (output_config.format) → Gemini response schema
+    const outputConfig = (params as any).output_config as
+      | { format?: { type: string; json_schema?: Record<string, unknown> } }
+      | undefined;
+    if (outputConfig?.format?.type === 'json_schema' && outputConfig.format.json_schema) {
+      generationConfig.response_mime_type = 'application/json';
+      generationConfig.response_schema = outputConfig.format.json_schema;
+    }
+
+    if (Object.keys(generationConfig).length > 0) {
+      request.generationConfig = generationConfig;
+    }
 
     // Map Anthropic thinking config → Gemini thinkingConfig
     const anthropicThinking = (params as any).thinking;

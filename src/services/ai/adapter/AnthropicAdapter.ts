@@ -21,6 +21,29 @@ import { getProviderModelInfo, getProviderRegistryEntry } from '../providerRegis
 /** Per-provider stream watchdog defaults (seconds). Override per adapter. */
 const DEFAULT_STREAM_TIMEOUT_MS = 30_000;
 
+/**
+ * Map Anthropic structured output config (output_config.format) to OpenAI
+ * response_format. Only applies when the params carry an output_config with
+ * a json_schema format — OpenAI uses response_format for the same purpose.
+ *
+ * Returns empty object when no mapping is needed (no output config, or the
+ * provider isn't an OpenAI-compatible API).
+ */
+function getOpenAIResponseFormat(params: BetaMessageStreamParams): Record<string, unknown> {
+  const outputConfig = (params as any).output_config as
+    | { format?: { type: string; json_schema?: Record<string, unknown> } }
+    | undefined;
+  if (outputConfig?.format?.type === 'json_schema' && outputConfig.format.json_schema) {
+    return {
+      response_format: {
+        type: 'json_schema' as const,
+        json_schema: outputConfig.format.json_schema,
+      },
+    };
+  }
+  return {};
+}
+
 // ── Provider Adapter Interface ───────────────────────────────────────────────
 
 /**
@@ -476,6 +499,7 @@ class OpenAICompatibleAdapter implements ProviderAdapter {
       top_p: params.top_p,
       stop: params.stop_sequences,
       ...(tools ? { tools } : {}),
+      ...getOpenAIResponseFormat(params),
     };
   }
 
@@ -522,6 +546,10 @@ class OpenAICompatibleAdapter implements ProviderAdapter {
       usage: {
         input_tokens: openAIResponse.usage?.prompt_tokens ?? 0,
         output_tokens: openAIResponse.usage?.completion_tokens ?? 0,
+        ...(() => {
+          const cached = openAIResponse.usage?.prompt_tokens_details?.cached_tokens;
+          return typeof cached === 'number' && cached > 0 ? { cache_read_input_tokens: cached } : {};
+        })(),
       },
     } as any;
   }
@@ -670,12 +698,15 @@ class OpenAICompatibleAdapter implements ProviderAdapter {
     if (activeIndex !== null) yield { type: 'content_block_stop', index: activeIndex };
 
     if (!sentMessageDelta) {
+      // Map OpenAI cached_tokens to Anthropic cache format
+      const cachedTokens = (streamUsage as any)?.prompt_tokens_details?.cached_tokens;
       yield {
         type: 'message_delta',
         delta: { stop_reason: 'end_turn' },
         usage: {
           input_tokens: streamUsage?.prompt_tokens ?? 0,
           output_tokens: streamUsage?.completion_tokens ?? 0,
+          ...(typeof cachedTokens === 'number' && cachedTokens > 0 ? { cache_read_input_tokens: cachedTokens } : {}),
         },
       };
     }

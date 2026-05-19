@@ -23,12 +23,13 @@ import {
   WEB_SEARCH_BETA_HEADER,
 } from '../constants/betas.js';
 import { OAUTH_BETA_HEADER } from '../constants/oauth.js';
+import { getAntBetaSettings } from './antBetas.js';
 import { isClaudeAISubscriber } from './auth.js';
 import { has1mContext } from './context.js';
 import { isEnvDefinedFalsy, isEnvTruthy } from './envUtils.js';
 import { getCanonicalName } from './model/model.js';
 import { get3PModelCapabilityOverride } from './model/modelSupportOverrides.js';
-import { getAPIProvider, isAnthropicProvider } from './model/providers.js';
+import { getAPIProvider, getActiveProviderId, isAnthropicProvider } from './model/providers.js';
 import { getInitialSettings } from './settings/settings.js';
 
 /**
@@ -130,6 +131,14 @@ export function modelSupportsContextManagement(model: string): boolean {
 export function modelSupportsStructuredOutputs(model: string): boolean {
   const canonical = getCanonicalName(model);
   const provider = getAPIProvider();
+  const activeProviderId = getActiveProviderId();
+
+  // Non-Anthropic providers (OpenAI, Gemini, OpenRouter, etc.) support
+  // structured outputs through adapter-level response_format mapping.
+  if (activeProviderId !== 'anthropic') {
+    return true;
+  }
+
   // Structured outputs only supported on firstParty and Foundry (not Bedrock/Vertex yet)
   if (provider !== 'firstParty' && provider !== 'foundry') {
     return false;
@@ -146,36 +155,31 @@ export function modelSupportsStructuredOutputs(model: string): boolean {
 
 // @[MODEL LAUNCH]: Add the new model if it supports auto mode (specifically PI probes) — ask in #proj-claude-code-safety-research.
 export function modelSupportsAutoMode(model: string): boolean {
-  if (feature('TRANSCRIPT_CLASSIFIER')) {
-    const m = getCanonicalName(model);
-    // External: firstParty-only at launch (PI probes not wired for
-    // Bedrock/Vertex/Foundry yet). Checked before allowModels so the GB
-    // override can't enable auto mode on unsupported providers.
-    if (process.env.USER_TYPE !== 'ant' && getAPIProvider() !== 'firstParty') {
-      return false;
-    }
-    // GrowthBook override: tengu_auto_mode_config.allowModels force-enables
-    // auto mode for listed models, bypassing the denylist/allowlist below.
-    // Exact model IDs (e.g. "claude-strudel-v6-p") match only that model;
-    // canonical names (e.g. "claude-strudel") match the whole family.
-    const config = getFeatureValue_CACHED_MAY_BE_STALE<{
-      allowModels?: string[];
-    }>('tengu_auto_mode_config', {});
-    const rawLower = model.toLowerCase();
-    if (config?.allowModels?.some(am => am.toLowerCase() === rawLower || am.toLowerCase() === m)) {
-      return true;
-    }
-    if (process.env.USER_TYPE === 'ant') {
-      // Denylist: block known-unsupported claude models, allow everything else (ant-internal models etc.)
-      if (m.includes('claude-3-')) return false;
-      // claude-*-4 not followed by -[6-9]: blocks bare -4, -4-YYYYMMDD, -4@, -4-0 thru -4-5
-      if (/claude-(opus|sonnet|haiku)-4(?!-[6-9])/.test(m)) return false;
-      return true;
-    }
-    // External allowlist (firstParty already checked above).
-    return /^claude-(opus|sonnet)-4-6/.test(m);
+  if (!feature('TRANSCRIPT_CLASSIFIER')) return false;
+
+  const m = getCanonicalName(model);
+
+  // GrowthBook override: tengu_auto_mode_config.allowModels force-enables
+  // auto mode for listed models, bypassing the denylist below.
+  const config = getFeatureValue_CACHED_MAY_BE_STALE<{
+    allowModels?: string[];
+  }>('tengu_auto_mode_config', {});
+  const rawLower = model.toLowerCase();
+  if (config?.allowModels?.some(am => am.toLowerCase() === rawLower || am.toLowerCase() === m)) {
+    return true;
   }
-  return false;
+
+  if (process.env.USER_TYPE === 'ant') {
+    // Denylist: block known-unsupported claude models, allow everything else (ant-internal models etc.)
+    if (m.includes('claude-3-')) return false;
+    // claude-*-4 not followed by -[6-9]: blocks bare -4, -4-YYYYMMDD, -4@, -4-0 thru -4-5
+    if (/claude-(opus|sonnet|haiku)-4(?!-[6-9])/.test(m)) return false;
+    return true;
+  }
+
+  // Non-ant (this fork): all models support auto mode.
+  // The classifier uses the side-query system which works with any provider.
+  return true;
 }
 
 /**
@@ -224,10 +228,8 @@ export const getAllModelBetas = memoize((model: string): string[] => {
 
   if (!isHaiku) {
     betaHeaders.push(CLAUDE_CODE_20250219_BETA_HEADER);
-    if (process.env.USER_TYPE === 'ant' && process.env.CLAUDE_CODE_ENTRYPOINT === 'cli') {
-      if (CLI_INTERNAL_BETA_HEADER) {
-        betaHeaders.push(CLI_INTERNAL_BETA_HEADER);
-      }
+    if (getAntBetaSettings().cliInternal && process.env.CLAUDE_CODE_ENTRYPOINT === 'cli') {
+      betaHeaders.push(CLI_INTERNAL_BETA_HEADER);
     }
   }
   if (isClaudeAISubscriber()) {
@@ -270,7 +272,7 @@ export const getAllModelBetas = memoize((model: string): string[] => {
   // into), unset defers to GB.
   if (
     SUMMARIZE_CONNECTOR_TEXT_BETA_HEADER &&
-    process.env.USER_TYPE === 'ant' &&
+    getAntBetaSettings().connectorText &&
     includeFirstPartyOnlyBetas &&
     !isEnvDefinedFalsy(process.env.USE_CONNECTOR_TEXT_SUMMARIZATION) &&
     (isEnvTruthy(process.env.USE_CONNECTOR_TEXT_SUMMARIZATION) ||
@@ -306,7 +308,7 @@ export const getAllModelBetas = memoize((model: string): string[] => {
   // Sends the v2 header (2026-03-28) added in anthropics/anthropic#337072 to
   // isolate the CC A/B cohort from ~9.2M/week existing v1 senders. Ant-only
   // while the restored JsonToolUseOutputParser soaks.
-  if (process.env.USER_TYPE === 'ant' && includeFirstPartyOnlyBetas && tokenEfficientToolsEnabled) {
+  if (getAntBetaSettings().tokenEfficientTools && includeFirstPartyOnlyBetas && tokenEfficientToolsEnabled) {
     betaHeaders.push(TOKEN_EFFICIENT_TOOLS_BETA_HEADER);
   }
 
@@ -371,9 +373,8 @@ export function getMergedBetas(model: string, options?: { isAgenticQuery?: boole
       baseBetas.push(CLAUDE_CODE_20250219_BETA_HEADER);
     }
     if (
-      process.env.USER_TYPE === 'ant' &&
+      getAntBetaSettings().cliInternal &&
       process.env.CLAUDE_CODE_ENTRYPOINT === 'cli' &&
-      CLI_INTERNAL_BETA_HEADER &&
       !baseBetas.includes(CLI_INTERNAL_BETA_HEADER)
     ) {
       baseBetas.push(CLI_INTERNAL_BETA_HEADER);

@@ -6,7 +6,7 @@ export const CONTEXT_1M_BETA_HEADER = 'context-1m-2025-08-07';
 export const CONTEXT_MANAGEMENT_BETA_HEADER = 'context-management-2025-06-27';
 export const STRUCTURED_OUTPUTS_BETA_HEADER = 'structured-outputs-2025-12-15';
 export const WEB_SEARCH_BETA_HEADER = 'web-search-2025-03-05';
-export const COMPUTER_USE_BETA_HEADER = 'computer-2024-10-22';
+export const COMPUTER_USE_BETA_HEADER = 'computer-use-2025-01-24';
 // Tool search beta headers differ by provider:
 // - Claude API / Foundry: advanced-tool-use-2025-11-20
 // - Vertex AI / Bedrock: tool-search-tool-2025-10-19
@@ -22,7 +22,7 @@ export const SUMMARIZE_CONNECTOR_TEXT_BETA_HEADER = feature('CONNECTOR_TEXT')
   ? 'summarize-connector-text-2026-03-13'
   : '';
 export const AFK_MODE_BETA_HEADER = feature('TRANSCRIPT_CLASSIFIER') ? 'afk-mode-2026-01-31' : '';
-export const CLI_INTERNAL_BETA_HEADER = process.env.USER_TYPE === 'ant' ? 'cli-internal-2026-02-09' : '';
+export const CLI_INTERNAL_BETA_HEADER = 'cli-internal-2026-02-09';
 export const ADVISOR_BETA_HEADER = 'advisor-tool-2026-03-01';
 
 /**

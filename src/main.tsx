@@ -970,6 +970,13 @@ export async function main() {
   });
   profileCheckpoint('main_warning_handler_initialized');
 
+  // Be forgiving when users copy the npm/bun argument separator to the CLI:
+  // `bun run dev -- --resume ...` needs `--`, but `claude -- --resume ...`
+  // should behave like `claude --resume ...`.
+  if (process.argv[2] === '--' && process.argv[3]?.startsWith('-')) {
+    process.argv.splice(2, 1);
+  }
+
   // Check for cc:// or cc+unix:// URL in argv — rewrite so the main command
   // handles it, giving the full interactive TUI instead of a stripped-down subcommand.
   // For headless (-p), we rewrite to the internal `open` subcommand.
@@ -1645,6 +1652,12 @@ async function run(): Promise<CommanderCommand> {
       profileCheckpoint('action_handler_start');
       applyProviderOption((options as { provider?: string }).provider, (options as { model?: string }).model);
 
+      // Apply profile selection before any config loads
+      const profileOption = (options as { profile?: string }).profile;
+      if (profileOption) {
+        process.env.CLAUDECODE_PROFILE = profileOption;
+      }
+
       // --bare = one-switch minimal mode. Sets SIMPLE so all the existing
       // gates fire (CLAUDE.md, skills, hooks inside executeHooks, agent
       // dir-walk). Must be set before setup() / any of the gated work runs.
@@ -1676,17 +1689,10 @@ async function run(): Promise<CommanderCommand> {
         prompt = undefined;
       }
 
-      // Log event for any single-word prompt
-      if (prompt && typeof prompt === 'string' && !/\s/.test(prompt) && prompt.length > 0) {
-        logEvent('tengu_single_word_prompt', {
-          length: prompt.length,
-        });
-      }
-
       const resumeValue = typeof options.resume === 'string' ? options.resume : undefined;
       const resumeMessageLimitFromFlag =
         resumeValue && !validateUuid(resumeValue) ? Number.parseInt(resumeValue, 10) : undefined;
-      const resumeMessageLimit =
+      let resumeMessageLimit =
         resumeMessageLimitFromFlag &&
         resumeMessageLimitFromFlag > 0 &&
         String(resumeMessageLimitFromFlag) === resumeValue?.trim()
@@ -1698,6 +1704,19 @@ async function run(): Promise<CommanderCommand> {
         prompt = undefined;
       } else if (resumeMessageLimit) {
         options.resume = undefined;
+      } else if (resumeValue && validateUuid(resumeValue) && typeof prompt === 'string') {
+        const limitFromPrompt = Number.parseInt(prompt, 10);
+        if (limitFromPrompt > 0 && String(limitFromPrompt) === prompt.trim()) {
+          resumeMessageLimit = limitFromPrompt;
+          prompt = undefined;
+        }
+      }
+
+      // Log event for any single-word prompt
+      if (prompt && typeof prompt === 'string' && !/\s/.test(prompt) && prompt.length > 0) {
+        logEvent('tengu_single_word_prompt', {
+          length: prompt.length,
+        });
       }
 
       // Assistant mode: when .claude/settings.json has assistant: true AND
@@ -4943,6 +4962,10 @@ async function run(): Promise<CommanderCommand> {
   program.option(
     '--provider <provider>',
     'Select AI provider: openai, gemini, openrouter, groq, xai, mistral, kilocode, ollama, anthropic (default: openai)',
+  );
+  program.option(
+    '--profile <name>',
+    'Use a named profile (isolated config directory with its own provider, settings, sessions)',
   );
   // --model already added earlier (line 1016), skip duplicate
   // program.option('--model <model>', 'Override the default model for the selected provider');
