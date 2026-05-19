@@ -165,7 +165,6 @@ async function main(): Promise<void> {
   // Session management against the ~/.claude/sessions/ registry. Flag
   // literals are inlined so bg.js only loads when actually dispatching.
   if (
-    feature('BG_SESSIONS') &&
     (args[0] === 'ps' ||
       args[0] === 'logs' ||
       args[0] === 'attach' ||

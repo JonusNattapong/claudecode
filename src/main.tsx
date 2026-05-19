@@ -5890,6 +5890,14 @@ Examples:
         },
       );
   }
+  // Fast-path for --bg/--background: delegate to bg handler before Commander
+  // processes the args (which would reject --bg as an unknown option).
+  if (process.argv.includes('--bg') || process.argv.includes('--background')) {
+    const { handleBgFlag } = await import('./cli/bg.js');
+    await handleBgFlag(process.argv.slice(2));
+    process.exit(0);
+  }
+
   profileCheckpoint('run_before_parse');
   await program.parseAsync(process.argv);
   profileCheckpoint('run_after_parse');
