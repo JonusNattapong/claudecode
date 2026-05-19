@@ -110,8 +110,20 @@ export async function initialize(): Promise<void> {
     // and will error with EOPNOTSUPP on macOS. Only allow regular files and directories.
     ignored: (path, stats) => {
       if (stats && !stats.isFile() && !stats.isDirectory()) return true;
+      const parts = path.split(platformPath.sep);
       // Ignore .git directories
-      return path.split(platformPath.sep).some(dir => dir === '.git');
+      if (parts.some(dir => dir === '.git')) return true;
+      // Only watch .md files in skill directories and .ts/.js in commands dirs.
+      // Non-.md files (build artifacts, node_modules, etc.) triggered fd
+      // exhaustion when a build ran inside a skill directory.
+      if (stats?.isFile()) {
+        const ext = platformPath.extname(path).toLowerCase();
+        const isSkillsDir = parts.some(dir => dir === 'skills');
+        const isCommandsDir = parts.some(dir => dir === 'commands');
+        if (isSkillsDir && ext !== '.md') return true;
+        if (isCommandsDir && ext !== '.ts' && ext !== '.js' && ext !== '.tsx' && ext !== '.jsx') return true;
+      }
+      return false;
     },
     ignorePermissionErrors: true,
     usePolling: USE_POLLING,
