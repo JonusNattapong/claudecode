@@ -480,6 +480,15 @@ export const SkillTool: Tool<InputSchema, Output, Progress> = buildTool({
       },
     ];
 
+    // In headless mode, auto-allow if the skill isn't denied (above)
+    if (permissionContext.shouldAvoidPermissionPrompts) {
+      return {
+        behavior: 'allow',
+        updatedInput: { skill, args },
+        decisionReason: undefined,
+      };
+    }
+
     // Default behavior: ask user for permission
     return {
       behavior: 'ask',
