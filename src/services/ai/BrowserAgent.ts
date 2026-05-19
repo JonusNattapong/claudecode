@@ -1,5 +1,3 @@
-import * as fs from 'fs';
-import * as path from 'path';
 import { sideQuery } from '../../utils/sideQuery.js';
 import { handleBrowserAction } from '../../tools/BrowserTool/handler.js';
 import type { BrowserActionInput, BrowserResult } from '../../tools/BrowserTool/types.js';
