@@ -79,7 +79,7 @@ bun install -g cephcode
 在任意项目目录运行：
 
 ```bash
-cephcode
+ceph
 ```
 
 ### 从源码运行

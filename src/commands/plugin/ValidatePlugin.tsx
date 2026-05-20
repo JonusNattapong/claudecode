@@ -27,7 +27,7 @@ export function ValidatePlugin({ onComplete, path }: Props): React.ReactNode {
             'When given a directory, automatically validates .claude-plugin/marketplace.json\n' +
             'or .claude-plugin/plugin.json (prefers marketplace if both exist).\n\n' +
             'Or from the command line:\n' +
-            '  claude plugin validate <path>',
+            '  ceph plugin validate <path>',
         );
         return;
       }

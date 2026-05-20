@@ -1,12 +1,20 @@
 {
   "name": "cephcode",
-  "version": "2.1.145",
+  "version": "2.1.150",
   "description": "Official Ceph Code CLI — AI-powered coding assistant",
-  "main": "src/main.tsx",
+  "main": "./dist/main.js",
   "type": "module",
   "bin": {
-    "cephcode": "./dist/main.js"
+    "ceph": "./bin/ceph",
+    "cephcode": "./bin/ceph"
   },
+  "files": [
+    "bin/",
+    "dist/",
+    "docs/",
+    "README.md",
+    "LICENSE.md"
+  ],
   "repository": {
     "type": "git",
     "url": "git+https://github.com/CephCore/cephcode.git"
@@ -15,9 +23,6 @@
     "url": "https://github.com/CephCore/cephcode/issues"
   },
   "homepage": "https://github.com/CephCore/cephcode#readme",
-  "publishConfig": {
-    "registry": "https://npm.pkg.github.com"
-  },
   "scripts": {
     "dev": "bun --watch run --define.TRANSCRIPT_CLASSIFIER=true --define.CHICAGO_MCP=true src/main.tsx",
     "start": "bun run src/main.tsx",

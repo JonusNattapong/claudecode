@@ -81,7 +81,7 @@ bun install -g cephcode
 รันจากไดเรกทอรีโปรเจ็กต์ใดก็ได้:
 
 ```bash
-cephcode
+ceph
 ```
 
 ### รันจากซอร์ส

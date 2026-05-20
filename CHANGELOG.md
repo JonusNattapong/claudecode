@@ -8,6 +8,14 @@ This project follows a practical changelog format based on:
 - `Fixed` for bug fixes
 - `Security` for permission, sandbox, auth, and trust-related hardening
 - `Internal` for tests, types, refactors, and developer-facing implementation work
+## [2.1.150] - 2026-05-21
+
+### Internal
+
+- Bump version for npm publish
+- Documentation rewrite with real source content (27 providers, 80+ commands, 40+ tools)
+- Fix Windows CRLF normalization across docs
+
 ## [2.1.149] - 2026-05-21
 
 ### Added

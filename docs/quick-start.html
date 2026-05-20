@@ -29,7 +29,7 @@
 
     <h2>1. Install</h2>
     <pre><code>npm install -g cephcode
-cephcode --version</code></pre>
+ceph --version</code></pre>
 
     <h2>2. Set a Provider Key</h2>
     <p>Set at least one API key as an environment variable. See <a href="providers.html">Providers</a> for all 27 options.</p>
@@ -44,7 +44,7 @@ export GOOGLE_API_KEY=...</code></pre>
 
     <h2>3. Launch</h2>
     <pre><code>cd /path/to/your/project
-cephcode</code></pre>
+ceph</code></pre>
     <p>The terminal UI starts with model name, provider, and context usage in the status bar.</p>
 
     <h2>4. First Commands</h2>
@@ -72,16 +72,16 @@ cephcode</code></pre>
 
     <h2>6. Sessions</h2>
     <pre><code># Continue last conversation
-cephcode -c
+ceph -c
 
 # Resume a specific session
-cephcode -r
+ceph -r
 
 # Print mode (non-interactive, pipe-friendly)
-cephcode -p "find all unused exports"
+ceph -p "find all unused exports"
 
 # With structured output
-cephcode -p --output-format json "list all dependencies"</code></pre>
+ceph -p --output-format json "list all dependencies"</code></pre>
 
     <div class="callout callout-info">
       <strong>Tips</strong>

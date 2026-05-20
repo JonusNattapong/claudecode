@@ -1,5 +1,5 @@
 /**
- * `claude mcp xaa` — manage the XAA (SEP-990) IdP connection.
+ * `ceph mcp xaa` — manage the XAA (SEP-990) IdP connection.
  *
  * The IdP connection is user-level: configure once, all XAA-enabled MCP
  * servers reuse it. Lives in settings.xaaIdp (non-secret) + a keychain slot
@@ -141,7 +141,7 @@ export function registerMcpXaaIdpCommand(mcp: Command): void {
     .action(async options => {
       const idp = getXaaIdpSettings();
       if (!idp) {
-        return cliError("Error: no XAA IdP connection. Run 'claude mcp xaa setup' first.");
+        return cliError("Error: no XAA IdP connection. Run 'ceph mcp xaa setup' first.");
       }
 
       // Direct-inject path: skip cache check, skip OIDC. Writing IS the
@@ -195,7 +195,7 @@ export function registerMcpXaaIdpCommand(mcp: Command): void {
       }
       process.stdout.write(`Client secret: ${hasSecret ? '(stored in keychain)' : '(not set — PKCE-only)'}\n`);
       process.stdout.write(
-        `Logged in:     ${hasIdToken ? 'yes (id_token cached)' : "no — run 'claude mcp xaa login'"}\n`,
+        `Logged in:     ${hasIdToken ? 'yes (id_token cached)' : "no — run 'ceph mcp xaa login'"}\n`,
       );
       cliOk();
     });

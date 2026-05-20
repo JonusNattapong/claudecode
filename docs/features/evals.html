@@ -42,8 +42,8 @@
 
     <div class="callout callout-tip">
       <strong>TL;DR</strong>
-      Run <code>cephcode eval init</code> to bootstrap the evaluation folders inside your project,
-      then execute <code>cephcode eval run</code> to run standard coding or research benchmarks locally.
+      Run <code>ceph eval init</code> to bootstrap the evaluation folders inside your project,
+      then execute <code>ceph eval run</code> to run standard coding or research benchmarks locally.
     </div>
 
     <h2>Overview</h2>
@@ -52,7 +52,7 @@
     </p>
 
     <h2>Workspace Directory Layout</h2>
-    <p>When you run <code>cephcode eval init</code>, it configures the following structures inside <code>.ceph/evals/</code>:</p>
+    <p>When you run <code>ceph eval init</code>, it configures the following structures inside <code>.ceph/evals/</code>:</p>
     
     <div class="scroll-wrap">
     <table>
@@ -73,33 +73,33 @@
     
     <h3>1. Initialize Workspace</h3>
     <p>Sets up folder layouts, default graders, and category templates:</p>
-    <pre><code><span style="color:var(--orange-500)">cephcode</span> eval init</code></pre>
+    <pre><code><span style="color:var(--orange-500)">ceph</span> eval init</code></pre>
 
     <h3>2. Run Evaluations</h3>
     <p>Run the test suite across your tasks. You can filter by category or taskId, and optionally specify a baseline to compare drifts:</p>
     <pre><code><span style="color:var(--text-tertiary)"># Run all loaded tasks</span>
-<span style="color:var(--orange-500)">cephcode</span> eval run
+<span style="color:var(--orange-500)">ceph</span> eval run
 
 <span style="color:var(--text-tertiary)"># Run only tasks in the "coding" category</span>
-<span style="color:var(--orange-500)">cephcode</span> eval run --set coding
+<span style="color:var(--orange-500)">ceph</span> eval run --set coding
 
 <span style="color:var(--text-tertiary)"># Run a specific task by ID</span>
-<span style="color:var(--orange-500)">cephcode</span> eval run --task coding.sample-task
+<span style="color:var(--orange-500)">ceph</span> eval run --task coding.sample-task
 
 <span style="color:var(--text-tertiary)"># Run evaluations and compare against a baseline</span>
-<span style="color:var(--orange-500)">cephcode</span> eval run --baseline main</code></pre>
+<span style="color:var(--orange-500)">ceph</span> eval run --baseline main</code></pre>
 
     <h3>3. Drift &amp; Regression Comparison</h3>
     <p>Displays comparative drifts between the latest run and a saved baseline:</p>
-    <pre><code><span style="color:var(--orange-500)">cephcode</span> eval compare --baseline main</code></pre>
+    <pre><code><span style="color:var(--orange-500)">ceph</span> eval compare --baseline main</code></pre>
 
     <h3>4. Step Trace Trajectory</h3>
     <p>Examine exactly what events occurred during a task's evaluation run:</p>
-    <pre><code><span style="color:var(--orange-500)">cephcode</span> eval trace coding.sample-task</code></pre>
+    <pre><code><span style="color:var(--orange-500)">ceph</span> eval trace coding.sample-task</code></pre>
 
     <h3>5. Diagnostics (Doctor)</h3>
     <p>Run health checks on YAML configuration syntax, verify workspace paths, and list diagnostic states:</p>
-    <pre><code><span style="color:var(--orange-500)">cephcode</span> eval doctor</code></pre>
+    <pre><code><span style="color:var(--orange-500)">ceph</span> eval doctor</code></pre>
 
     <h2>Writing Tasks &amp; Graders</h2>
 

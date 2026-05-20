@@ -22,7 +22,7 @@
   <p><strong>Check:</strong> Provider API key and model selection.</p>
   <pre><code>/status                          # Shows active provider and model
 echo $ANTHROPIC_API_KEY          # Verify key is set
-cephcode --model sonnet          # Specify model at startup</code></pre>
+ceph --model sonnet          # Specify model at startup</code></pre>
 
   <h3>Build fails</h3>
   <pre><code>node --version                   # Must be 22.12.0+
@@ -45,17 +45,17 @@ bun run build                    # Full build</code></pre>
   <pre><code>/permissions                     # View current mode and rules
 /permissions set auto            # Auto-approve low-risk actions
 # Or use CLI flags:
-cephcode --allowedTools "Bash(git *) Edit Read"</code></pre>
+ceph --allowedTools "Bash(git *) Edit Read"</code></pre>
 
   <h3>MCP tools not showing or server won't start</h3>
   <pre><code>/mcp                             # List configured MCP servers
-cephcode --mcp-config ./mcp-config.json  # Load from file</code></pre>
+ceph --mcp-config ./mcp-config.json  # Load from file</code></pre>
   <p>Verify the server's configuration JSON. Check <code>src/services/mcp/client.ts</code> for protocol version requirements.</p>
 
   <h3>Plugins not appearing after install</h3>
   <pre><code>/plugin                          # List installed plugins
 /reload-plugins                  # Refresh without restart
-cephcode --plugin-dir /path/to/plugins  # Load from custom dir</code></pre>
+ceph --plugin-dir /path/to/plugins  # Load from custom dir</code></pre>
 
   <h3>Context window full</h3>
   <pre><code>/context                         # Show usage
@@ -72,16 +72,16 @@ Remove-Item bun.lock
 bun install</code></pre>
 
   <h2>Debug Mode</h2>
-  <pre><code>cephcode --debug                          # General debug
-cephcode --debug api,hooks                # Category-filtered
-cephcode --debug-file /tmp/debug.log      # Log to file
-DEBUG=provider:anthropic cephcode         # Provider-specific</code></pre>
+  <pre><code>ceph --debug                          # General debug
+ceph --debug api,hooks                # Category-filtered
+ceph --debug-file /tmp/debug.log      # Log to file
+DEBUG=provider:anthropic ceph         # Provider-specific</code></pre>
 
   <h2>Print Mode (Non-Interactive)</h2>
   <p>If the TUI doesn't work in your environment, use <code>--print</code> for pipe-friendly output:</p>
-  <pre><code>cephcode -p "explain this file" > output.txt
-cephcode -p --output-format json "list dependencies" | jq
-echo "refactor this" | cephcode -p</code></pre>
+  <pre><code>ceph -p "explain this file" > output.txt
+ceph -p --output-format json "list dependencies" | jq
+echo "refactor this" | ceph -p</code></pre>
 
   <h2>Getting Help</h2>
   <ul>

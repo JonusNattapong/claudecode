@@ -33,7 +33,7 @@ A factual comparison based on Anthropic's public Claude Code documentation and t
 | Area | Claude Code (Anthropic) | Ceph Code |
 | --- | --- | --- |
 | **Status** | Official Anthropic CLI product with official docs, releases, GitHub Action, SDK, and enterprise deployment paths. | Community-maintained rebuild/fork. Behavior can diverge from upstream and should be validated before production use. |
-| **Install/runtime requirements** | Official docs list Node.js 18+, supported OSes, internet access for auth/AI processing, and `npm install -g @anthropic-ai/claude-code`. | This repo uses Bun/TypeScript for local development and publishes the `cephcode` package path described in this README. |
+| **Install/runtime requirements** | Official docs list Node.js 18+, supported OSes, internet access for auth/AI processing, and `npm install -g @anthropic-ai/claude-code`. | This repo uses Bun/TypeScript for local development. Install the `cephcode` package, then run the `ceph` CLI command. |
 | **Model/provider scope** | Built for Claude. Official deployment paths include Anthropic API plus enterprise hosting through AWS Bedrock or Google Vertex AI. | Provider registry currently includes 27 provider IDs in `src/services/ai/providers.json`, including Anthropic, OpenAI, Google, OpenRouter, Ollama, Groq, xAI, Mistral, Copilot, and others. Compatibility varies by provider. |
 | **Terminal workflow** | Official agentic coding tool that can edit files, run commands, answer codebase questions, use web/MCP context, and act as a Unix-style CLI utility. | Reconstructed terminal workflow with local patches, provider adapters, extra commands, and experimental runtime changes. |
 | **Permissions** | Official IAM docs list `default`, `acceptEdits`, `plan`, and `bypassPermissions`, plus allow/ask/deny permission rules in settings. | Source-defined runtime modes are `default`, `ask`, `plan`, `acceptEdits`, `bypassPermissions`, `dontAsk`; `auto` is included only when the transcript-classifier build gate is enabled. |
@@ -65,6 +65,10 @@ Highlights:
 - **Durable Agent Runtime & Orchestrator (PLAN I)** with offline-first execution, checkpoints, and interactive approvals.
 - **Session and bridge features** for saving context, restoring work, and supporting remote collaboration.
 
+### Compatibility Namespace
+
+Ceph Code's command is `ceph`, but parts of the runtime intentionally still read Claude-compatible project and user paths such as `.claude/settings.json`, `.claude/skills/`, and selected `CLAUDE_CODE_*` environment variables. This keeps existing Claude Code-style projects, plugins, skills, hooks, and settings reusable while the public CLI and docs use the Ceph Code name.
+
 ## Quick Start
 
 ### Install Globally
@@ -82,7 +86,7 @@ bun install -g cephcode
 Run it from any project directory:
 
 ```bash
-cephcode
+ceph
 ```
 
 ### Run From Source
