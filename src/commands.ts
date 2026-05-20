@@ -21,6 +21,7 @@ import diff from './commands/diff/index.js';
 import ctx_viz from './commands/ctx_viz/index.js';
 import doctor from './commands/doctor/index.js';
 import memory, { memorySearch } from './commands/memory/index.js';
+import evalCmd from './commands/eval/index.js';
 import explorer from './commands/explorer/index.js';
 import help from './commands/help/index.js';
 import ide from './commands/ide/index.js';
@@ -93,8 +94,10 @@ const forkCmd = null;
 /* eslint-enable @typescript-eslint/no-require-imports */
 import thinkback from './commands/thinkback/index.js';
 import thinkbackPlay from './commands/thinkback-play/index.js';
+import toolsCmd from './commands/tools/index.js';
 import permissions from './commands/permissions/index.js';
 import plan from './commands/plan/index.js';
+import research from './commands/research/index.js';
 import fast from './commands/fast/index.js';
 import passes from './commands/passes/index.js';
 import privacySettings from './commands/privacy-settings/index.js';
@@ -122,6 +125,7 @@ import scrollSpeed from './commands/scroll-speed/index.js';
 import searxng from './commands/searxng/index.js';
 import pluginDetails from './commands/plugin-details/index.js';
 import advisor from './commands/advisor.js';
+import agentCmd from './commands/agent/index.js';
 import capabilities from './commands/capabilities/index.js';
 import { logError } from './utils/log.js';
 import { toError } from './utils/errors.js';
@@ -223,6 +227,7 @@ export const INTERNAL_ONLY_COMMANDS = [
 const COMMANDS = memoize((): Command[] => [
   addDir,
   advisor,
+  agentCmd,
   agents,
   ant,
   branch,
@@ -257,6 +262,7 @@ const COMMANDS = memoize((): Command[] => [
   mcp,
   memory,
   memorySearch,
+  evalCmd,
   mobile,
   model,
   outputStyle,
@@ -305,8 +311,10 @@ const COMMANDS = memoize((): Command[] => [
   ...(voiceCommand ? [voiceCommand] : []),
   thinkback,
   thinkbackPlay,
+  toolsCmd,
   permissions,
   plan,
+  research,
   privacySettings,
   hooks,
   exportCommand,
