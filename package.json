@@ -9,12 +9,12 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/JonusNattapong/ClaudeCode.git"
+    "url": "git+https://github.com/CephCore/cephcode.git"
   },
   "bugs": {
-    "url": "https://github.com/JonusNattapong/ClaudeCode/issues"
+    "url": "https://github.com/CephCore/cephcode/issues"
   },
-  "homepage": "https://github.com/JonusNattapong/ClaudeCode#readme",
+  "homepage": "https://github.com/CephCore/cephcode#readme",
   "publishConfig": {
     "registry": "https://npm.pkg.github.com"
   },

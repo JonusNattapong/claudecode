@@ -14,7 +14,7 @@ Thank you for your interest in contributing! This document provides guidelines a
 
 ```bash
 # Clone the repository
-git clone https://github.com/JonusNattapong/ClaudeCode.git
+git clone https://github.com/CephCore/cephcode.git
 cd claude-code
 
 # Install dependencies

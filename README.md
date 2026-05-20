@@ -63,7 +63,7 @@ cephcode
 ### Run From Source
 
 ```bash
-git clone https://github.com/JonusNattapong/ClaudeCode.git
+git clone https://github.com/CephCore/cephcode.git
 cd claudecode
 bun install
 bun run build

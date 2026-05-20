@@ -65,6 +65,6 @@ export const BrowserAgentTool = buildTool({
   },
 
   renderToolUseMessage(input: any): React.ReactNode {
-    return React.createElement(Text, null, `🤖 Autonomous Agent: "${input.goal}"`);
+    return React.createElement(Text, null, `Autonomous Agent: "${input.goal}"`);
   },
 });
