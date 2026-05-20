@@ -149,6 +149,17 @@ export function logError(error: unknown): void {
     process.exit(1);
   }
   try {
+    // Send to Sentry when enabled (fire-and-forget, never blocks)
+    // Lazy import to avoid circular deps — sentry.ts only imports debug.ts
+    if (process.env.SENTRY_DSN) {
+      void import('./sentry.js').then(({ captureException }) => {
+        captureException(err, { source: 'logError' });
+      });
+    }
+  } catch {
+    // pass
+  }
+  try {
     // Check if error reporting should be disabled
     if (
       // Cloud providers (Bedrock/Vertex/Foundry) always disable features
