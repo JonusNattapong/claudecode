@@ -1,2 +1,4 @@
-#!/usr/bin/env bun
-import '../dist/main.js';
+#!/usr/bin/env bash
+set -e
+DIR="$(cd "$(dirname "$0")/.." && pwd)"
+exec bun "$DIR/dist/main.js" "$@"
