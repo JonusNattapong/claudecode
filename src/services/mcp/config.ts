@@ -597,7 +597,7 @@ export async function addMcpConfig(name: string, config: unknown, scope: ConfigS
     throw new Error(`Cannot add MCP server "${name}": this name is reserved.`);
   }
 
-  if (feature('CHICAGO_MCP')) {
+  if (feature('CHICAGO_MCP') || process.env.ENABLE_COMPUTER_USE === '1') {
     const { isComputerUseMCPServer } = await import('../../utils/computerUse/common.js');
     if (isComputerUseMCPServer(name)) {
       throw new Error(`Cannot add MCP server "${name}": this name is reserved.`);
@@ -1459,7 +1459,7 @@ export function areMcpConfigsAllowedWithEnterpriseMcpConfig(configs: Record<stri
  * enabledMcpServers. Shows up in /mcp as disabled until the user enables it.
  */
 /* eslint-disable @typescript-eslint/no-require-imports */
-const DEFAULT_DISABLED_BUILTIN = feature('CHICAGO_MCP')
+const DEFAULT_DISABLED_BUILTIN = (feature('CHICAGO_MCP') || process.env.ENABLE_COMPUTER_USE === '1')
   ? (require('../../utils/computerUse/common.js') as typeof import('../../utils/computerUse/common.js'))
       .COMPUTER_USE_MCP_SERVER_NAME
   : null;

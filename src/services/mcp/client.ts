@@ -226,10 +226,10 @@ const claudeInChromeToolRendering = (): typeof import('../../utils/claudeInChrom
 // Lazy: wrapper.tsx → hostAdapter.ts → executor.ts pulls both native modules
 // (@ant/computer-use-input + @ant/computer-use-swift). Runtime-gated by
 // GrowthBook tengu_malort_pedway (see gates.ts).
-const computerUseWrapper = feature('CHICAGO_MCP')
+const computerUseWrapper = (feature('CHICAGO_MCP') || process.env.ENABLE_COMPUTER_USE === '1')
   ? (): typeof import('../../utils/computerUse/wrapper.js') => require('../../utils/computerUse/wrapper.js')
   : undefined;
-const isComputerUseMCPServer = feature('CHICAGO_MCP')
+const isComputerUseMCPServer = (feature('CHICAGO_MCP') || process.env.ENABLE_COMPUTER_USE === '1')
   ? (require('../../utils/computerUse/common.js') as typeof import('../../utils/computerUse/common.js'))
       .isComputerUseMCPServer
   : undefined;
@@ -1081,7 +1081,7 @@ export const connectToServer = memoize(
           transport = clientTransport;
           logMCPDebug(name, `In-process Chrome MCP server started`);
         } else if (
-          feature('CHICAGO_MCP') &&
+          (feature('CHICAGO_MCP') || process.env.ENABLE_COMPUTER_USE === '1') &&
           (serverRef.type === 'stdio' || !serverRef.type) &&
           isComputerUseMCPServer!(name)
         ) {
@@ -2110,7 +2110,7 @@ export const fetchToolsForClient = memoizeWithLRU(
             ...(isClaudeInChromeMCPServer(client.name) && (client.config.type === 'stdio' || !client.config.type)
               ? claudeInChromeToolRendering().getClaudeInChromeMCPToolOverrides(tool.name)
               : {}),
-            ...(feature('CHICAGO_MCP') &&
+            ...((feature('CHICAGO_MCP') || process.env.ENABLE_COMPUTER_USE === '1') &&
             (client.config.type === 'stdio' || !client.config.type) &&
             isComputerUseMCPServer!(client.name)
               ? computerUseWrapper!().getComputerUseMCPToolOverrides(tool.name)

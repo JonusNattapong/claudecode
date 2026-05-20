@@ -148,7 +148,7 @@ export async function* handleStopHooks(
   // so a subagent's stopHooks releasing it leaves the main thread's cleanup
   // seeing isLockHeldLocally()===false → no exit notification, and unhides
   // mid-turn. Subagents don't start CU sessions so this is a pure skip.
-  if (feature('CHICAGO_MCP') && !toolUseContext.agentId) {
+  if ((feature('CHICAGO_MCP') || process.env.ENABLE_COMPUTER_USE === '1') && !toolUseContext.agentId) {
     try {
       const { cleanupComputerUseAfterTurn } = await import('../utils/computerUse/cleanup.js');
       await cleanupComputerUseAfterTurn(toolUseContext);

@@ -2269,7 +2269,7 @@ async function run(): Promise<CommanderCommand> {
           let reservedNameError: string | null = null;
           if (nonSdkConfigNames.some(isClaudeInChromeMCPServer)) {
             reservedNameError = `Invalid MCP configuration: "${CLAUDE_IN_CHROME_MCP_SERVER_NAME}" is a reserved MCP name.`;
-          } else if (feature('CHICAGO_MCP')) {
+          } else if (feature('CHICAGO_MCP') || process.env.ENABLE_COMPUTER_USE === '1') {
             const { isComputerUseMCPServer, COMPUTER_USE_MCP_SERVER_NAME } = await import(
               'src/utils/computerUse/common.js'
             );
@@ -2322,7 +2322,7 @@ async function run(): Promise<CommanderCommand> {
       // Store the explicit CLI flag so teammates can inherit it
       setChromeFlagOverride(chromeOpts.chrome);
       const enableClaudeInChrome =
-        shouldEnableClaudeInChrome(chromeOpts.chrome) && ('external' === 'ant' || isClaudeAISubscriber());
+        shouldEnableClaudeInChrome(chromeOpts.chrome) && (process.env.ENABLE_CHROME_MCP === '1' || 'external' === 'ant' || isClaudeAISubscriber());
       const autoEnableClaudeInChrome = !enableClaudeInChrome && shouldAutoEnableClaudeInChrome();
       if (enableClaudeInChrome) {
         const platform = getPlatform();
@@ -2398,15 +2398,15 @@ async function run(): Promise<CommanderCommand> {
       // chicago MCP: guarded Computer Use (app allowlist + frontmost gate +
       // SCContentFilter screenshots). Ant-only, GrowthBook-gated — failures
       // are silent (this is dogfooding). Platform + interactive checks inline
-      // so non-macOS / print-mode ants skip the heavy @ant/computer-use-mcp
-      // import entirely. gates.js is light (type-only package import).
+      // so unsupported platforms / print-mode ants skip the heavy initialization
+      // entirely. gates.js is light (type-only package import).
       //
       // Placed AFTER the enterprise-MCP-config check: that check rejects any
       // dynamicMcpConfig entry with `type !== 'sdk'`, and our config is
       // `type: 'stdio'`. An enterprise-config ant with the GB gate on would
       // otherwise process.exit(1). Chrome has the same latent issue but has
       // shipped without incident; chicago places itself correctly.
-      if (feature('CHICAGO_MCP') && getPlatform() === 'macos' && !getIsNonInteractiveSession()) {
+      if ((feature('CHICAGO_MCP') || process.env.ENABLE_COMPUTER_USE === '1') && !getIsNonInteractiveSession() && ['darwin', 'win32', 'linux'].includes(process.platform)) {
         try {
           const { getChicagoEnabled } = await import('src/utils/computerUse/gates.js');
           if (getChicagoEnabled()) {
@@ -5639,6 +5639,7 @@ async function run(): Promise<CommanderCommand> {
   program
     .command('agents')
     .description('List configured agents and dispatch background sessions')
+    .option('--json', 'Print live agent sessions as machine-readable JSON')
     .option('--setting-sources <sources>', 'Comma-separated list of setting sources to load (user, project, local).')
     .option('--add-dir <dirs...>', 'Additional working directories for dispatched sessions')
     .option('--settings <path>', 'Path to settings file for dispatched sessions')
@@ -5652,14 +5653,18 @@ async function run(): Promise<CommanderCommand> {
     .option('--effort <level>', 'Effort level for dispatched sessions (low/medium/high)')
     .option('--dangerously-skip-permissions', 'Enable bypass permissions mode for dispatched sessions')
     .action(async (opts: Record<string, unknown>) => {
-      const { getAgentViewDisabledReason } = await import('./commands/agents/index.js');
-      const reason = getAgentViewDisabledReason();
-      if (reason) {
-        console.log(`Agent view is ${reason}.`);
-        process.exit(0);
-      }
       const { agentsHandler } = await import('./cli/handlers/agents.js');
-      await agentsHandler();
+      if (opts.json === true) {
+        await agentsHandler({ json: true });
+      } else {
+        const { getAgentViewDisabledReason } = await import('./commands/agents/index.js');
+        const reason = getAgentViewDisabledReason();
+        if (reason) {
+          console.log(`Agent view is ${reason}.`);
+          process.exit(0);
+        }
+        await agentsHandler();
+      }
       process.exit(0);
     });
   if (feature('TRANSCRIPT_CLASSIFIER')) {
@@ -6055,14 +6060,18 @@ Examples:
         await (bg as any).rmCommand(bgArg);
         break;
       case 'agents': {
-        const { getAgentViewDisabledReason } = await import('./commands/agents/index.js');
-        const reason = getAgentViewDisabledReason();
-        if (reason) {
-          console.log(`Agent view is ${reason}.`);
-          process.exit(0);
-        }
         const { agentsHandler } = await import('./cli/handlers/agents.js');
-        await agentsHandler();
+        if (process.argv.includes('--json')) {
+          await agentsHandler({ json: true });
+        } else {
+          const { getAgentViewDisabledReason } = await import('./commands/agents/index.js');
+          const reason = getAgentViewDisabledReason();
+          if (reason) {
+            console.log(`Agent view is ${reason}.`);
+            process.exit(0);
+          }
+          await agentsHandler();
+        }
         break;
       }
       default:
