@@ -2,7 +2,7 @@ import { APIError } from '@anthropic-ai/sdk';
 import { normalizeUsage } from '../usageNormalizer.js';
 import type { ProviderClient, ProviderId, ProviderInitOptions, ProviderInterface } from './ProviderInterface.js';
 
-const CHAT_COMPLETIONS_PATH = '/chat/completions';
+const DEFAULT_CHAT_PATH = '/chat/completions';
 
 function safeParseErrorBody(text: string): Record<string, unknown> | undefined {
   try {
@@ -32,9 +32,9 @@ function extractErrorMessage(body: Record<string, unknown> | undefined, fallback
   return fallback;
 }
 
-function getChatCompletionsUrl(baseUrl: string): string {
+function getChatCompletionsUrl(baseUrl: string, chatPath: string = DEFAULT_CHAT_PATH): string {
   const normalized = baseUrl.replace(/\/$/, '');
-  return normalized.endsWith(CHAT_COMPLETIONS_PATH) ? normalized : `${normalized}${CHAT_COMPLETIONS_PATH}`;
+  return normalized.endsWith(chatPath) ? normalized : `${normalized}${chatPath}`;
 }
 
 export class OpenAICompatibleProvider implements ProviderInterface {
@@ -43,6 +43,8 @@ export class OpenAICompatibleProvider implements ProviderInterface {
   readonly envKey: string;
   readonly defaultBaseUrl: string;
   protected requiresApiKey: boolean;
+  /** Override in subclass for non-standard endpoints (e.g. Cohere uses /chat) */
+  protected chatPath: string = DEFAULT_CHAT_PATH;
 
   constructor(providerId: ProviderId, label: string, envKey: string, defaultBaseUrl: string, requiresApiKey = true) {
     this.providerId = providerId;
@@ -102,7 +104,7 @@ export class OpenAICompatibleProvider implements ProviderInterface {
               headers.Authorization = `Bearer ${apiKey}`;
             }
 
-            const response = await fetch(getChatCompletionsUrl(baseUrl), {
+            const response = await fetch(getChatCompletionsUrl(baseUrl, this.chatPath), {
               method: 'POST',
               headers,
               body: JSON.stringify({ ...params, stream: isStreaming }),

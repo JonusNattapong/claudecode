@@ -1,4 +1,5 @@
 import { AnthropicProvider } from './providers/AnthropicProvider.js';
+import { CohereProvider } from './providers/CohereProvider.js';
 import { CopilotProvider } from './providers/CopilotProvider.js';
 import { GoogleProvider } from './providers/GoogleProvider.js';
 import { KiloCodeProvider } from './providers/KiloCodeProvider.js';
@@ -70,6 +71,8 @@ function createProvider(key: string, entry: any): ProviderInterface {
       return new OpenAIProvider();
     case 'google':
       return new GoogleProvider();
+    case 'cohere':
+      return new CohereProvider();
     case 'copilot':
       return new CopilotProvider();
     case 'openrouter':
