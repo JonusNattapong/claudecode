@@ -207,9 +207,9 @@
     "providerId": "google",
     "label": "Google",
     "envKey": "GOOGLE_API_KEY",
-    "defaultBaseUrl": "https://generativelanguage.googleapis.com/v1beta/openai",
+    "defaultBaseUrl": "https://generativelanguage.googleapis.com/v1beta",
     "modelsUrl": "https://generativelanguage.googleapis.com/v1beta/openai/v1/models",
-    "defaultModel": "gemini-3.1-flash",
+    "defaultModel": "gemini-3.1-pro-preview",
     "defaultModelVerified": true,
     "note": "Google Gemini via native SDK (GoogleProvider). Updated 2026-04-25.",
     "capabilities": {
@@ -223,12 +223,11 @@
     },
     "models": [
       {
-        "id": "gemini-3.1-flash",
-        "label": "Gemini 3.1 Flash (2026-04-14)",
+        "id": "gemini-3.1-flash-lite",
+        "label": "Gemini 3.1 Flash Lite",
         "tags": [
           "tools",
           "vision",
-          "native",
           "fast"
         ],
         "supportedTypes": [
@@ -239,19 +238,19 @@
           "toolCalling": "native",
           "vision": true,
           "streaming": "partial",
-          "maxContext": 1000000,
+          "maxContext": 1048576,
           "maxOutput": 8192,
           "reasoning": true,
           "supportsSystemPrompt": true
         }
       },
       {
-        "id": "gemini-3.1-pro",
-        "label": "Gemini 3.1 Pro (2026-02-15)",
+        "id": "gemini-3.1-pro-preview",
+        "label": "Gemini 3.1 Pro Preview",
         "tags": [
           "tools",
           "vision",
-          "native",
+          "reasoning",
           "recommended"
         ],
         "supportedTypes": [
@@ -262,7 +261,7 @@
           "toolCalling": "native",
           "vision": true,
           "streaming": "partial",
-          "maxContext": 2000000,
+          "maxContext": 1048576,
           "maxOutput": 8192,
           "reasoning": true,
           "supportsSystemPrompt": true
@@ -1214,7 +1213,7 @@
     "envKey": "MISTRAL_API_KEY",
     "defaultBaseUrl": "https://api.mistral.ai/v1",
     "modelsUrl": "https://api.mistral.ai/v1/models",
-    "defaultModel": "mistral-small-4",
+    "defaultModel": "mistral-small-latest",
     "defaultModelVerified": true,
     "note": "Mistral AI — frontier coding (Medium 3.5), hybrid (Small 4). Source: docs.mistral.ai/models, May 2026.",
     "capabilities": {
@@ -1702,7 +1701,7 @@
     "providerId": "cohere",
     "label": "Cohere",
     "envKey": "COHERE_API_KEY",
-    "defaultBaseUrl": "https://api.cohere.ai/compatibility/v1",
+    "defaultBaseUrl": "https://api.cohere.com/v2",
     "modelsUrl": "https://api.cohere.ai/v1/models",
     "defaultModel": "command-a-plus-05-2026",
     "defaultModelVerified": true,
@@ -1756,8 +1755,8 @@
     },
     "models": [
       {
-        "id": "meta-llama/Llama-4-Scout-17B",
-        "label": "Llama 4 Scout 17B",
+        "id": "meta-llama/Llama-4-Scout-17B-16E-Instruct",
+        "label": "Llama 4 Scout 17B 16E",
         "tags": [
           "tools",
           "vision",
@@ -1884,10 +1883,11 @@
     },
     "models": [
       {
-        "id": "qwen/Qwen-3-235B-Instruct",
+        "id": "qwen-3-235b-a22b-instruct-2507",
         "label": "Qwen 3 235B (Cerebras)",
         "tags": [
-          "fast"
+          "fast",
+          "recommended"
         ],
         "capabilities": {
           "toolCalling": "native",
@@ -1920,8 +1920,26 @@
     },
     "models": [
       {
+        "id": "Pro/zai-org/GLM-4.7",
+        "label": "GLM-4.7 (SiliconFlow)",
+        "tags": [
+          "tools",
+          "vision",
+          "reasoning",
+          "recommended"
+        ],
+        "capabilities": {
+          "toolCalling": "native",
+          "vision": true,
+          "streaming": "full",
+          "maxContext": 128000,
+          "maxOutput": 32768,
+          "reasoning": true
+        }
+      },
+      {
         "id": "deepseek-ai/DeepSeek-V4-Pro",
-        "label": "DeepSeek V4 Pro",
+        "label": "DeepSeek V4 Pro (SiliconFlow)",
         "tags": [
           "tools",
           "vision"
@@ -1957,13 +1975,13 @@
     },
     "models": [
       {
-        "id": "moonshotai/kimi-k2.6",
+        "id": "kimi-k2.6",
         "label": "Kimi K2.6 (262K ctx)",
         "tags": [
           "tools",
           "vision",
-          "open-weight",
-          "latest"
+          "latest",
+          "recommended"
         ],
         "capabilities": {
           "toolCalling": "native",
@@ -1995,11 +2013,13 @@
     },
     "models": [
       {
-        "id": "glm-4",
-        "label": "GLM-4 (128K ctx)",
+        "id": "glm-4.7",
+        "label": "GLM-4.7 (128K)",
         "tags": [
           "tools",
-          "vision"
+          "vision",
+          "latest",
+          "recommended"
         ],
         "capabilities": {
           "toolCalling": "native",
@@ -2011,7 +2031,7 @@
         }
       }
     ],
-    "defaultModel": "glm-4",
+    "defaultModel": "glm-4.7",
     "defaultModelVerified": true
   },
   "huggingface": {
@@ -2031,8 +2051,8 @@
     },
     "models": [
       {
-        "id": "meta-llama/Llama-3.1-70B-Instruct",
-        "label": "Llama 3.1 70B (HF)",
+        "id": "meta-llama/Llama-3.3-70B-Instruct",
+        "label": "Llama 3.3 70B (HF)",
         "capabilities": {
           "toolCalling": "none",
           "vision": false,
@@ -2043,7 +2063,7 @@
         }
       }
     ],
-    "defaultModel": "meta-llama/Llama-3.1-70B-Instruct",
+    "defaultModel": "meta-llama/Llama-3.3-70B-Instruct",
     "defaultModelVerified": true
   },
   "poe": {
@@ -2099,10 +2119,11 @@
     },
     "models": [
       {
-        "id": "llama-3.1-70b-instruct",
-        "label": "Llama 3.1 70B (DO)",
+        "id": "llama3.3-70b-instruct",
+        "label": "Llama 3.3 70B (DO)",
         "tags": [
-          "tools"
+          "tools",
+          "recommended"
         ],
         "capabilities": {
           "toolCalling": "native",
@@ -2114,7 +2135,7 @@
         }
       }
     ],
-    "defaultModel": "llama-3.1-70b-instruct",
+    "defaultModel": "llama3.3-70b-instruct",
     "defaultModelVerified": true
   }
 }
