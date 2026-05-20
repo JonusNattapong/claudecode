@@ -5,9 +5,9 @@
     "envKey": "ANTHROPIC_API_KEY",
     "defaultBaseUrl": "https://api.anthropic.com/v1",
     "modelsUrl": "https://api.anthropic.com/v1/models",
-    "defaultModel": "claude-sonnet-4-7",
+    "defaultModel": "claude-opus-4-7",
     "defaultModelVerified": true,
-    "note": "Full Anthropic Claude support with native tool calling and reasoning. Updated 2026.",
+    "note": "Anthropic Claude — native tool calling, adaptive thinking, 1M context. Source: platform.claude.com/docs, May 2026.",
     "capabilities": {
       "chat": true,
       "streaming": "full",
@@ -15,44 +15,18 @@
       "vision": true,
       "jsonSchema": true,
       "reasoningEffort": true,
-      "contextLength": "100k+"
+      "contextLength": "1M"
     },
     "models": [
       {
         "id": "claude-opus-4-7",
-        "label": "Claude Opus",
+        "label": "Claude Opus 4.7",
         "tags": [
           "tools",
           "vision",
           "native",
           "verified",
-          "latest"
-        ],
-        "supportedTypes": [
-          "direct",
-          "subscriber",
-          "bedrock",
-          "vertex",
-          "foundry"
-        ],
-        "capabilities": {
-          "toolCalling": "native",
-          "vision": true,
-          "streaming": "full",
-          "maxContext": 1000000,
-          "maxOutput": 128000,
-          "reasoning": true,
-          "supportsSystemPrompt": true
-        }
-      },
-      {
-        "id": "claude-sonnet-4-7",
-        "label": "Claude Sonnet",
-        "tags": [
-          "tools",
-          "vision",
-          "native",
-          "verified",
+          "latest",
           "recommended"
         ],
         "supportedTypes": [
@@ -73,8 +47,57 @@
         }
       },
       {
+        "id": "claude-sonnet-4-6",
+        "label": "Claude Sonnet 4.6",
+        "tags": [
+          "tools",
+          "vision",
+          "native",
+          "verified",
+          "fast"
+        ],
+        "supportedTypes": [
+          "direct",
+          "subscriber",
+          "bedrock",
+          "vertex",
+          "foundry"
+        ],
+        "capabilities": {
+          "toolCalling": "native",
+          "vision": true,
+          "streaming": "full",
+          "maxContext": 1000000,
+          "maxOutput": 64000,
+          "reasoning": true,
+          "supportsSystemPrompt": true
+        }
+      },
+      {
+        "id": "claude-haiku-4-5-20251001",
+        "label": "Claude Haiku 4.5",
+        "tags": [
+          "tools",
+          "vision",
+          "native",
+          "fast"
+        ],
+        "aliases": [
+          "claude-haiku-4-5"
+        ],
+        "capabilities": {
+          "toolCalling": "native",
+          "vision": true,
+          "streaming": "full",
+          "maxContext": 200000,
+          "maxOutput": 64000,
+          "reasoning": true,
+          "supportsSystemPrompt": true
+        }
+      },
+      {
         "id": "claude-opus-4-6",
-        "label": "Claude Opus (Legacy)",
+        "label": "Claude Opus 4.6 (Legacy)",
         "tags": [
           "tools",
           "vision",
@@ -97,61 +120,6 @@
           "reasoning": true,
           "supportsSystemPrompt": true
         }
-      },
-      {
-        "id": "claude-opus-4-5-20251101",
-        "label": "Claude Opus 4.5 (2025-11-01)",
-        "tags": [
-          "tools",
-          "vision",
-          "native"
-        ],
-        "capabilities": {
-          "toolCalling": "native",
-          "vision": true,
-          "streaming": "full",
-          "maxContext": 200000,
-          "maxOutput": 64000,
-          "reasoning": true,
-          "supportsSystemPrompt": true
-        }
-      },
-      {
-        "id": "claude-haiku-4-5-20251001",
-        "label": "Claude Haiku 4.5 (2025-10-01)",
-        "tags": [
-          "tools",
-          "vision",
-          "native",
-          "fast"
-        ],
-        "capabilities": {
-          "toolCalling": "native",
-          "vision": true,
-          "streaming": "full",
-          "maxContext": 200000,
-          "maxOutput": 64000,
-          "reasoning": true,
-          "supportsSystemPrompt": true
-        }
-      },
-      {
-        "id": "claude-sonnet-4-5-20250929",
-        "label": "Claude Sonnet 4.5 (2025-09-29)",
-        "tags": [
-          "tools",
-          "vision",
-          "native"
-        ],
-        "capabilities": {
-          "toolCalling": "native",
-          "vision": true,
-          "streaming": "full",
-          "maxContext": 1000000,
-          "maxOutput": 64000,
-          "reasoning": true,
-          "supportsSystemPrompt": true
-        }
       }
     ]
   },
@@ -163,7 +131,7 @@
     "modelsUrl": "https://api.openai.com/v1/models",
     "defaultModel": "gpt-5.5",
     "defaultModelVerified": true,
-    "note": "OpenAI-compatible provider with function calling and streaming support. Updated 2026.",
+    "note": "OpenAI — GPT-5.5 flagship. Source: developers.openai.com/docs/models, May 2026.",
     "capabilities": {
       "chat": true,
       "streaming": "full",
@@ -171,71 +139,44 @@
       "vision": true,
       "jsonSchema": true,
       "reasoningEffort": true,
-      "contextLength": "1M+"
+      "contextLength": "1M"
     },
     "models": [
       {
-        "id": "gpt-5.5-pro",
-        "label": "GPT-5.5 Pro (2026-04-23)",
-        "tags": [
-          "tools",
-          "vision",
-          "native",
-          "verified",
-          "latest",
-          "reasoning"
-        ],
-        "supportedTypes": [
-          "direct",
-          "azure"
-        ],
-        "capabilities": {
-          "toolCalling": "native",
-          "vision": true,
-          "streaming": "full",
-          "maxContext": 1050000,
-          "maxOutput": 128000,
-          "reasoning": true,
-          "supportsSystemPrompt": true
-        }
-      },
-      {
-        "id": "gpt-5.5-thinking",
-        "label": "GPT-5.5 Thinking",
-        "tags": [
-          "reasoning",
-          "research"
-        ],
-        "capabilities": {
-          "toolCalling": "native",
-          "vision": false,
-          "streaming": "full",
-          "maxContext": 1050000,
-          "maxOutput": 128000,
-          "reasoning": true,
-          "supportsSystemPrompt": true
-        }
-      },
-      {
         "id": "gpt-5.5",
-        "label": "GPT-5.5 (2026-04)",
+        "label": "GPT-5.5",
         "tags": [
           "tools",
           "vision",
           "native",
           "verified",
+          "recommended",
           "latest"
         ],
-        "supportedTypes": [
-          "direct",
-          "azure",
-          "subscriber"
+        "capabilities": {
+          "toolCalling": "native",
+          "vision": true,
+          "streaming": "full",
+          "maxContext": 1000000,
+          "maxOutput": 128000,
+          "reasoning": true,
+          "supportsSystemPrompt": true
+        }
+      },
+      {
+        "id": "gpt-5.4",
+        "label": "GPT-5.4",
+        "tags": [
+          "tools",
+          "vision",
+          "native",
+          "verified"
         ],
         "capabilities": {
           "toolCalling": "native",
           "vision": true,
           "streaming": "full",
-          "maxContext": 1050000,
+          "maxContext": 1000000,
           "maxOutput": 128000,
           "reasoning": true,
           "supportsSystemPrompt": true
@@ -254,8 +195,8 @@
           "toolCalling": "native",
           "vision": true,
           "streaming": "full",
-          "maxContext": "varies",
-          "maxOutput": "varies",
+          "maxContext": 400000,
+          "maxOutput": 128000,
           "reasoning": true,
           "supportsSystemPrompt": true
         }
@@ -336,52 +277,19 @@
     "defaultBaseUrl": "https://api.githubcopilot.com",
     "defaultModel": "gpt-5.5",
     "defaultModelVerified": true,
-    "note": "GitHub Copilot - uses GitHub token for authentication. Updated 2026.",
+    "note": "GitHub Copilot — real API data from api.githubcopilot.com/models, May 2026. Note: Copilot enforces lower context limits than direct APIs.",
     "capabilities": {
       "chat": true,
       "streaming": "full",
       "toolCalling": true,
       "vision": true,
       "jsonSchema": true,
-      "reasoningEffort": false,
-      "contextLength": "32k+"
+      "reasoningEffort": true,
+      "contextLength": "400K"
     },
     "models": [
       {
-        "id": "gpt-5.5",
-        "label": "Copilot GPT-5.5 (Latest)",
-        "tags": [
-          "tools",
-          "vision",
-          "latest"
-        ],
-        "capabilities": {
-          "toolCalling": "native",
-          "vision": true,
-          "streaming": "full",
-          "maxContext": 1050000,
-          "reasoning": true,
-          "supportsSystemPrompt": true
-        }
-      },
-      {
-        "id": "gpt-4o",
-        "label": "Copilot GPT-4o",
-        "tags": [
-          "tools",
-          "vision"
-        ],
-        "capabilities": {
-          "toolCalling": "native",
-          "vision": true,
-          "streaming": "full",
-          "maxContext": 128000,
-          "reasoning": true,
-          "supportsSystemPrompt": true
-        }
-      },
-      {
-        "id": "claude-opus-4-7",
+        "id": "claude-opus-4.7",
         "label": "Claude Opus 4.7 (Copilot)",
         "tags": [
           "tools",
@@ -392,14 +300,15 @@
           "toolCalling": "native",
           "vision": true,
           "streaming": "full",
-          "maxContext": 1000000,
+          "maxContext": 144000,
+          "maxOutput": 64000,
           "reasoning": true,
           "supportsSystemPrompt": true
         }
       },
       {
-        "id": "claude-sonnet-4.5",
-        "label": "Claude Sonnet 4.5 (Copilot)",
+        "id": "claude-sonnet-4.6",
+        "label": "Claude Sonnet 4.6 (Copilot)",
         "tags": [
           "tools",
           "vision",
@@ -409,7 +318,8 @@
           "toolCalling": "native",
           "vision": true,
           "streaming": "full",
-          "maxContext": 1000000,
+          "maxContext": 200000,
+          "maxOutput": 32000,
           "reasoning": true,
           "supportsSystemPrompt": true
         }
@@ -419,14 +329,86 @@
         "label": "Claude Haiku 4.5 (Copilot)",
         "tags": [
           "tools",
+          "vision",
+          "fast"
+        ],
+        "capabilities": {
+          "toolCalling": "native",
+          "vision": true,
+          "streaming": "full",
+          "maxContext": 144000,
+          "maxOutput": 32000,
+          "reasoning": true,
+          "supportsSystemPrompt": true
+        }
+      },
+      {
+        "id": "gpt-5.5",
+        "label": "GPT-5.5 (Copilot)",
+        "tags": [
+          "tools",
+          "vision",
+          "latest"
+        ],
+        "capabilities": {
+          "toolCalling": "native",
+          "vision": true,
+          "streaming": "full",
+          "maxContext": 400000,
+          "maxOutput": 128000,
+          "reasoning": true,
+          "supportsSystemPrompt": true
+        }
+      },
+      {
+        "id": "gpt-5.4",
+        "label": "GPT-5.4 (Copilot)",
+        "tags": [
+          "tools",
           "vision"
         ],
         "capabilities": {
           "toolCalling": "native",
           "vision": true,
           "streaming": "full",
-          "maxContext": 1000000,
+          "maxContext": 400000,
+          "maxOutput": 128000,
           "reasoning": true,
+          "supportsSystemPrompt": true
+        }
+      },
+      {
+        "id": "gpt-5.4-mini",
+        "label": "GPT-5.4 Mini (Copilot)",
+        "tags": [
+          "tools",
+          "vision",
+          "fast"
+        ],
+        "capabilities": {
+          "toolCalling": "native",
+          "vision": true,
+          "streaming": "full",
+          "maxContext": 400000,
+          "maxOutput": 128000,
+          "reasoning": true,
+          "supportsSystemPrompt": true
+        }
+      },
+      {
+        "id": "gpt-4.1",
+        "label": "GPT-4.1 (Copilot)",
+        "tags": [
+          "tools",
+          "vision"
+        ],
+        "capabilities": {
+          "toolCalling": "native",
+          "vision": true,
+          "streaming": "full",
+          "maxContext": 128000,
+          "maxOutput": 16384,
+          "reasoning": false,
           "supportsSystemPrompt": true
         }
       }
@@ -438,50 +420,159 @@
     "envKey": "OPENROUTER_API_KEY",
     "defaultBaseUrl": "https://openrouter.ai/api/v1",
     "modelsUrl": "https://openrouter.ai/api/v1/models",
-    "defaultModelVerified": false,
-    "note": "OpenRouter is OpenAI-compatible; verify the model before use.",
+    "defaultModel": "anthropic/claude-opus-4.7",
+    "defaultModelVerified": true,
+    "note": "OpenRouter — 358 models across 56 providers. Source: openrouter.ai/api/v1/models, May 2026.",
     "capabilities": {
       "chat": true,
-      "streaming": "partial",
+      "streaming": "full",
       "toolCalling": true,
       "vision": true,
       "jsonSchema": true,
       "reasoningEffort": true,
-      "contextLength": "varies"
+      "contextLength": "10M"
     },
     "models": [
       {
-        "id": "openai/gpt-5.5-pro",
-        "label": "GPT-5.5 Pro (via OpenRouter)",
+        "id": "anthropic/claude-opus-4.7",
+        "label": "Claude Opus 4.7 (OpenRouter)",
+        "tags": [
+          "tools",
+          "vision",
+          "recommended"
+        ],
         "capabilities": {
           "toolCalling": "native",
           "vision": true,
-          "streaming": "partial",
-          "maxContext": 1050000,
+          "streaming": "full",
+          "maxContext": 1000000,
+          "maxOutput": 128000,
           "reasoning": true,
           "supportsSystemPrompt": true
         }
       },
       {
-        "id": "anthropic/claude-opus-4-7",
-        "label": "Claude 4.7 Opus (via OpenRouter)",
+        "id": "openai/gpt-5.5",
+        "label": "GPT-5.5 (OpenRouter)",
+        "tags": [
+          "tools",
+          "vision",
+          "latest"
+        ],
         "capabilities": {
           "toolCalling": "native",
           "vision": true,
-          "streaming": "partial",
-          "maxContext": 1000000,
+          "streaming": "full",
+          "maxContext": 1050000,
+          "maxOutput": 128000,
+          "reasoning": true,
+          "supportsSystemPrompt": true
+        }
+      },
+      {
+        "id": "google/gemini-3.1-pro",
+        "label": "Gemini 3.1 Pro (OpenRouter)",
+        "tags": [
+          "tools",
+          "vision",
+          "reasoning"
+        ],
+        "capabilities": {
+          "toolCalling": "native",
+          "vision": true,
+          "streaming": "full",
+          "maxContext": 1048576,
+          "maxOutput": 128000,
+          "reasoning": true,
+          "supportsSystemPrompt": true
+        }
+      },
+      {
+        "id": "google/gemini-3.5-flash",
+        "label": "Gemini 3.5 Flash (OpenRouter)",
+        "tags": [
+          "tools",
+          "vision",
+          "fast",
+          "latest"
+        ],
+        "capabilities": {
+          "toolCalling": "native",
+          "vision": true,
+          "streaming": "full",
+          "maxContext": 1048576,
+          "maxOutput": 128000,
           "reasoning": true,
           "supportsSystemPrompt": true
         }
       },
       {
         "id": "deepseek/deepseek-v4-pro",
-        "label": "DeepSeek V4 Pro (via OpenRouter)",
+        "label": "DeepSeek V4 Pro (OpenRouter)",
+        "tags": [
+          "tools",
+          "vision",
+          "reasoning"
+        ],
         "capabilities": {
           "toolCalling": "native",
           "vision": true,
-          "streaming": "partial",
+          "streaming": "full",
+          "maxContext": 1048576,
+          "maxOutput": 128000,
+          "reasoning": true,
+          "supportsSystemPrompt": true
+        }
+      },
+      {
+        "id": "deepseek/deepseek-v4-flash:free",
+        "label": "DeepSeek V4 Flash Free (OpenRouter)",
+        "tags": [
+          "tools",
+          "free"
+        ],
+        "capabilities": {
+          "toolCalling": "native",
+          "vision": false,
+          "streaming": "full",
+          "maxContext": 1048576,
+          "maxOutput": 128000,
+          "reasoning": true,
+          "supportsSystemPrompt": true
+        }
+      },
+      {
+        "id": "x-ai/grok-4.3",
+        "label": "Grok 4.3 (OpenRouter)",
+        "tags": [
+          "tools",
+          "vision",
+          "reasoning",
+          "latest"
+        ],
+        "capabilities": {
+          "toolCalling": "native",
+          "vision": true,
+          "streaming": "full",
           "maxContext": 1000000,
+          "maxOutput": 128000,
+          "reasoning": true,
+          "supportsSystemPrompt": true
+        }
+      },
+      {
+        "id": "qwen/qwen3-coder",
+        "label": "Qwen 3 Coder (OpenRouter)",
+        "tags": [
+          "tools",
+          "coding"
+        ],
+        "capabilities": {
+          "toolCalling": "native",
+          "vision": false,
+          "streaming": "full",
+          "maxContext": 1048576,
+          "maxOutput": 128000,
           "reasoning": true,
           "supportsSystemPrompt": true
         }
@@ -554,29 +645,29 @@
     "modelsUrl": "https://opencode.ai/zen/v1/models",
     "defaultModel": "claude-opus-4-7",
     "defaultModelVerified": true,
-    "note": "OpenCode AI gateway (OpenAI-compatible). Updated 2026-04-25.",
+    "note": "OpenCode AI gateway (41 models). Source: opencode.ai/zen/v1/models, May 2026.",
     "capabilities": {
       "chat": true,
-      "streaming": "partial",
+      "streaming": "full",
       "toolCalling": true,
       "vision": true,
       "jsonSchema": true,
       "reasoningEffort": true,
-      "contextLength": "varies"
+      "contextLength": "1M"
     },
     "models": [
       {
         "id": "claude-opus-4-7",
-        "label": "Claude Opus 4.7 (2026-04)",
+        "label": "Claude Opus 4.7",
         "tags": [
           "tools",
           "vision",
-          "latest"
+          "recommended"
         ],
         "capabilities": {
           "toolCalling": "native",
           "vision": true,
-          "streaming": "partial",
+          "streaming": "full",
           "maxContext": 1000000,
           "maxOutput": 128000,
           "reasoning": true,
@@ -589,21 +680,21 @@
         "tags": [
           "tools",
           "vision",
-          "recommended"
+          "fast"
         ],
         "capabilities": {
           "toolCalling": "native",
           "vision": true,
-          "streaming": "partial",
+          "streaming": "full",
           "maxContext": 1000000,
-          "maxOutput": 128000,
+          "maxOutput": 64000,
           "reasoning": true,
           "supportsSystemPrompt": true
         }
       },
       {
         "id": "gpt-5.5",
-        "label": "GPT-5.5 (2026-04)",
+        "label": "GPT-5.5",
         "tags": [
           "tools",
           "vision",
@@ -612,7 +703,7 @@
         "capabilities": {
           "toolCalling": "native",
           "vision": true,
-          "streaming": "partial",
+          "streaming": "full",
           "maxContext": 1050000,
           "maxOutput": 128000,
           "reasoning": true,
@@ -624,13 +715,12 @@
         "label": "GPT-5.5 Pro",
         "tags": [
           "tools",
-          "vision",
           "pro"
         ],
         "capabilities": {
           "toolCalling": "native",
           "vision": true,
-          "streaming": "partial",
+          "streaming": "full",
           "maxContext": 1050000,
           "maxOutput": 128000,
           "reasoning": true,
@@ -638,8 +728,44 @@
         }
       },
       {
+        "id": "gpt-5.4",
+        "label": "GPT-5.4",
+        "tags": [
+          "tools",
+          "vision"
+        ],
+        "capabilities": {
+          "toolCalling": "native",
+          "vision": true,
+          "streaming": "full",
+          "maxContext": 1050000,
+          "maxOutput": 128000,
+          "reasoning": true,
+          "supportsSystemPrompt": true
+        }
+      },
+      {
+        "id": "gemini-3.5-flash",
+        "label": "Gemini 3.5 Flash",
+        "tags": [
+          "tools",
+          "vision",
+          "fast",
+          "latest"
+        ],
+        "capabilities": {
+          "toolCalling": "native",
+          "vision": true,
+          "streaming": "full",
+          "maxContext": 1048576,
+          "maxOutput": 128000,
+          "reasoning": true,
+          "supportsSystemPrompt": true
+        }
+      },
+      {
         "id": "gemini-3.1-pro",
-        "label": "Gemini 3.1 Pro (2026-02)",
+        "label": "Gemini 3.1 Pro",
         "tags": [
           "tools",
           "vision",
@@ -648,16 +774,16 @@
         "capabilities": {
           "toolCalling": "native",
           "vision": true,
-          "streaming": "partial",
-          "maxContext": 1000000,
-          "maxOutput": "varies",
+          "streaming": "full",
+          "maxContext": 1048576,
+          "maxOutput": 8192,
           "reasoning": true,
           "supportsSystemPrompt": true
         }
       },
       {
         "id": "kimi-k2.6",
-        "label": "Kimi K2.6 (2026-04)",
+        "label": "Kimi K2.6",
         "tags": [
           "tools",
           "vision",
@@ -666,7 +792,7 @@
         "capabilities": {
           "toolCalling": "native",
           "vision": true,
-          "streaming": "partial",
+          "streaming": "full",
           "maxContext": 256000,
           "maxOutput": 65536,
           "reasoning": true,
@@ -675,55 +801,36 @@
       },
       {
         "id": "glm-5.1",
-        "label": "GLM 5.1 (2026-04-07)",
+        "label": "GLM 5.1",
         "tags": [
           "tools",
-          "reasoning",
-          "latest",
-          "vision"
+          "vision",
+          "reasoning"
         ],
         "capabilities": {
           "toolCalling": "native",
           "vision": true,
-          "streaming": "partial",
+          "streaming": "full",
           "maxContext": 202752,
-          "maxOutput": "varies",
+          "maxOutput": 128000,
           "reasoning": true,
           "supportsSystemPrompt": true
         }
       },
       {
-        "id": "glm-5.0",
-        "label": "GLM 5.0",
+        "id": "qwen3.6-plus",
+        "label": "Qwen 3.6 Plus",
         "tags": [
           "tools",
-          "reasoning",
-          "vision"
+          "vision",
+          "reasoning"
         ],
         "capabilities": {
           "toolCalling": "native",
           "vision": true,
-          "streaming": "partial",
-          "maxContext": 202752,
-          "maxOutput": "varies",
-          "reasoning": true,
-          "supportsSystemPrompt": true
-        }
-      },
-      {
-        "id": "minimax-m2.7",
-        "label": "MiniMax M2.7 (2026-03)",
-        "tags": [
-          "tools",
-          "reasoning",
-          "vision"
-        ],
-        "capabilities": {
-          "toolCalling": "native",
-          "vision": true,
-          "streaming": "partial",
-          "maxContext": 196608,
-          "maxOutput": "varies",
+          "streaming": "full",
+          "maxContext": 1000000,
+          "maxOutput": 128000,
           "reasoning": true,
           "supportsSystemPrompt": true
         }
@@ -736,52 +843,68 @@
     "envKey": "OPENCODE_GO_API_KEY",
     "defaultBaseUrl": "https://opencode.ai/zen/go/v1",
     "modelsUrl": "https://opencode.ai/zen/go/v1/models",
-    "defaultModel": "minimax-m2.7",
+    "defaultModel": "deepseek-v4-flash",
     "defaultModelVerified": true,
-    "note": "OpenCode Go - low cost subscription for open coding models. Updated 2026-05.",
+    "note": "OpenCode Go - low cost subscription. Source: opencode.ai/zen/go/v1/models, May 2026.",
     "capabilities": {
       "chat": true,
-      "streaming": "partial",
+      "streaming": "full",
       "toolCalling": true,
       "vision": true,
       "jsonSchema": true,
       "reasoningEffort": true,
-      "contextLength": "varies"
+      "contextLength": "1M"
     },
     "models": [
       {
-        "id": "glm-5.1",
-        "label": "GLM-5.1 (Go)",
+        "id": "minimax-m2.7",
+        "label": "MiniMax M2.7 (Go)",
         "tags": [
           "tools",
-          "reasoning",
-          "latest",
-          "vision"
+          "reasoning"
         ],
         "capabilities": {
           "toolCalling": "native",
-          "vision": true,
-          "streaming": "partial",
-          "maxContext": 202752,
-          "maxOutput": "varies",
+          "vision": false,
+          "streaming": "full",
+          "maxContext": 196608,
+          "maxOutput": 128000,
           "reasoning": true,
           "supportsSystemPrompt": true
         }
       },
       {
-        "id": "glm-5",
-        "label": "GLM-5 (Go)",
+        "id": "deepseek-v4-pro",
+        "label": "DeepSeek V4 Pro (Go)",
         "tags": [
           "tools",
-          "reasoning",
-          "vision"
+          "vision",
+          "reasoning"
         ],
         "capabilities": {
           "toolCalling": "native",
           "vision": true,
-          "streaming": "partial",
-          "maxContext": 202752,
-          "maxOutput": "varies",
+          "streaming": "full",
+          "maxContext": 1000000,
+          "maxOutput": 128000,
+          "reasoning": true,
+          "supportsSystemPrompt": true
+        }
+      },
+      {
+        "id": "deepseek-v4-flash",
+        "label": "DeepSeek V4 Flash (Go)",
+        "tags": [
+          "tools",
+          "fast",
+          "free"
+        ],
+        "capabilities": {
+          "toolCalling": "native",
+          "vision": false,
+          "streaming": "full",
+          "maxContext": 1000000,
+          "maxOutput": 128000,
           "reasoning": true,
           "supportsSystemPrompt": true
         }
@@ -797,7 +920,7 @@
         "capabilities": {
           "toolCalling": "native",
           "vision": true,
-          "streaming": "partial",
+          "streaming": "full",
           "maxContext": 256000,
           "maxOutput": 65536,
           "reasoning": true,
@@ -805,19 +928,37 @@
         }
       },
       {
-        "id": "kimi-k2.5",
-        "label": "Kimi K2.5 (Go)",
+        "id": "glm-5.1",
+        "label": "GLM 5.1 (Go)",
         "tags": [
           "tools",
           "vision",
-          "open-weight"
+          "reasoning"
         ],
         "capabilities": {
           "toolCalling": "native",
           "vision": true,
-          "streaming": "partial",
-          "maxContext": 256000,
-          "maxOutput": 65536,
+          "streaming": "full",
+          "maxContext": 202752,
+          "maxOutput": 128000,
+          "reasoning": true,
+          "supportsSystemPrompt": true
+        }
+      },
+      {
+        "id": "qwen3.6-plus",
+        "label": "Qwen 3.6 Plus (Go)",
+        "tags": [
+          "tools",
+          "vision",
+          "reasoning"
+        ],
+        "capabilities": {
+          "toolCalling": "native",
+          "vision": true,
+          "streaming": "full",
+          "maxContext": 1000000,
+          "maxOutput": 128000,
           "reasoning": true,
           "supportsSystemPrompt": true
         }
@@ -833,151 +974,9 @@
         "capabilities": {
           "toolCalling": "native",
           "vision": true,
-          "streaming": "partial",
+          "streaming": "full",
           "maxContext": 1048576,
           "maxOutput": 131072,
-          "reasoning": true,
-          "supportsSystemPrompt": true
-        }
-      },
-      {
-        "id": "mimo-v2.5",
-        "label": "MiMo V2.5 (Go)",
-        "tags": [
-          "tools",
-          "vision",
-          "reasoning"
-        ],
-        "capabilities": {
-          "toolCalling": "native",
-          "vision": true,
-          "streaming": "partial",
-          "maxContext": 256000,
-          "maxOutput": 65536,
-          "reasoning": true,
-          "supportsSystemPrompt": true
-        }
-      },
-      {
-        "id": "minimax-m2.7",
-        "label": "MiniMax M2.7 (Go)",
-        "tags": [
-          "tools",
-          "reasoning"
-        ],
-        "capabilities": {
-          "toolCalling": "native",
-          "vision": false,
-          "streaming": "partial",
-          "maxContext": 196608,
-          "maxOutput": "varies",
-          "reasoning": true,
-          "supportsSystemPrompt": true
-        }
-      },
-      {
-        "id": "minimax-m2.5",
-        "label": "MiniMax M2.5 (Go)",
-        "tags": [
-          "tools",
-          "reasoning"
-        ],
-        "capabilities": {
-          "toolCalling": "native",
-          "vision": false,
-          "streaming": "partial",
-          "maxContext": 196608,
-          "maxOutput": "varies",
-          "reasoning": true,
-          "supportsSystemPrompt": true
-        }
-      },
-      {
-        "id": "qwen3.6-plus",
-        "label": "Qwen3.6 Plus (Go)",
-        "tags": [
-          "tools",
-          "reasoning",
-          "vision"
-        ],
-        "capabilities": {
-          "toolCalling": "native",
-          "vision": true,
-          "streaming": "partial",
-          "maxContext": "varies",
-          "maxOutput": "varies",
-          "reasoning": true,
-          "supportsSystemPrompt": true
-        }
-      },
-      {
-        "id": "qwen3.5-plus",
-        "label": "Qwen3.5 Plus (Go)",
-        "tags": [
-          "tools",
-          "reasoning",
-          "vision"
-        ],
-        "capabilities": {
-          "toolCalling": "native",
-          "vision": true,
-          "streaming": "partial",
-          "maxContext": "varies",
-          "maxOutput": "varies",
-          "reasoning": true,
-          "supportsSystemPrompt": true
-        }
-      },
-      {
-        "id": "deepseek-v4-pro",
-        "label": "DeepSeek V4 Pro (Go)",
-        "tags": [
-          "tools",
-          "reasoning",
-          "vision"
-        ],
-        "capabilities": {
-          "toolCalling": "native",
-          "vision": true,
-          "streaming": "partial",
-          "maxContext": 1000000,
-          "maxOutput": "varies",
-          "reasoning": true,
-          "supportsSystemPrompt": true
-        }
-      },
-      {
-        "id": "deepseek-v4-flash",
-        "label": "DeepSeek V4 Flash (Go)",
-        "tags": [
-          "tools",
-          "reasoning",
-          "free"
-        ],
-        "capabilities": {
-          "toolCalling": "native",
-          "vision": false,
-          "streaming": "partial",
-          "maxContext": 1000000,
-          "maxOutput": "varies",
-          "reasoning": true,
-          "supportsSystemPrompt": true
-        }
-      },
-      {
-        "id": "deepseek-v4-flash-free",
-        "label": "DeepSeek V4 Flash Free (Go)",
-        "tags": [
-          "tools",
-          "reasoning",
-          "free"
-        ],
-        "capabilities": {
-          "toolCalling": "native",
-          "vision": false,
-          "streaming": "partial",
-          "maxContext": 1000000,
-          "maxOutput": "varies",
           "reasoning": true,
           "supportsSystemPrompt": true
         }
@@ -991,29 +990,30 @@
     "defaultBaseUrl": "https://api.cline.bot/api/v1",
     "defaultModel": "anthropic/claude-opus-4-7",
     "defaultModelVerified": true,
-    "note": "Cline API (OpenAI-compatible). Model IDs: provider/model-name. Updated 2026-04-25.",
+    "note": "Cline API (OpenAI-compatible proxy). Source: api.cline.bot, May 2026.",
     "capabilities": {
       "chat": true,
-      "streaming": "partial",
+      "streaming": "full",
       "toolCalling": true,
       "vision": true,
       "jsonSchema": true,
       "reasoningEffort": true,
-      "contextLength": "varies"
+      "contextLength": "1M"
     },
     "models": [
       {
         "id": "anthropic/claude-opus-4-7",
-        "label": "Claude Opus 4.7 (2026-04)",
+        "label": "Claude Opus 4.7 (Cline)",
         "tags": [
           "tools",
           "vision",
-          "latest"
+          "latest",
+          "recommended"
         ],
         "capabilities": {
           "toolCalling": "native",
           "vision": true,
-          "streaming": "partial",
+          "streaming": "full",
           "maxContext": 1000000,
           "maxOutput": 128000,
           "reasoning": true,
@@ -1022,25 +1022,24 @@
       },
       {
         "id": "anthropic/claude-sonnet-4-6",
-        "label": "Claude Sonnet 4.6",
+        "label": "Claude Sonnet 4.6 (Cline)",
         "tags": [
           "tools",
-          "vision",
-          "recommended"
+          "vision"
         ],
         "capabilities": {
           "toolCalling": "native",
           "vision": true,
-          "streaming": "partial",
+          "streaming": "full",
           "maxContext": 1000000,
-          "maxOutput": 128000,
+          "maxOutput": 64000,
           "reasoning": true,
           "supportsSystemPrompt": true
         }
       },
       {
         "id": "openai/gpt-5.5",
-        "label": "GPT-5.5 (2026-04)",
+        "label": "GPT-5.5 (Cline)",
         "tags": [
           "tools",
           "vision",
@@ -1049,7 +1048,7 @@
         "capabilities": {
           "toolCalling": "native",
           "vision": true,
-          "streaming": "partial",
+          "streaming": "full",
           "maxContext": 1050000,
           "maxOutput": 128000,
           "reasoning": true,
@@ -1058,7 +1057,7 @@
       },
       {
         "id": "google/gemini-3.1-pro",
-        "label": "Gemini 3.1 Pro (2026-02)",
+        "label": "Gemini 3.1 Pro (Cline)",
         "tags": [
           "tools",
           "vision",
@@ -1067,27 +1066,9 @@
         "capabilities": {
           "toolCalling": "native",
           "vision": true,
-          "streaming": "partial",
+          "streaming": "full",
           "maxContext": 1000000,
-          "maxOutput": "varies",
-          "reasoning": true,
-          "supportsSystemPrompt": true
-        }
-      },
-      {
-        "id": "minimax/minimax-m2.5",
-        "label": "MiniMax M2.5 (Free)",
-        "tags": [
-          "tools",
-          "reasoning",
-          "free"
-        ],
-        "capabilities": {
-          "toolCalling": "native",
-          "vision": false,
-          "streaming": "partial",
-          "maxContext": 1000000,
-          "maxOutput": "varies",
+          "maxOutput": 128000,
           "reasoning": true,
           "supportsSystemPrompt": true
         }
@@ -1100,38 +1081,86 @@
     "envKey": "GROQ_API_KEY",
     "defaultBaseUrl": "https://api.groq.com/openai/v1",
     "modelsUrl": "https://api.groq.com/openai/v1/models",
-    "defaultModelVerified": false,
-    "note": "Groq uses an OpenAI-compatible endpoint; verify models before use.",
+    "defaultModel": "llama-3.3-70b-versatile",
+    "defaultModelVerified": true,
+    "note": "Groq LPU inference — fastest tokens/sec. Source: console.groq.com/docs/models, May 2026.",
     "capabilities": {
       "chat": true,
-      "streaming": "partial",
+      "streaming": "full",
       "toolCalling": true,
       "vision": true,
       "jsonSchema": true,
       "reasoningEffort": true,
-      "contextLength": "varies"
+      "contextLength": "131k"
     },
     "models": [
       {
-        "id": "llama-4-70b",
-        "label": "Llama 4 70B (Fast)",
+        "id": "llama-3.3-70b-versatile",
+        "label": "Llama 3.3 70B (280 t/s)",
+        "tags": [
+          "tools",
+          "fast",
+          "verified",
+          "recommended"
+        ],
         "capabilities": {
           "toolCalling": "native",
           "vision": false,
-          "streaming": "partial",
-          "maxContext": 128000,
+          "streaming": "full",
+          "maxContext": 131072,
+          "maxOutput": 32768,
           "reasoning": true,
           "supportsSystemPrompt": true
         }
       },
       {
-        "id": "llama-4-8b",
-        "label": "Llama 4 8B (Instant)",
+        "id": "llama-3.1-8b-instant",
+        "label": "Llama 3.1 8B (560 t/s)",
+        "tags": [
+          "fast",
+          "lightning"
+        ],
         "capabilities": {
           "toolCalling": "native",
           "vision": false,
-          "streaming": "partial",
-          "maxContext": 128000,
+          "streaming": "full",
+          "maxContext": 131072,
+          "maxOutput": 131072,
+          "reasoning": false,
+          "supportsSystemPrompt": true
+        }
+      },
+      {
+        "id": "openai/gpt-oss-120b",
+        "label": "OpenAI GPT-OSS 120B (500 t/s)",
+        "tags": [
+          "tools",
+          "reasoning",
+          "latest"
+        ],
+        "capabilities": {
+          "toolCalling": "native",
+          "vision": false,
+          "streaming": "full",
+          "maxContext": 131072,
+          "maxOutput": 65536,
+          "reasoning": true,
+          "supportsSystemPrompt": true
+        }
+      },
+      {
+        "id": "meta-llama/llama-4-scout-17b-16e-instruct",
+        "label": "Llama 4 Scout 17B (750 t/s)",
+        "tags": [
+          "fast",
+          "preview"
+        ],
+        "capabilities": {
+          "toolCalling": "native",
+          "vision": true,
+          "streaming": "full",
+          "maxContext": 131072,
+          "maxOutput": 8192,
           "reasoning": true,
           "supportsSystemPrompt": true
         }
@@ -1144,9 +1173,9 @@
     "envKey": "XAI_API_KEY",
     "defaultBaseUrl": "https://api.x.ai/v1",
     "modelsUrl": "https://api.x.ai/v1/models",
-    "defaultModel": "grok-4-20",
+    "defaultModel": "grok-4.3",
     "defaultModelVerified": true,
-    "note": "xAI Grok models. Updated 2026.",
+    "note": "xAI Grok — grok-4.3 is the only current model (old models retired May 15, 2026). Source: docs.x.ai, May 2026.",
     "capabilities": {
       "chat": true,
       "streaming": "partial",
@@ -1154,62 +1183,25 @@
       "vision": true,
       "jsonSchema": true,
       "reasoningEffort": true,
-      "contextLength": "128k"
+      "contextLength": "1M"
     },
     "models": [
       {
-        "id": "grok-4-20",
-        "label": "Grok 4.20 Beta 2 (2026-03)",
+        "id": "grok-4.3",
+        "label": "Grok 4.3",
         "tags": [
           "tools",
           "vision",
           "reasoning",
-          "latest"
-        ],
-        "capabilities": {
-          "toolCalling": "native",
-          "vision": true,
-          "streaming": "partial",
-          "maxContext": 128000,
-          "maxOutput": "varies",
-          "reasoning": true,
-          "supportsSystemPrompt": true
-        }
-      },
-      {
-        "id": "grok-4-3",
-        "label": "Grok 4.3 Beta (2026-04)",
-        "tags": [
-          "tools",
-          "vision",
-          "reasoning",
-          "preview"
-        ],
-        "capabilities": {
-          "toolCalling": "native",
-          "vision": true,
-          "streaming": "partial",
-          "maxContext": 128000,
-          "maxOutput": "varies",
-          "reasoning": true,
-          "supportsSystemPrompt": true
-        }
-      },
-      {
-        "id": "grok-4",
-        "label": "Grok 4 (Latest)",
-        "tags": [
-          "tools",
-          "vision",
-          "reasoning",
+          "latest",
           "recommended"
         ],
         "capabilities": {
           "toolCalling": "native",
           "vision": true,
           "streaming": "partial",
-          "maxContext": 128000,
-          "maxOutput": "varies",
+          "maxContext": 1000000,
+          "maxOutput": 128000,
           "reasoning": true,
           "supportsSystemPrompt": true
         }
@@ -1222,40 +1214,22 @@
     "envKey": "MISTRAL_API_KEY",
     "defaultBaseUrl": "https://api.mistral.ai/v1",
     "modelsUrl": "https://api.mistral.ai/v1/models",
-    "defaultModel": "mistral-small-latest",
+    "defaultModel": "mistral-small-4",
     "defaultModelVerified": true,
-    "note": "Mistral via OpenAI-compatible endpoint. Updated 2026.",
+    "note": "Mistral AI — frontier coding (Medium 3.5), hybrid (Small 4). Source: docs.mistral.ai/models, May 2026.",
     "capabilities": {
       "chat": true,
-      "streaming": "partial",
+      "streaming": "full",
       "toolCalling": true,
       "vision": true,
       "jsonSchema": true,
       "reasoningEffort": true,
-      "contextLength": "varies"
+      "contextLength": "128k"
     },
     "models": [
       {
-        "id": "mistral-large-4",
-        "label": "Mistral Large 4 (2026-04)",
-        "tags": [
-          "tools",
-          "reasoning",
-          "latest"
-        ],
-        "capabilities": {
-          "toolCalling": "native",
-          "vision": true,
-          "streaming": "full",
-          "maxContext": 128000,
-          "maxOutput": "varies",
-          "reasoning": true,
-          "supportsSystemPrompt": true
-        }
-      },
-      {
-        "id": "mistral-small-latest",
-        "label": "Mistral Small 4 (2026-03)",
+        "id": "mistral-medium-3.5",
+        "label": "Mistral Medium 3.5",
         "tags": [
           "tools",
           "vision",
@@ -1266,28 +1240,47 @@
         "capabilities": {
           "toolCalling": "native",
           "vision": true,
-          "streaming": "partial",
-          "maxContext": "varies",
-          "maxOutput": "varies",
+          "streaming": "full",
+          "maxContext": 128000,
+          "maxOutput": 128000,
           "reasoning": true,
           "supportsSystemPrompt": true
         }
       },
       {
-        "id": "mistral-large-latest",
-        "label": "Mistral Large 3 (2025-12)",
+        "id": "mistral-small-4",
+        "label": "Mistral Small 4",
         "tags": [
           "tools",
+          "vision",
           "reasoning",
-          "verified",
-          "vision"
+          "verified"
         ],
         "capabilities": {
           "toolCalling": "native",
           "vision": true,
-          "streaming": "partial",
-          "maxContext": "varies",
-          "maxOutput": "varies",
+          "streaming": "full",
+          "maxContext": 128000,
+          "maxOutput": 128000,
+          "reasoning": true,
+          "supportsSystemPrompt": true
+        }
+      },
+      {
+        "id": "mistral-large-3",
+        "label": "Mistral Large 3",
+        "tags": [
+          "tools",
+          "vision",
+          "reasoning",
+          "verified"
+        ],
+        "capabilities": {
+          "toolCalling": "native",
+          "vision": true,
+          "streaming": "full",
+          "maxContext": 128000,
+          "maxOutput": 128000,
           "reasoning": true,
           "supportsSystemPrompt": true
         }
@@ -1297,16 +1290,17 @@
         "label": "Ministral 3 14B",
         "tags": [
           "tools",
+          "vision",
           "fast",
           "efficient"
         ],
         "capabilities": {
           "toolCalling": "native",
-          "vision": false,
-          "streaming": "partial",
-          "maxContext": "varies",
-          "maxOutput": "varies",
-          "reasoning": false,
+          "vision": true,
+          "streaming": "full",
+          "maxContext": 128000,
+          "maxOutput": 64000,
+          "reasoning": true,
           "supportsSystemPrompt": true
         }
       }
@@ -1318,108 +1312,67 @@
     "envKey": "KILOCODE_API_KEY",
     "defaultBaseUrl": "https://api.kilo.ai/api/gateway",
     "modelsUrl": "https://api.kilo.ai/api/gateway/models",
-    "defaultModel": "kilo-auto/free",
+    "defaultModel": "kilo-auto/balanced",
     "defaultModelVerified": true,
-    "note": "KiloCode AI gateway (OpenRouter) with 500+ models. Updated 2026-04-25.",
+    "note": "KiloCode AI gateway - auto-routing. Source: api.kilo.ai/api/gateway/models, May 2026.",
     "capabilities": {
       "chat": true,
-      "streaming": "partial",
+      "streaming": "full",
       "toolCalling": true,
       "vision": true,
       "jsonSchema": true,
       "reasoningEffort": true,
-      "contextLength": "varies"
+      "contextLength": "1M"
     },
     "models": [
       {
-        "id": "kilo-auto/free",
-        "label": "KiloCode Free",
-        "tags": [
-          "tools",
-          "free",
-          "verified",
-          "vision"
-        ],
-        "capabilities": {
-          "toolCalling": "native",
-          "vision": true,
-          "streaming": "partial",
-          "maxContext": "varies",
-          "maxOutput": "varies",
-          "reasoning": true,
-          "supportsSystemPrompt": true
-        }
-      },
-      {
-        "id": "openai/gpt-5.5",
-        "label": "OpenAI GPT-5.5 (2026-04-23)",
+        "id": "kilo-auto/frontier",
+        "label": "Auto Frontier (1M ctx)",
         "tags": [
           "tools",
           "vision",
           "reasoning",
-          "latest"
+          "recommended"
         ],
         "capabilities": {
           "toolCalling": "native",
           "vision": true,
-          "streaming": "partial",
-          "maxContext": 1050000,
-          "maxOutput": 128000,
-          "reasoning": true,
-          "supportsSystemPrompt": true
-        }
-      },
-      {
-        "id": "openai/gpt-5.5-pro",
-        "label": "OpenAI GPT-5.5 Pro (2026-04-23)",
-        "tags": [
-          "tools",
-          "vision",
-          "reasoning",
-          "pro"
-        ],
-        "capabilities": {
-          "toolCalling": "native",
-          "vision": true,
-          "streaming": "partial",
-          "maxContext": 1050000,
-          "maxOutput": 128000,
-          "reasoning": true,
-          "supportsSystemPrompt": true
-        }
-      },
-      {
-        "id": "anthropic/claude-opus-4.7",
-        "label": "Claude Opus 4.7 (2026-04-16)",
-        "tags": [
-          "tools",
-          "vision",
-          "reasoning",
-          "latest"
-        ],
-        "capabilities": {
-          "toolCalling": "native",
-          "vision": true,
-          "streaming": "partial",
+          "streaming": "full",
           "maxContext": 1000000,
-          "maxOutput": "varies",
+          "maxOutput": 128000,
           "reasoning": true,
           "supportsSystemPrompt": true
         }
       },
       {
-        "id": "moonshotai/kimi-k2.6",
-        "label": "Kimi K2.6 (2026-04-20)",
+        "id": "kilo-auto/balanced",
+        "label": "Auto Balanced (1M ctx)",
         "tags": [
           "tools",
           "vision",
-          "reasoning",
-          "open-weight"
+          "verified"
         ],
         "capabilities": {
           "toolCalling": "native",
           "vision": true,
-          "streaming": "partial",
+          "streaming": "full",
+          "maxContext": 1000000,
+          "maxOutput": 65536,
+          "reasoning": true,
+          "supportsSystemPrompt": true
+        }
+      },
+      {
+        "id": "kilo-auto/free",
+        "label": "Auto Free (256K ctx)",
+        "tags": [
+          "tools",
+          "free"
+        ],
+        "capabilities": {
+          "toolCalling": "native",
+          "vision": false,
+          "streaming": "full",
           "maxContext": 256000,
           "maxOutput": 65536,
           "reasoning": true,
@@ -1427,27 +1380,8 @@
         }
       },
       {
-        "id": "deepseek/deepseek-v4-pro",
-        "label": "DeepSeek V4 Pro (2026-04-23)",
-        "tags": [
-          "tools",
-          "reasoning",
-          "cost-effective",
-          "vision"
-        ],
-        "capabilities": {
-          "toolCalling": "native",
-          "vision": true,
-          "streaming": "partial",
-          "maxContext": 1050000,
-          "maxOutput": "varies",
-          "reasoning": true,
-          "supportsSystemPrompt": true
-        }
-      },
-      {
-        "id": "xiaomi/mimo-v2.5-pro",
-        "label": "MiMo V2.5 Pro (2026-04-22)",
+        "id": "anthropic/claude-opus-4.7",
+        "label": "Claude Opus 4.7 (KiloCode)",
         "tags": [
           "tools",
           "vision",
@@ -1456,9 +1390,9 @@
         "capabilities": {
           "toolCalling": "native",
           "vision": true,
-          "streaming": "partial",
-          "maxContext": 1048576,
-          "maxOutput": 131072,
+          "streaming": "full",
+          "maxContext": 1000000,
+          "maxOutput": 128000,
           "reasoning": true,
           "supportsSystemPrompt": true
         }
@@ -1473,11 +1407,11 @@
     "modelsUrl": "http://localhost:11434/v1/models",
     "defaultModel": "llama3.3",
     "defaultModelVerified": true,
-    "note": "Local Ollama server.",
     "isLocal": true,
+    "note": "Local Ollama server. Models vary by what you pull. Source: ollama.com, May 2026.",
     "capabilities": {
       "chat": true,
-      "streaming": "partial",
+      "streaming": "full",
       "toolCalling": true,
       "vision": true,
       "jsonSchema": true,
@@ -1486,8 +1420,26 @@
     },
     "models": [
       {
+        "id": "llama3.3",
+        "label": "Llama 3.3 (Local)",
+        "tags": [
+          "tools",
+          "verified",
+          "local"
+        ],
+        "capabilities": {
+          "toolCalling": "native",
+          "vision": false,
+          "streaming": "full",
+          "maxContext": 131072,
+          "maxOutput": 32768,
+          "reasoning": true,
+          "supportsSystemPrompt": true
+        }
+      },
+      {
         "id": "llama4:70b",
-        "label": "Llama 4 70B",
+        "label": "Llama 4 70B (Local)",
         "tags": [
           "tools",
           "local",
@@ -1496,8 +1448,27 @@
         "capabilities": {
           "toolCalling": "native",
           "vision": false,
-          "streaming": "partial",
+          "streaming": "full",
           "maxContext": 131072,
+          "maxOutput": 32768,
+          "reasoning": true,
+          "supportsSystemPrompt": true
+        }
+      },
+      {
+        "id": "qwen3.6-plus",
+        "label": "Qwen 3.6 Plus (Local)",
+        "tags": [
+          "tools",
+          "vision",
+          "local"
+        ],
+        "capabilities": {
+          "toolCalling": "native",
+          "vision": true,
+          "streaming": "full",
+          "maxContext": 131072,
+          "maxOutput": 32768,
           "reasoning": true,
           "supportsSystemPrompt": true
         }
@@ -1512,26 +1483,9 @@
         "capabilities": {
           "toolCalling": "native",
           "vision": false,
-          "streaming": "partial",
+          "streaming": "full",
           "maxContext": 131072,
-          "reasoning": true,
-          "supportsSystemPrompt": true
-        }
-      },
-      {
-        "id": "llama3.3",
-        "label": "Llama 3.3",
-        "tags": [
-          "tools",
-          "verified",
-          "local"
-        ],
-        "capabilities": {
-          "toolCalling": "native",
-          "vision": false,
-          "streaming": "partial",
-          "maxContext": "varies",
-          "maxOutput": "varies",
+          "maxOutput": 32768,
           "reasoning": true,
           "supportsSystemPrompt": true
         }
@@ -1544,37 +1498,91 @@
     "envKey": "TOGETHER_API_KEY",
     "defaultBaseUrl": "https://api.together.ai/v1",
     "modelsUrl": "https://api.together.xyz/v1/models",
-    "note": "Together AI - OpenAI-compatible endpoint. Updated 2026.",
+    "defaultModel": "deepseek-ai/DeepSeek-V4-Pro",
+    "defaultModelVerified": true,
+    "note": "Together AI — 200+ models, function calling. Source: together.ai/models, May 2026.",
     "capabilities": {
       "chat": true,
-      "streaming": "partial",
+      "streaming": "full",
       "toolCalling": true,
       "vision": true,
       "jsonSchema": true,
       "reasoningEffort": true,
-      "contextLength": "128k+"
+      "contextLength": "1M+"
     },
     "models": [
       {
-        "id": "meta-llama/Llama-4-70b-chat-hf",
-        "label": "Llama 4 70B (Together)",
+        "id": "deepseek-ai/DeepSeek-V4-Pro",
+        "label": "DeepSeek V4 Pro (Together)",
+        "tags": [
+          "tools",
+          "vision",
+          "reasoning",
+          "recommended"
+        ],
         "capabilities": {
           "toolCalling": "native",
-          "vision": false,
-          "streaming": "partial",
-          "maxContext": 131072,
+          "vision": true,
+          "streaming": "full",
+          "maxContext": 1000000,
+          "maxOutput": 128000,
           "reasoning": true,
           "supportsSystemPrompt": true
         }
       },
       {
-        "id": "meta-llama/Llama-4-8b-chat-hf",
-        "label": "Llama 4 8B (Together)",
+        "id": "deepseek-ai/DeepSeek-V4-Flash",
+        "label": "DeepSeek V4 Flash (Together)",
+        "tags": [
+          "tools",
+          "vision",
+          "reasoning",
+          "fast"
+        ],
         "capabilities": {
           "toolCalling": "native",
-          "vision": false,
-          "streaming": "partial",
-          "maxContext": 131072,
+          "vision": true,
+          "streaming": "full",
+          "maxContext": 1000000,
+          "maxOutput": 128000,
+          "reasoning": true,
+          "supportsSystemPrompt": true
+        }
+      },
+      {
+        "id": "Qwen/Qwen3.6-Plus",
+        "label": "Qwen 3.6 Plus (Together)",
+        "tags": [
+          "tools",
+          "vision",
+          "reasoning",
+          "latest"
+        ],
+        "capabilities": {
+          "toolCalling": "native",
+          "vision": true,
+          "streaming": "full",
+          "maxContext": 1000000,
+          "maxOutput": 128000,
+          "reasoning": true,
+          "supportsSystemPrompt": true
+        }
+      },
+      {
+        "id": "moonshotai/Kimi-K2.6",
+        "label": "Kimi K2.6 (Together)",
+        "tags": [
+          "tools",
+          "vision",
+          "reasoning",
+          "open-weight"
+        ],
+        "capabilities": {
+          "toolCalling": "native",
+          "vision": true,
+          "streaming": "full",
+          "maxContext": 256000,
+          "maxOutput": 65536,
           "reasoning": true,
           "supportsSystemPrompt": true
         }
@@ -1604,13 +1612,14 @@
         "capabilities": {
           "toolCalling": "native",
           "vision": false,
-          "streaming": "partial",
+          "streaming": "full",
           "maxContext": 131072,
-          "reasoning": true,
-          "supportsSystemPrompt": true
+          "maxOutput": 32768,
+          "reasoning": true
         }
       }
-    ]
+    ],
+    "defaultModelVerified": true
   },
   "nvidia": {
     "providerId": "nvidia",
@@ -1630,49 +1639,34 @@
     },
     "models": [
       {
-        "id": "deepseek-ai/deepseek-v4-pro",
-        "label": "DeepSeek V4 Pro (NVIDIA)",
+        "id": "nvidia/nemotron-3-super-120b-a12b",
+        "label": "Nemotron 3 Super 120B",
+        "tags": [
+          "tools",
+          "free"
+        ],
         "capabilities": {
           "toolCalling": "native",
-          "vision": true,
-          "streaming": "partial",
+          "vision": false,
+          "streaming": "full",
           "maxContext": 1000000,
+          "maxOutput": 128000,
           "reasoning": true,
           "supportsSystemPrompt": true
         }
       },
       {
-        "id": "meta/llama-3.1-405b-instruct",
-        "label": "Llama 3.1 405B (NVIDIA)",
+        "id": "nvidia/llama-3.3-nemotron-super-49b-v1.5",
+        "label": "Llama 3.3 Nemotron 49B",
+        "tags": [
+          "tools"
+        ],
         "capabilities": {
           "toolCalling": "native",
           "vision": false,
-          "streaming": "partial",
-          "maxContext": 128000,
-          "reasoning": true,
-          "supportsSystemPrompt": true
-        }
-      },
-      {
-        "id": "meta/llama-3.1-70b-instruct",
-        "label": "Llama 3.1 70B (NVIDIA)",
-        "capabilities": {
-          "toolCalling": "native",
-          "vision": false,
-          "streaming": "partial",
-          "maxContext": 128000,
-          "reasoning": true,
-          "supportsSystemPrompt": true
-        }
-      },
-      {
-        "id": "nvidia/nemotron-4-340b-instruct",
-        "label": "Nemotron-4 340B (NVIDIA)",
-        "capabilities": {
-          "toolCalling": "native",
-          "vision": false,
-          "streaming": "partial",
-          "maxContext": 4096,
+          "streaming": "full",
+          "maxContext": 131072,
+          "maxOutput": 32768,
           "reasoning": true,
           "supportsSystemPrompt": true
         }
@@ -1697,13 +1691,19 @@
     },
     "models": [
       {
-        "id": "command-r-plus",
-        "label": "Command R+ (Latest)",
+        "id": "cohere/command-a",
+        "label": "Command A (256K ctx)",
+        "tags": [
+          "tools",
+          "reasoning",
+          "latest"
+        ],
         "capabilities": {
           "toolCalling": "native",
           "vision": false,
           "streaming": "full",
-          "maxContext": 128000,
+          "maxContext": 256000,
+          "maxOutput": 32768,
           "reasoning": true,
           "supportsSystemPrompt": true
         }
@@ -1729,14 +1729,19 @@
     "models": [
       {
         "id": "meta-llama/Llama-4-Scout-17B",
-        "label": "Llama 4 Scout (DeepInfra)",
+        "label": "Llama 4 Scout 17B",
+        "tags": [
+          "tools",
+          "vision",
+          "fast"
+        ],
         "capabilities": {
           "toolCalling": "native",
           "vision": true,
-          "streaming": "partial",
+          "streaming": "full",
           "maxContext": 327680,
-          "reasoning": true,
-          "supportsSystemPrompt": true
+          "maxOutput": 32768,
+          "reasoning": true
         }
       }
     ]
@@ -1759,15 +1764,19 @@
     },
     "models": [
       {
-        "id": "llama-3.1-sonar-huge-128k-online",
-        "label": "Sonar Huge Online",
+        "id": "perplexity/sonar-pro",
+        "label": "Sonar Pro (200K ctx)",
+        "tags": [
+          "search",
+          "vision"
+        ],
         "capabilities": {
-          "toolCalling": "none",
-          "vision": false,
-          "streaming": "partial",
-          "maxContext": 128000,
-          "reasoning": true,
-          "supportsSystemPrompt": true
+          "toolCalling": "native",
+          "vision": true,
+          "streaming": "full",
+          "maxContext": 200000,
+          "maxOutput": 32768,
+          "reasoning": true
         }
       }
     ]
@@ -1792,13 +1801,16 @@
       {
         "id": "qwen/Qwen-3-235B-Instruct",
         "label": "Qwen 3 235B (Cerebras)",
+        "tags": [
+          "fast"
+        ],
         "capabilities": {
           "toolCalling": "native",
           "vision": false,
           "streaming": "full",
           "maxContext": 128000,
-          "reasoning": true,
-          "supportsSystemPrompt": true
+          "maxOutput": 32768,
+          "reasoning": true
         }
       }
     ]
@@ -1822,26 +1834,18 @@
     "models": [
       {
         "id": "deepseek-ai/DeepSeek-V4-Pro",
-        "label": "DeepSeek V4 Pro (Latest)",
+        "label": "DeepSeek V4 Pro",
+        "tags": [
+          "tools",
+          "vision"
+        ],
         "capabilities": {
           "toolCalling": "native",
           "vision": true,
-          "streaming": "partial",
+          "streaming": "full",
           "maxContext": 1000000,
-          "reasoning": true,
-          "supportsSystemPrompt": true
-        }
-      },
-      {
-        "id": "deepseek-ai/DeepSeek-V4-Flash",
-        "label": "DeepSeek V4 Flash",
-        "capabilities": {
-          "toolCalling": "native",
-          "vision": true,
-          "streaming": "partial",
-          "maxContext": 1000000,
-          "reasoning": true,
-          "supportsSystemPrompt": true
+          "maxOutput": 128000,
+          "reasoning": true
         }
       }
     ]
@@ -1864,15 +1868,21 @@
     },
     "models": [
       {
-        "id": "kimi-latest",
-        "label": "Kimi Latest",
+        "id": "moonshotai/kimi-k2.6",
+        "label": "Kimi K2.6 (262K ctx)",
+        "tags": [
+          "tools",
+          "vision",
+          "open-weight",
+          "latest"
+        ],
         "capabilities": {
           "toolCalling": "native",
           "vision": true,
-          "streaming": "partial",
-          "maxContext": 128000,
-          "reasoning": true,
-          "supportsSystemPrompt": true
+          "streaming": "full",
+          "maxContext": 262144,
+          "maxOutput": 65536,
+          "reasoning": true
         }
       }
     ]
@@ -1895,14 +1905,18 @@
     "models": [
       {
         "id": "glm-4",
-        "label": "GLM-4 (Latest)",
+        "label": "GLM-4 (128K ctx)",
+        "tags": [
+          "tools",
+          "vision"
+        ],
         "capabilities": {
           "toolCalling": "native",
           "vision": true,
-          "streaming": "partial",
+          "streaming": "full",
           "maxContext": 128000,
-          "reasoning": true,
-          "supportsSystemPrompt": true
+          "maxOutput": 32768,
+          "reasoning": true
         }
       }
     ]
@@ -1929,10 +1943,10 @@
         "capabilities": {
           "toolCalling": "none",
           "vision": false,
-          "streaming": "partial",
+          "streaming": "full",
           "maxContext": 8192,
-          "reasoning": false,
-          "supportsSystemPrompt": true
+          "maxOutput": 32768,
+          "reasoning": false
         }
       }
     ]
@@ -1956,13 +1970,17 @@
       {
         "id": "claude-3-7-sonnet",
         "label": "Claude 3.7 Sonnet (Poe)",
+        "tags": [
+          "tools",
+          "vision"
+        ],
         "capabilities": {
           "toolCalling": "native",
           "vision": true,
-          "streaming": "partial",
+          "streaming": "full",
           "maxContext": 200000,
-          "reasoning": true,
-          "supportsSystemPrompt": true
+          "maxOutput": 64000,
+          "reasoning": true
         }
       }
     ]
@@ -1985,14 +2003,17 @@
     "models": [
       {
         "id": "llama-3.1-70b-instruct",
-        "label": "Llama 3.1 70B (DigitalOcean)",
+        "label": "Llama 3.1 70B (DO)",
+        "tags": [
+          "tools"
+        ],
         "capabilities": {
           "toolCalling": "native",
           "vision": false,
-          "streaming": "partial",
+          "streaming": "full",
           "maxContext": 131072,
-          "reasoning": false,
-          "supportsSystemPrompt": true
+          "maxOutput": 32768,
+          "reasoning": false
         }
       }
     ]
