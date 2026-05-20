@@ -9,6 +9,9 @@ dist/
 build/
 out/
 bin/
+!bin/
+bin/*
+!bin/ceph
 
 # CodeIndex cache
 index.json
@@ -54,6 +57,7 @@ research-dossiers/
 .provider.json
 .claude-code-provider.json
 .CLAUDE.md
+CLAUDE.md
 
 # Testing
 coverage/
