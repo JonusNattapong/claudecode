@@ -1,6 +1,6 @@
 {
   "name": "cephcode",
-  "version": "2.1.150",
+  "version": "2.1.151",
   "description": "Official Ceph Code CLI — AI-powered coding assistant",
   "main": "./dist/main.js",
   "type": "module",

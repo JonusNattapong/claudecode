@@ -16,7 +16,7 @@ try {
 
 // Define MACRO for build (normally replaced by macro processor)
 const MACRO = {
-  VERSION: '2.1.150',
+  VERSION: '2.1.151',
 };
 globalThis.MACRO = MACRO;
 

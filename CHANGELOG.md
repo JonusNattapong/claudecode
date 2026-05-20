@@ -8,6 +8,12 @@ This project follows a practical changelog format based on:
 - `Fixed` for bug fixes
 - `Security` for permission, sandbox, auth, and trust-related hardening
 - `Internal` for tests, types, refactors, and developer-facing implementation work
+## [2.1.151] - 2026-05-21
+
+### Fixed
+
+- npm publish: fix bin/ceph wrapper to use bash shebang instead of bun import
+
 ## [2.1.150] - 2026-05-21
 
 ### Internal
