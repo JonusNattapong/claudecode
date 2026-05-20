@@ -1,6 +1,6 @@
 /* ==========================================================================
-   Ceph Code Docs — "Terminal Luxe" Theme
-   Warm dark tones · Amber accents · Monospace soul
+   Ceph Code Docs — "Claude Code-inspired" Theme
+   Warm dark tones · Orange accents · Monospace soul
    ========================================================================== */
 
 @layer reset, theme, base, layout, components, animations;
@@ -13,21 +13,15 @@
 /* ── Theme ────────────────────────────────────────────────────────────── */
 @layer theme {
   :root {
-    /* Palette — warm charcoal + amber + cool cyan */
-    --amber-50:  #fef7e6;
-    --amber-300: #e8b84b;
-    --amber-400: #d4a04a;
-    --amber-500: #c08a38;
-    --amber-600: #a07028;
+    /* Palette — warm charcoal + Claude Code-inspired orange + cool teal accent */
+    --orange-400: #f59e0b;
+    --orange-500: #d97706;
+    --orange-600: #b45309;
 
-    --cyan-300: #7dd4e8;
-    --cyan-400: #5fc3e4;
-    --cyan-500: #3da9d4;
+    --teal-400: #2dd4bf;
 
-    --neutral-50:  #f0f0f2;
-    --neutral-200: #c8c8d0;
-    --neutral-400: #8888a0;
-    --neutral-600: #585870;
+    --neutral-200: #c8c8cc;
+    --neutral-400: #88889a;
     --neutral-700: #383850;
 
     --bg-deep:     #08080c;
@@ -50,8 +44,8 @@
     --code-text:  #d4d4e0;
     --code-border: #1e1e3a;
 
-    --glow-amber:  rgba(212, 160, 74, 0.15);
-    --glow-cyan:   rgba(95, 195, 228, 0.12);
+    --glow-orange:  rgba(217, 119, 6, 0.18);
+    --glow-teal:   rgba(45, 212, 191, 0.12);
     --glow-white:  rgba(255, 255, 255, 0.03);
 
     /* Spacing */
@@ -119,22 +113,22 @@
   }
 
   ::selection {
-    background: var(--amber-400);
+    background: var(--orange-500);
     color: var(--text-inverse);
   }
 
   :focus-visible {
-    outline: 2px solid var(--amber-400);
+    outline: 2px solid var(--orange-500);
     outline-offset: 2px;
     border-radius: 2px;
   }
 
   a {
-    color: var(--amber-300);
+    color: var(--orange-400);
     text-decoration: none;
     transition: color var(--duration-fast) var(--ease-out);
   }
-  a:hover { color: var(--amber-400); text-decoration: underline; }
+  a:hover { color: var(--orange-500); text-decoration: underline; }
 
   img, svg { display: block; max-width: 100%; }
 
@@ -190,7 +184,7 @@
   .logo-mark {
     width: 32px;
     height: 32px;
-    border: 2px solid var(--amber-400);
+    border: 2px solid var(--orange-500);
     border-radius: 6px;
     display: flex;
     align-items: center;
@@ -198,8 +192,8 @@
     font-family: var(--font-display);
     font-size: 0.85rem;
     font-weight: 700;
-    color: var(--amber-400);
-    background: color-mix(in srgb, var(--amber-400) 8%, transparent);
+    color: var(--orange-500);
+    background: color-mix(in srgb, var(--orange-500) 8%, transparent);
     position: relative;
     overflow: hidden;
   }
@@ -207,7 +201,7 @@
     content: '';
     position: absolute;
     inset: -2px;
-    background: conic-gradient(from 0deg, transparent, var(--glow-amber), transparent 60%);
+    background: conic-gradient(from 0deg, transparent, var(--glow-orange), transparent 60%);
     opacity: 0;
     transition: opacity var(--duration-slow) var(--ease-out);
   }
@@ -232,7 +226,7 @@
     background: var(--bg-hover);
     text-decoration: none;
   }
-  .header-nav a.active { color: var(--amber-300); }
+  .header-nav a.active { color: var(--orange-400); }
 
   /* ── Sidebar ── */
   .sidebar {
@@ -285,9 +279,9 @@
     border-color: var(--border-subtle);
   }
   .sidebar-link.active {
-    color: var(--amber-300);
-    background: color-mix(in srgb, var(--amber-400) 8%, var(--bg-card));
-    border-color: color-mix(in srgb, var(--amber-400) 20%, transparent);
+    color: var(--orange-400);
+    background: color-mix(in srgb, var(--orange-500) 8%, var(--bg-card));
+    border-color: color-mix(in srgb, var(--orange-500) 20%, transparent);
   }
 
   .sidebar-link .link-icon {
@@ -298,8 +292,8 @@
     flex-shrink: 0;
   }
   .sidebar-link.active .link-icon {
-    background: var(--amber-400);
-    box-shadow: 0 0 6px var(--glow-amber);
+    background: var(--orange-500);
+    box-shadow: 0 0 6px var(--glow-orange);
   }
 
   /* ── Main Content ── */
@@ -333,8 +327,8 @@
     right: -80px;
     bottom: 0;
     background:
-      radial-gradient(ellipse 600px 300px at 30% 40%, var(--glow-amber), transparent 70%),
-      radial-gradient(ellipse 400px 400px at 80% 60%, var(--glow-cyan), transparent 70%),
+      radial-gradient(ellipse 600px 300px at 30% 40%, var(--glow-orange), transparent 70%),
+      radial-gradient(ellipse 400px 400px at 80% 60%, var(--glow-teal), transparent 70%),
       radial-gradient(ellipse 300px 200px at 50% 80%, var(--glow-white), transparent 70%);
     pointer-events: none;
     z-index: 0;
@@ -352,16 +346,16 @@
     font-size: 0.75rem;
     font-weight: 500;
     letter-spacing: 0.04em;
-    color: var(--amber-300);
-    background: color-mix(in srgb, var(--amber-400) 10%, var(--bg-card));
-    border: 1px solid color-mix(in srgb, var(--amber-400) 20%, transparent);
+    color: var(--orange-400);
+    background: color-mix(in srgb, var(--orange-500) 10%, var(--bg-card));
+    border: 1px solid color-mix(in srgb, var(--orange-500) 20%, transparent);
     margin-bottom: var(--space-lg);
   }
   .hero-badge .dot {
     width: 6px;
     height: 6px;
     border-radius: 50%;
-    background: var(--amber-400);
+    background: var(--orange-500);
     animation: pulse-dot 2s ease-in-out infinite;
   }
 
@@ -377,7 +371,7 @@
 
   .hero h1 .highlight {
     color: transparent;
-    background: linear-gradient(135deg, var(--amber-300) 0%, var(--amber-400) 50%, var(--cyan-400) 100%);
+    background: linear-gradient(135deg, var(--orange-400) 0%, var(--orange-500) 50%, var(--teal-400) 100%);
     -webkit-background-clip: text;
     background-clip: text;
   }
@@ -417,14 +411,14 @@
   .btn:active { transform: scale(0.97); }
 
   .btn-primary {
-    background: linear-gradient(135deg, var(--amber-500), var(--amber-400));
+    background: linear-gradient(135deg, var(--orange-600), var(--orange-500));
     color: var(--text-inverse);
-    border-color: var(--amber-400);
-    box-shadow: 0 4px 20px var(--glow-amber);
+    border-color: var(--orange-500);
+    box-shadow: 0 4px 20px var(--glow-orange);
   }
   .btn-primary:hover {
-    background: linear-gradient(135deg, var(--amber-400), var(--amber-300));
-    box-shadow: 0 6px 30px var(--glow-amber);
+    background: linear-gradient(135deg, var(--orange-500), var(--orange-400));
+    box-shadow: 0 6px 30px var(--glow-orange);
     color: var(--text-inverse);
   }
 
@@ -499,16 +493,16 @@
   .terminal-body .line:nth-child(6) { animation-delay: 2.2s; }
   .terminal-body .line:nth-child(7) { animation-delay: 2.8s; }
 
-  .terminal-body .prompt { color: var(--amber-400); }
+  .terminal-body .prompt { color: var(--orange-500); }
   .terminal-body .cmd { color: var(--text-primary); }
   .terminal-body .output { color: var(--text-tertiary); }
-  .terminal-body .highlight-amber { color: var(--amber-300); }
-  .terminal-body .highlight-cyan { color: var(--cyan-400); }
+  .terminal-body .highlight-amber { color: var(--orange-400); }
+  .terminal-body .highlight-cyan { color: var(--teal-400); }
   .terminal-body .cursor {
     display: inline-block;
     width: 8px;
     height: 1em;
-    background: var(--amber-400);
+    background: var(--orange-500);
     vertical-align: text-bottom;
     margin-left: 2px;
     animation: blink-cursor 1s step-end infinite;
@@ -541,7 +535,7 @@
     font-size: 2.25rem;
     font-weight: 700;
     letter-spacing: -0.03em;
-    background: linear-gradient(135deg, var(--amber-300), var(--cyan-400));
+    background: linear-gradient(135deg, var(--orange-400), var(--teal-400));
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
@@ -605,7 +599,7 @@
     left: 0;
     right: 0;
     height: 2px;
-    background: linear-gradient(90deg, transparent, var(--amber-400), transparent);
+    background: linear-gradient(90deg, transparent, var(--orange-500), transparent);
     opacity: 0;
     transition: opacity var(--duration-slow) var(--ease-out);
   }
@@ -627,7 +621,7 @@
     margin-bottom: var(--space-md);
     background: var(--bg-hover);
     border: 1px solid var(--border-subtle);
-    color: var(--amber-400);
+    color: var(--orange-500);
   }
 
   .feature-card h3 {
@@ -651,9 +645,9 @@
     font-size: 0.65rem;
     padding: 2px 8px;
     border-radius: 4px;
-    background: color-mix(in srgb, var(--amber-400) 10%, transparent);
-    color: var(--amber-300);
-    border: 1px solid color-mix(in srgb, var(--amber-400) 15%, transparent);
+    background: color-mix(in srgb, var(--orange-500) 10%, transparent);
+    color: var(--orange-400);
+    border: 1px solid color-mix(in srgb, var(--orange-500) 15%, transparent);
     margin-top: var(--space-sm);
   }
 
@@ -683,7 +677,7 @@
     font-size: 1.05rem;
     font-weight: 600;
     margin: var(--space-lg) 0 var(--space-sm);
-    color: var(--amber-300);
+    color: var(--orange-400);
   }
 
   .content p {
@@ -701,18 +695,18 @@
     color: var(--text-secondary);
     line-height: var(--leading-relaxed);
   }
-  .content li::marker { color: var(--amber-400); }
+  .content li::marker { color: var(--orange-500); }
 
   .content strong { color: var(--text-primary); font-weight: 600; }
 
   .content code {
     font-family: var(--font-mono);
     font-size: 0.8125em;
-    background: color-mix(in srgb, var(--amber-400) 8%, var(--bg-card));
-    color: var(--amber-300);
+    background: color-mix(in srgb, var(--orange-500) 8%, var(--bg-card));
+    color: var(--orange-400);
     padding: 0.15em 0.5em;
     border-radius: 4px;
-    border: 1px solid color-mix(in srgb, var(--amber-400) 10%, transparent);
+    border: 1px solid color-mix(in srgb, var(--orange-500) 10%, transparent);
   }
 
   .content pre {
@@ -773,16 +767,16 @@
   .callout strong { display: block; margin-bottom: var(--space-xs); }
 
   .callout-info {
-    border-color: var(--cyan-400);
-    background: color-mix(in srgb, var(--cyan-400) 6%, var(--bg-card));
+    border-color: var(--teal-400);
+    background: color-mix(in srgb, var(--teal-400) 6%, var(--bg-card));
   }
-  .callout-info strong { color: var(--cyan-400); }
+  .callout-info strong { color: var(--teal-400); }
 
   .callout-warn {
-    border-color: var(--amber-400);
-    background: color-mix(in srgb, var(--amber-400) 6%, var(--bg-card));
+    border-color: var(--orange-500);
+    background: color-mix(in srgb, var(--orange-500) 6%, var(--bg-card));
   }
-  .callout-warn strong { color: var(--amber-400); }
+  .callout-warn strong { color: var(--orange-500); }
 
   .callout-tip {
     border-color: #50c878;
@@ -813,7 +807,7 @@
     color: var(--text-tertiary);
     font-size: 0.8125rem;
   }
-  .footer-links a:hover { color: var(--amber-300); }
+  .footer-links a:hover { color: var(--orange-400); }
 
   /* ── Mobile Menu ── */
   .menu-btn {
