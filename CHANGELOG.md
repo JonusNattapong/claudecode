@@ -9,6 +9,43 @@ This project follows a practical changelog format based on:
 - `Security` for permission, sandbox, auth, and trust-related hardening
 - `Internal` for tests, types, refactors, and developer-facing implementation work
 
+## [2.1.147] - 2026-05-20
+
+### Added
+
+- **Self-hosted SearXNG search** — Docker-based SearXNG instance in `searxng/`.
+  - `docker-compose.yml` with port 18889, writable config dir, and relaxed rate limiter.
+  - Pre-configured `settings.yml` with JSON API enabled (DuckDuckGo, Google, Wikipedia, StackOverflow, GitHub engines).
+  - Start/stop/restart/logs batch wrappers for Windows.
+- **`/searxng` slash command** — `on`, `off`, `status`, `restart` subcommands.
+  - Uses `docker compose ps -q` for reliable status checks on Windows (avoids Go template quoting issues).
+  - Supports `start`/`stop`/`up`/`down` aliases.
+- **Docs redesign** — "Terminal Luxe" theme across all 5 documentation pages.
+  - Warm dark palette with amber/cyan accents, JetBrains Mono + DM Sans fonts.
+  - Terminal window hero with typing animation and staggered line reveals.
+  - Stats grid, feature cards with hover glow, callout blocks, noise texture overlay.
+  - Shared sidebar navigation and responsive hamburger menu across all pages.
+  - Consistent header/sidebar/footer layout replacing per-page inline CSS.
+
+### Changed
+
+- **Search provider auto-selection** — `selectBestDirectProvider()` no longer auto-selects public SearXNG instances (all return 403/429).
+  - DuckDuckGo is now the default free fallback (always available, no API key).
+  - SearXNG is only auto-selected when `SEARXNG_INSTANCE_URL` is explicitly set (self-hosted).
+  - Applied consistently in both `WebSearchTool` and `MultiSearchTool`.
+- **`.env`** — Added `SEARXNG_INSTANCE_URL=http://localhost:18889` for self-hosted discovery.
+- **`.gitignore`** — `scratch/` replaces `scratch/index.json` to exclude Chromium browser cache.
+
+### Removed
+
+- **`scratch/` directory** — Deleted tracked Chromium cache (~700 files) including a leaked Google API key (`AIzaSyA2KlwBX3mkFo30om9LUFYQhpqLoa_BNhE`).
+
+### Internal
+
+- Removed `searxng` from search provider auto-select priority in `WebSearchTool.ts` and `MultiSearchTool.ts`.
+- Registered `/searxng` command in `src/commands/searxng/` and `src/commands.ts`.
+- Created `docs/features/searxng-search.html` documentation page.
+
 ## [2.1.146] - 2026-05-19
 
 ### Added
