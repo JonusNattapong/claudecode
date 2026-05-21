@@ -14,6 +14,24 @@ env:
   BUN_VERSION: latest
 
 jobs:
+  # ── Lockfile integrity (ubuntu only — platform-agnostic check) ──
+  lockfile:
+    name: Lockfile Check
+    timeout-minutes: 5
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: ${{ runner.os }}-bun-${{ hashFiles('bun.lock') }}
+          restore-keys: ${{ runner.os }}-bun-
+      - run: bun install --frozen-lockfile
+
   # ── Fast feedback: typecheck + lint on ubuntu only ──
   typecheck:
     name: TypeScript
