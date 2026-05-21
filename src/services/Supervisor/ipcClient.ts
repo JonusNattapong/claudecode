@@ -94,7 +94,7 @@ export async function ensureSupervisor(): Promise<boolean> {
   return startSupervisor();
 }
 
-function sendRequest(request: IPCRequest, timeoutMs = 10000): Promise<IPCResponse> {
+export function sendRequest(request: IPCRequest, timeoutMs = 10000): Promise<IPCResponse> {
   return new Promise((resolve, reject) => {
     const socket = createConnection(PIPE_NAME);
     const timer = setTimeout(() => {
@@ -248,5 +248,34 @@ export async function pingDaemon(): Promise<boolean> {
     return response.ok;
   } catch {
     return false;
+  }
+}
+
+// ─── Autonomous Agent IPC ────────────────────────────────────
+
+export async function autonomousStart(): Promise<IPCResponse> {
+  try {
+    await ensureSupervisor();
+    return sendRequest({ type: 'autonomous_start' });
+  } catch (e) {
+    return { ok: false, error: (e as Error).message };
+  }
+}
+
+export async function autonomousStop(): Promise<IPCResponse> {
+  try {
+    await ensureSupervisor();
+    return sendRequest({ type: 'autonomous_stop' });
+  } catch (e) {
+    return { ok: false, error: (e as Error).message };
+  }
+}
+
+export async function autonomousStatus(): Promise<IPCResponse> {
+  try {
+    await ensureSupervisor();
+    return sendRequest({ type: 'autonomous_status' });
+  } catch (e) {
+    return { ok: false, error: (e as Error).message };
   }
 }

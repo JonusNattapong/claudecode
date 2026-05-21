@@ -16,12 +16,19 @@
  */
 
 import { type ChildProcess, spawn } from 'child_process';
-import { randomBytes } from 'crypto';
-import { access, mkdir, readFile, unlink, writeFile } from 'fs/promises';
+import { randomBytes, randomUUID } from 'crypto';
+import { access, mkdir, readFile, stat, unlink, writeFile } from 'fs/promises';
 import { createServer, type Socket } from 'net';
 import { join } from 'path';
 import { getClaudeConfigHomeDir } from '../../utils/envUtils.js';
 import { jsonParse } from '../../utils/slowOperations.js';
+import {
+  autoStartIfEnabled as autoStartAutonomous,
+  getAutonomousStatus,
+  startAutonomousAgent,
+  startHealthChecks,
+  stopAutonomousAgent,
+} from '../autonomous/supervisorIntegration.js';
 
 // ─── Constants ────────────────────────────────────────────────
 
@@ -73,7 +80,19 @@ interface RosterFile {
 }
 
 interface IPCRequest {
-  type: 'spawn' | 'attach' | 'stop' | 'respawn' | 'rm' | 'list' | 'logs' | 'shutdown' | 'ping';
+  type:
+    | 'spawn'
+    | 'attach'
+    | 'stop'
+    | 'respawn'
+    | 'rm'
+    | 'list'
+    | 'logs'
+    | 'shutdown'
+    | 'ping'
+    | 'autonomous_start'
+    | 'autonomous_stop'
+    | 'autonomous_status';
   sessionId?: string;
   cwd?: string;
   prompt?: string;
@@ -154,7 +173,7 @@ function spawnSessionProcess(entry: SessionEntry): ChildProcess {
   // Use the same entrypoint as the CLI
   const mainScript = join(import.meta.dirname ?? process.cwd(), '..', '..', 'main.tsx');
 
-  args.push('run', mainScript, 'session');
+  args.push('run', mainScript, '-p');
 
   if (entry.prompt) {
     args.push(entry.prompt);
@@ -171,7 +190,11 @@ function spawnSessionProcess(entry: SessionEntry): ChildProcess {
   if (entry.allowDangerouslySkipPermissions === 'true') {
     args.push('--dangerously-skip-permissions');
   }
-  args.push('--resume', entry.id);
+  // Generate a proper UUID for the spawned session (CLI requires UUID format
+  // for --session-id). The entry.id stored in the roster is a short hex ID;
+  // the UUID maps the process to a trackable session for attach/logs.
+  const sessionUuid = randomUUID();
+  args.push('--session-id', sessionUuid);
 
   // Ensure log directory exists
   const logDir = join(DAEMON_DIR, 'jobs', entry.id);
@@ -568,6 +591,21 @@ function handleRequest(socket: Socket, request: IPCRequest): void {
     case 'shutdown':
       respond(handleShutdown());
       break;
+    case 'autonomous_start':
+      startAutonomousAgent()
+        .then(ok => respond({ ok, data: { started: ok } }))
+        .catch(err => respond({ ok: false, error: err.message }));
+      return;
+    case 'autonomous_stop':
+      stopAutonomousAgent()
+        .then(ok => respond({ ok, data: { stopped: ok } }))
+        .catch(err => respond({ ok: false, error: err.message }));
+      return;
+    case 'autonomous_status':
+      getAutonomousStatus()
+        .then(data => respond({ ok: true, data }))
+        .catch(err => respond({ ok: false, error: err.message }));
+      return;
     default:
       respond({ ok: false, error: `Unknown command: ${(request as any).type}` });
   }
@@ -661,6 +699,12 @@ async function start(): Promise<void> {
   // Start idle timer
   checkIdleExit();
 
+  // Auto-start 24/7 autonomous agent if enabled
+  autoStartAutonomous().then(() => {
+    startHealthChecks();
+    log('Autonomous 24/7 agent health checks started');
+  });
+
   // Detect binary upgrades (brew upgrade, etc.). When process.execPath is
   // replaced, the daemon is running a stale binary — future spawns may use
   // the new binary (breaking IPC) or the old path may be deleted (ENOENT).
@@ -720,6 +764,8 @@ async function start(): Promise<void> {
   process.on('SIGTERM', () => {
     log('Received SIGTERM, shutting down...');
     shuttingDown = true;
+    // Stop autonomous agent first
+    stopAutonomousAgent().catch(() => {});
     for (const [id, child] of childProcesses) {
       if (!child.killed) {
         child.kill('SIGTERM');
