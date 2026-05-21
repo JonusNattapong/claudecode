@@ -26,30 +26,6 @@ Ceph Code is an independent, research-oriented **reverse-engineered rebuild** of
 
 > This is a community rebuild for engineers who need transparency and provider choice—not an official Anthropic distribution.
 
-## Ceph Code vs Claude Code
-
-A factual comparison based on Anthropic's public Claude Code documentation and this repository's source tree. Claude Code is the official supported product. Ceph Code is an independent rebuild/fork for local modification, provider experiments, and source-level debugging.
-
-| Area | Claude Code (Anthropic) | Ceph Code |
-| --- | --- | --- |
-| **Status** | Official Anthropic CLI product with official docs, releases, GitHub Action, SDK, and enterprise deployment paths. | Community-maintained rebuild/fork. Behavior can diverge from upstream and should be validated before production use. |
-| **Install/runtime requirements** | Official docs list Node.js 18+, supported OSes, internet access for auth/AI processing, and `npm install -g @anthropic-ai/claude-code`. | This repo uses Bun/TypeScript for local development. Install the `cephcode` package, then run the `ceph` CLI command. |
-| **Model/provider scope** | Built for Claude. Official deployment paths include Anthropic API plus enterprise hosting through AWS Bedrock or Google Vertex AI. | Provider registry currently includes 27 provider IDs in `src/services/ai/providers.json`, including Anthropic, OpenAI, Google, OpenRouter, Ollama, Groq, xAI, Mistral, Copilot, and others. Compatibility varies by provider. |
-| **Terminal workflow** | Official agentic coding tool that can edit files, run commands, answer codebase questions, use web/MCP context, and act as a Unix-style CLI utility. | Reconstructed terminal workflow with local patches, provider adapters, extra commands, and experimental runtime changes. |
-| **Permissions** | Official IAM docs list `default`, `acceptEdits`, `plan`, and `bypassPermissions`, plus allow/ask/deny permission rules in settings. | Source-defined runtime modes are `default`, `ask`, `plan`, `acceptEdits`, `bypassPermissions`, `dontAsk`; `auto` is included only when the transcript-classifier build gate is enabled. |
-| **Subagents / agents** | Official custom subagents have separate context windows, configurable prompts, and tool access; Claude Code SDK supports building custom agents. | Includes local agent tooling, background/supervisor sessions, team/worker code paths, and an experimental durable `agentRuntime/`. |
-| **MCP** | Official docs describe MCP servers for custom tools/capabilities in Claude Code and the SDK. | MCP support exists, with additional plugin-sourced MCP server loading and local integration code. |
-| **Hooks** | Official hooks include `PreToolUse`, `PostToolUse`, `Notification`, `UserPromptSubmit`, `Stop`, `SubagentStop`, `PreCompact`, `SessionStart`, and `SessionEnd`. | Hook system exists and is modified in this fork; behavior may differ from upstream and should be tested against this repo. |
-| **IDE integration** | Official docs list VS Code-family and JetBrains-family integrations, including diff viewing, selection context, file references, and diagnostics sharing. | Contains IDE/LSP-related code and plugin LSP support, but it is not the official Anthropic IDE integration. |
-| **GitHub / CI automation** | Official Claude Code GitHub Actions supports `@claude` workflows and custom automation through the Claude Code SDK. | Repo has GitHub/PR-related commands and automation experiments, but not the official Anthropic GitHub Action product. |
-| **Search / browser / computer use** | Official feature set is whatever Anthropic ships and documents for Claude Code. | Adds optional local/self-hosted pieces such as SearXNG integration and browser/computer-use adapter code. |
-| **Source and support** | Official implementation and support are controlled by Anthropic. | Source is available in this repository for inspection and modification; support is community/project-maintainer based. |
-| **Best fit** | Teams/users who want the official supported Claude Code experience and Anthropic's documented behavior. | Engineers who want to inspect internals, modify behavior, test providers, or run research/self-hosted workflows. |
-
-Sources used for the Claude Code column: [overview](https://docs.anthropic.com/en/docs/claude-code/overview), [getting started](https://docs.anthropic.com/en/docs/claude-code/getting-started), [IAM and permission modes](https://docs.anthropic.com/en/docs/claude-code/iam), [settings](https://docs.anthropic.com/en/docs/claude-code/settings), [subagents](https://docs.anthropic.com/en/docs/claude-code/sub-agents), [SDK](https://docs.anthropic.com/en/docs/claude-code/sdk), [MCP in SDK](https://docs.anthropic.com/en/docs/claude-code/sdk/sdk-mcp), [hooks](https://docs.anthropic.com/en/docs/claude-code/hooks), [IDE integrations](https://docs.anthropic.com/en/docs/claude-code/ide-integrations), and [GitHub Actions](https://docs.anthropic.com/en/docs/claude-code/github-actions). Ceph Code facts are based on this repository's source, especially `src/services/ai/providers.json`, `src/types/permissions.ts`, `src/services/ai/providerRegistry.ts`, `src/agentRuntime/`, `src/services/mcp/`, and `src/utils/plugins/`.
-
-**Bottom line:** use Claude Code when you need the official supported product. Use Ceph Code when you specifically want a hackable research fork and are comfortable validating behavior yourself.
-
 ## What It Does
 
 Ceph Code gives you an AI coding assistant that runs in your terminal, can inspect and edit a local codebase, execute tools, switch between model providers, and coordinate longer workflows through commands, agents, plugins, and project skills.
