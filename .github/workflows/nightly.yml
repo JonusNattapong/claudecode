@@ -32,7 +32,7 @@ jobs:
           path: ~/.bun/install/cache
           key: ${{ runner.os }}-bun-${{ hashFiles('bun.lock') }}
           restore-keys: ${{ runner.os }}-bun-
-      - run: bun install --frozen-lockfile
+      - run: bun install
       - run: bun test --bail
         timeout-minutes: 10
 
@@ -51,7 +51,7 @@ jobs:
           path: ~/.bun/install/cache
           key: ubuntu-latest-bun-${{ hashFiles('bun.lock') }}
           restore-keys: ubuntu-latest-bun-
-      - run: bun install --frozen-lockfile
+      - run: bun install
       - run: bun test --coverage --bail
       - uses: actions/upload-artifact@v4
         with:
@@ -75,5 +75,5 @@ jobs:
           path: ~/.bun/install/cache
           key: ubuntu-latest-bun-${{ hashFiles('bun.lock') }}
           restore-keys: ubuntu-latest-bun-
-      - run: bun install --frozen-lockfile
+      - run: bun install
       - run: bun audit
