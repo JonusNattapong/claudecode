@@ -230,6 +230,19 @@ export class ProviderManager {
       }
     }
 
+    // Special handling for Google subscriber (Google OAuth)
+    if (providerName === 'google' && (config.providerConfig as any)?.googleType === 'subscriber') {
+      // First check GOOGLE_OAUTH_TOKEN from OAuth flow
+      if (process.env.GOOGLE_OAUTH_TOKEN) {
+        return process.env.GOOGLE_OAUTH_TOKEN;
+      }
+      // Also check global config for stored OAuth tokens
+      const globalConfig = getGlobalConfig() as any;
+      if (globalConfig?.googleOAuthTokens?.accessToken) {
+        return globalConfig.googleOAuthTokens.accessToken;
+      }
+    }
+
     return (
       config.apiKeys?.[providerName] ||
       (providerEntry?.envKey ? process.env[providerEntry.envKey] : undefined) ||

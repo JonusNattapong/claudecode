@@ -14,12 +14,6 @@ export class CohereProvider extends OpenAICompatibleProvider {
   protected chatPath = '/chat';
 
   constructor() {
-    super(
-      'cohere' as ProviderId,
-      'Cohere',
-      'COHERE_API_KEY',
-      'https://api.cohere.com/v2',
-      true,
-    );
+    super('cohere' as ProviderId, 'Cohere', 'COHERE_API_KEY', 'https://api.cohere.com/v2', true);
   }
 }

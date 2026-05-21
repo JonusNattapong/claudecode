@@ -482,4 +482,4 @@ class GoogleAdapter implements ProviderAdapter {
 }
 
 // Register for the 'google' provider ID
-registerAdapter('google', (client: any, _providerId: string) => new GoogleAdapter(client));
+// registerAdapter('google', (client: any, _providerId: string) => new GoogleAdapter(client));

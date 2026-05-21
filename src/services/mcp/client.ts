@@ -226,13 +226,15 @@ const claudeInChromeToolRendering = (): typeof import('../../utils/claudeInChrom
 // Lazy: wrapper.tsx → hostAdapter.ts → executor.ts pulls both native modules
 // (@ant/computer-use-input + @ant/computer-use-swift). Runtime-gated by
 // GrowthBook tengu_malort_pedway (see gates.ts).
-const computerUseWrapper = (feature('CHICAGO_MCP') || process.env.ENABLE_COMPUTER_USE === '1')
-  ? (): typeof import('../../utils/computerUse/wrapper.js') => require('../../utils/computerUse/wrapper.js')
-  : undefined;
-const isComputerUseMCPServer = (feature('CHICAGO_MCP') || process.env.ENABLE_COMPUTER_USE === '1')
-  ? (require('../../utils/computerUse/common.js') as typeof import('../../utils/computerUse/common.js'))
-      .isComputerUseMCPServer
-  : undefined;
+const computerUseWrapper =
+  feature('CHICAGO_MCP') || process.env.ENABLE_COMPUTER_USE === '1'
+    ? (): typeof import('../../utils/computerUse/wrapper.js') => require('../../utils/computerUse/wrapper.js')
+    : undefined;
+const isComputerUseMCPServer =
+  feature('CHICAGO_MCP') || process.env.ENABLE_COMPUTER_USE === '1'
+    ? (require('../../utils/computerUse/common.js') as typeof import('../../utils/computerUse/common.js'))
+        .isComputerUseMCPServer
+    : undefined;
 
 import { mkdir, readFile, unlink, writeFile } from 'fs/promises';
 import { dirname, join } from 'path';

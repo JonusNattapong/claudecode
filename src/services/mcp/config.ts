@@ -1459,10 +1459,11 @@ export function areMcpConfigsAllowedWithEnterpriseMcpConfig(configs: Record<stri
  * enabledMcpServers. Shows up in /mcp as disabled until the user enables it.
  */
 /* eslint-disable @typescript-eslint/no-require-imports */
-const DEFAULT_DISABLED_BUILTIN = (feature('CHICAGO_MCP') || process.env.ENABLE_COMPUTER_USE === '1')
-  ? (require('../../utils/computerUse/common.js') as typeof import('../../utils/computerUse/common.js'))
-      .COMPUTER_USE_MCP_SERVER_NAME
-  : null;
+const DEFAULT_DISABLED_BUILTIN =
+  feature('CHICAGO_MCP') || process.env.ENABLE_COMPUTER_USE === '1'
+    ? (require('../../utils/computerUse/common.js') as typeof import('../../utils/computerUse/common.js'))
+        .COMPUTER_USE_MCP_SERVER_NAME
+    : null;
 /* eslint-enable @typescript-eslint/no-require-imports */
 
 function isDefaultDisabledBuiltin(name: string): boolean {

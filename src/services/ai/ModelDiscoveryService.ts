@@ -11,10 +11,11 @@
  * Cache: ~/.claude/model-cache.json (TTL: 6 hours)
  */
 
-import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
 import { join } from 'path';
-import { getClaudeConfigHomeDir } from '../../utils/envUtils.js';
+import { getGlobalConfig } from '../../utils/config.js';
 import { logForDebugging } from '../../utils/debug.js';
+import { getClaudeConfigHomeDir } from '../../utils/envUtils.js';
 import { logError, toError } from '../../utils/log.js';
 import providersConfig from './providers.json' with { type: 'json' };
 
@@ -132,11 +133,13 @@ function parseOpenRouterResponse(data: any, providerId: string): DiscoveredModel
       outputModalities: m.architecture?.output_modalities,
       supportsTools: m.supported_parameters?.includes('tools'),
       supportsVision: m.architecture?.input_modalities?.includes('image'),
-      pricing: m.pricing ? {
-        prompt: parseFloat(m.pricing.prompt) || undefined,
-        completion: parseFloat(m.pricing.completion) || undefined,
-        inputCacheRead: parseFloat(m.pricing.input_cache_read) || undefined,
-      } : undefined,
+      pricing: m.pricing
+        ? {
+            prompt: parseFloat(m.pricing.prompt) || undefined,
+            completion: parseFloat(m.pricing.completion) || undefined,
+            inputCacheRead: parseFloat(m.pricing.input_cache_read) || undefined,
+          }
+        : undefined,
       streaming: 'full',
       reasoning: m.supported_parameters?.includes('reasoning'),
       source: 'api',
@@ -172,7 +175,8 @@ function parseGoogleResponse(data: any, providerId: string): DiscoveredModel[] {
       providerLabel: 'Google',
       contextLength: (m as any).inputTokenLimit || (m as any).contextWindow,
       maxOutputTokens: (m as any).outputTokenLimit || (m as any).maxOutputTokens,
-      inputModalities: m.inputModalities || (m.supportedGenerationMethods?.includes('generateContent') ? ['text'] : undefined),
+      inputModalities:
+        m.inputModalities || (m.supportedGenerationMethods?.includes('generateContent') ? ['text'] : undefined),
       supportsTools: m.supportedGenerationMethods?.includes('generateContent'),
       supportsVision: m.inputModalities?.includes('image'),
       streaming: 'partial',
@@ -186,7 +190,15 @@ function parseOpenAICompatibleResponse(data: any, providerId: string): Discovere
   if (!Array.isArray(models)) return [];
 
   return models
-    .filter((m: any) => m.id && !m.id.includes('embed') && !m.id.includes('whisper') && !m.id.includes('tts') && !m.id.includes('dall-e') && !m.id.includes('moderation'))
+    .filter(
+      (m: any) =>
+        m.id &&
+        !m.id.includes('embed') &&
+        !m.id.includes('whisper') &&
+        !m.id.includes('tts') &&
+        !m.id.includes('dall-e') &&
+        !m.id.includes('moderation'),
+    )
     .map((m: any) => ({
       id: m.id,
       label: m.id,
@@ -304,7 +316,18 @@ export class ModelDiscoveryService {
   }
 
   private async doFetch(config: ProviderDiscoveryConfig): Promise<DiscoveryResult> {
-    const apiKey = process.env[config.envKey];
+    let apiKey = process.env[config.envKey];
+
+    // If google provider and no GEMINI_API_KEY, check if googleType === 'subscriber' and use OAuth token
+    if (config.providerId === 'google' && !apiKey) {
+      const globalConfig = getGlobalConfig() as any;
+      if (process.env.GOOGLE_OAUTH_TOKEN) {
+        apiKey = process.env.GOOGLE_OAUTH_TOKEN;
+      } else if (globalConfig?.googleOAuthTokens?.accessToken) {
+        apiKey = globalConfig.googleOAuthTokens.accessToken;
+      }
+    }
+
     const result: DiscoveryResult = {
       providerId: config.providerId,
       providerLabel: (providersConfig as any)[config.providerId]?.label || config.providerId,
@@ -324,11 +347,16 @@ export class ModelDiscoveryService {
       const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
       let url = config.modelsUrl;
-      let headers: Record<string, string> = {};
+      const headers: Record<string, string> = {};
 
       if (config.providerId === 'google') {
-        // Google uses ?key= param
-        url = `${config.modelsUrl}?key=${apiKey}`;
+        if (apiKey?.startsWith('ya29.')) {
+          // Google OAuth token - use standard Bearer Authorization header instead of ?key= parameter
+          headers['Authorization'] = `Bearer ${apiKey}`;
+        } else {
+          // Standard API key - use ?key= param
+          url = `${config.modelsUrl}?key=${apiKey}`;
+        }
       } else if (config.providerId === 'ollama') {
         // Ollama — no auth needed
       } else {
@@ -386,9 +414,7 @@ export class ModelDiscoveryService {
     const batchSize = 5;
     for (let i = 0; i < configs.length; i += batchSize) {
       const batch = configs.slice(i, i + batchSize);
-      const batchResults = await Promise.allSettled(
-        batch.map(c => this.fetchProviderModels(c.providerId))
-      );
+      const batchResults = await Promise.allSettled(batch.map(c => this.fetchProviderModels(c.providerId)));
       for (const r of batchResults) {
         if (r.status === 'fulfilled') results.push(r.value);
         else {

@@ -137,6 +137,7 @@ import {
   modelSupportsAdvisor,
 } from 'src/utils/advisor.js';
 import { getAgentContext } from 'src/utils/agentContext.js';
+import { getAntBetaSettings } from 'src/utils/antBetas.js';
 import { isClaudeAISubscriber } from 'src/utils/auth.js';
 import {
   getToolSearchBetaHeader,
@@ -158,7 +159,6 @@ import {
 } from 'src/utils/fastMode.js';
 import { returnValue } from 'src/utils/generators.js';
 import { headlessProfilerCheckpoint } from 'src/utils/headlessProfiler.js';
-import { getAntBetaSettings } from 'src/utils/antBetas.js';
 import { isMcpInstructionsDeltaEnabled } from 'src/utils/mcpInstructionsDelta.js';
 import { calculateUSDCost, calculateUSDCostFromProviderUsage } from 'src/utils/modelCost.js';
 import { endQueryProfile, queryCheckpoint } from 'src/utils/queryProfiler.js';
