@@ -1,6 +1,6 @@
-import { resolve, dirname } from 'path';
-import { fileURLToPath } from 'url';
 import { execSync } from 'child_process';
+import { dirname, resolve } from 'path';
+import { fileURLToPath } from 'url';
 import type { LocalCommandCall } from '../../types/command.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -33,7 +33,7 @@ function getStatus(): string {
   return 'SearXNG is stopped.';
 }
 
-export const call: LocalCommandCall = async (args) => {
+export const call: LocalCommandCall = async args => {
   const arg = args?.trim().toLowerCase();
 
   switch (arg) {

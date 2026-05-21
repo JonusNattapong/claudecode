@@ -2,7 +2,7 @@ import type * as React from 'react';
 import { Text } from '../../ink.js';
 import type { ToolUseContext } from '../../Tool.js';
 import type { LocalJSXCommandOnDone } from '../../types/command.js';
-import { getAllToolUsage, formatLastCalled, resetToolUsage } from '../../utils/toolUsageTracker.js';
+import { formatLastCalled, getAllToolUsage, resetToolUsage } from '../../utils/toolUsageTracker.js';
 
 export async function call(
   onDone: LocalJSXCommandOnDone,

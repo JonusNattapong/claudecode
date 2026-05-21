@@ -28,7 +28,7 @@ export function registerMcpAddCommand(mcp: Command): void {
   mcp
     .command('add <name> <commandOrUrl> [args...]')
     .description(
-        'Add an MCP server to Claude Code.\n\n' +
+      'Add an MCP server to Claude Code.\n\n' +
         'Examples:\n' +
         '  # Add HTTP server:\n' +
         '  ceph mcp add --transport http sentry https://mcp.sentry.dev/mcp\n\n' +
@@ -68,7 +68,7 @@ export function registerMcpAddCommand(mcp: Command): void {
         cliError('Error: "workspace" is a reserved MCP server name.');
       } else if (!actualCommand) {
         cliError(
-            'Error: Command is required when server name is provided.\n' +
+          'Error: Command is required when server name is provided.\n' +
             'Usage: ceph mcp add <name> <command> [args...]',
         );
       }

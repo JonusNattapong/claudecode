@@ -7,6 +7,7 @@ import { ConfigurableShortcutHint } from '../../components/ConfigurableShortcutH
 import { ConsoleOAuthFlow } from '../../components/ConsoleOAuthFlow.js';
 import { Dialog } from '../../components/design-system/Dialog.js';
 import { GitHubCopilotAuthFlow } from '../../components/GitHubCopilotAuthFlow.js';
+import { GoogleOAuthFlow } from '../../components/GoogleOAuthFlow.js';
 import { OpenAIOAuthFlow } from '../../components/OpenAIOAuthFlow.js';
 import TextInput from '../../components/TextInput.js';
 import { useMainLoopModel } from '../../hooks/useMainLoopModel.js';
@@ -109,6 +110,17 @@ export function Login(props: {
           onCancel={() => props.onDone(false, mainLoopModel)}
         />
       );
+    }
+    if (provider === 'google') {
+      const config = pm.getSelectedProviderConfig();
+      if ((config.providerConfig as any)?.googleType === 'subscriber') {
+        return (
+          <GoogleOAuthFlow
+            onDone={() => props.onDone(true, mainLoopModel)}
+            onCancel={() => props.onDone(false, mainLoopModel)}
+          />
+        );
+      }
     }
     if (provider === 'copilot') {
       return (

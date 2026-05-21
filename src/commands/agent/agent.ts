@@ -1,9 +1,13 @@
-import { Orchestrator } from '../../agentRuntime/orchestrator.js';
-import { RunStore } from '../../agentRuntime/runStore.js';
-import type { LocalJSXCommandOnDone, LocalJSXCommandContext } from '../../types/command.js';
-import type { ToolUseContext } from '../../Tool.js';
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import React, { useState } from 'react';
+import { Orchestrator } from '../../agentRuntime/orchestrator.js';
+import { RunStore } from '../../agentRuntime/runStore.js';
+import { type OptionWithDescription, Select } from '../../components/CustomSelect/select.js';
+import { Dialog } from '../../components/design-system/Dialog.js';
+import { Box, Text } from '../../ink.js';
+import type { ToolUseContext } from '../../Tool.js';
+import type { LocalJSXCommandContext, LocalJSXCommandOnDone } from '../../types/command.js';
 
 function parseArgs(args: string): string[] {
   const result: string[] = [];
@@ -39,31 +43,197 @@ function parseArgs(args: string): string[] {
 
 export async function call(
   onDone: LocalJSXCommandOnDone,
-  context: ToolUseContext & LocalJSXCommandContext,
+  _context: ToolUseContext & LocalJSXCommandContext,
   args: string,
-): Promise<null> {
+): Promise<React.ReactNode> {
   const tokens = parseArgs(args || '');
   const subcommand = tokens[0]?.toLowerCase();
   const workspaceRoot = process.cwd();
 
+  if (!subcommand) {
+    return React.createElement(AgentCommandMenu, { onDone, workspaceRoot });
+  }
+
+  await executeAgentCommand(onDone, workspaceRoot, args);
+  return null;
+}
+
+type AgentMenuAction =
+  | 'status'
+  | 'approvals'
+  | 'doctor'
+  | 'help'
+  | 'run'
+  | 'status-detail'
+  | 'trace'
+  | 'pause'
+  | 'resume'
+  | 'report'
+  | 'approve'
+  | 'deny';
+
+function AgentCommandMenu({
+  onDone,
+  workspaceRoot,
+}: {
+  onDone: LocalJSXCommandOnDone;
+  workspaceRoot: string;
+}): React.ReactNode {
+  const [isRunning, setIsRunning] = useState(false);
+  const [runningLabel, setRunningLabel] = useState<string | null>(null);
+
+  const execute = (commandArgs: string, label: string): void => {
+    setIsRunning(true);
+    setRunningLabel(label);
+    void executeAgentCommand(onDone, workspaceRoot, commandArgs);
+  };
+
+  const options: OptionWithDescription<AgentMenuAction>[] = [
+    {
+      label: 'Start a new run',
+      value: 'run',
+      type: 'input',
+      placeholder: 'Describe the task',
+      description: 'Run an agent from a task prompt',
+      onChange: task => execute(`run ${task}`, 'Starting agent run'),
+    },
+    {
+      label: 'Status',
+      value: 'status',
+      description: 'Show all agent runs',
+    },
+    {
+      label: 'Run status',
+      value: 'status-detail',
+      type: 'input',
+      placeholder: 'Run ID',
+      description: 'Show one run in detail',
+      onChange: runId => execute(`status ${runId}`, 'Loading run status'),
+    },
+    {
+      label: 'Trace',
+      value: 'trace',
+      type: 'input',
+      placeholder: 'Run ID',
+      description: 'Show timeline and events for a run',
+      onChange: runId => execute(`trace ${runId}`, 'Loading run trace'),
+    },
+    {
+      label: 'Pause',
+      value: 'pause',
+      type: 'input',
+      placeholder: 'Run ID',
+      description: 'Pause a running execution',
+      onChange: runId => execute(`pause ${runId}`, 'Pausing run'),
+    },
+    {
+      label: 'Resume',
+      value: 'resume',
+      type: 'input',
+      placeholder: 'Run ID',
+      description: 'Resume a paused or blocked run',
+      onChange: runId => execute(`resume ${runId}`, 'Resuming run'),
+    },
+    {
+      label: 'Approvals',
+      value: 'approvals',
+      description: 'View pending human approvals',
+    },
+    {
+      label: 'Approve',
+      value: 'approve',
+      type: 'input',
+      placeholder: 'run-id approval-id',
+      description: 'Approve a blocked operation',
+      onChange: value => execute(`approve ${value}`, 'Approving operation'),
+    },
+    {
+      label: 'Deny',
+      value: 'deny',
+      type: 'input',
+      placeholder: 'run-id approval-id',
+      description: 'Deny a blocked operation',
+      onChange: value => execute(`deny ${value}`, 'Denying operation'),
+    },
+    {
+      label: 'Report',
+      value: 'report',
+      type: 'input',
+      placeholder: 'Run ID',
+      description: 'Display a run report',
+      onChange: runId => execute(`report ${runId}`, 'Loading report'),
+    },
+    {
+      label: 'Doctor',
+      value: 'doctor',
+      description: 'Verify runtime directories and registries',
+    },
+    {
+      label: 'Help',
+      value: 'help',
+      description: 'Show command reference',
+    },
+  ];
+
+  const handleChange = (action: AgentMenuAction): void => {
+    switch (action) {
+      case 'status':
+      case 'approvals':
+      case 'doctor':
+      case 'help':
+        execute(action === 'help' ? '' : action, action === 'help' ? 'Opening help' : `Running ${action}`);
+        return;
+      default:
+        return;
+    }
+  };
+
+  return React.createElement(
+    Dialog,
+    {
+      title: 'Ceph Code Agent',
+      subtitle: 'Use arrows to choose; Enter on input rows lets you type the value here.',
+      onCancel: () => onDone('Agent menu dismissed', { display: 'system' }),
+      isCancelActive: !isRunning,
+      hideInputGuide: isRunning,
+    },
+    React.createElement(
+      Box,
+      { flexDirection: 'column' },
+      isRunning ? React.createElement(Text, { dimColor: true }, `${runningLabel ?? 'Running command'}...`) : null,
+      React.createElement(Select<AgentMenuAction>, {
+        isDisabled: isRunning,
+        options,
+        onChange: handleChange,
+        onCancel: () => onDone('Agent menu dismissed', { display: 'system' }),
+        visibleOptionCount: 8,
+        layout: 'compact-vertical',
+      }),
+    ),
+  );
+}
+
+async function executeAgentCommand(onDone: LocalJSXCommandOnDone, workspaceRoot: string, args: string): Promise<null> {
+  const tokens = parseArgs(args || '');
+  const subcommand = tokens[0]?.toLowerCase();
   const runStore = new RunStore(workspaceRoot);
   const orchestrator = new Orchestrator(workspaceRoot);
 
   if (!subcommand) {
     onDone(
       `Ceph Code Agent CLI\n\n` +
-      `Usage:\n` +
-      `  /agent run "<task>"       - Start a new AI Agent run\n` +
-      `  /agent status [run-id]    - View current active runs or run details\n` +
-      `  /agent trace <run-id>     - Display full history logs / timeline of events\n` +
-      `  /agent pause <run-id>     - Pause a running execution\n` +
-      `  /agent resume <run-id>    - Resume a paused or blocked execution\n` +
-      `  /agent approvals          - View all open human-in-the-loop approvals\n` +
-      `  /agent approve <run-id> <app-id> - Approve a blocked operation\n` +
-      `  /agent deny <run-id> <app-id>    - Deny/Cancel a blocked operation\n` +
-      `  /agent report <run-id>    - Display run results report\n` +
-      `  /agent doctor             - Verify runtime installation & directories`,
-      { display: 'system' }
+        `Usage:\n` +
+        `  /agent run "<task>"       - Start a new AI Agent run\n` +
+        `  /agent status [run-id]    - View current active runs or run details\n` +
+        `  /agent trace <run-id>     - Display full history logs / timeline of events\n` +
+        `  /agent pause <run-id>     - Pause a running execution\n` +
+        `  /agent resume <run-id>    - Resume a paused or blocked execution\n` +
+        `  /agent approvals          - View all open human-in-the-loop approvals\n` +
+        `  /agent approve <run-id> <app-id> - Approve a blocked operation\n` +
+        `  /agent deny <run-id> <app-id>    - Deny/Cancel a blocked operation\n` +
+        `  /agent report <run-id>    - Display run results report\n` +
+        `  /agent doctor             - Verify runtime installation & directories`,
+      { display: 'system' },
     );
     return null;
   }
@@ -227,7 +397,7 @@ export async function call(
 
       case 'approvals': {
         const runs = await runStore.listRuns();
-        let approvalLines: string[] = [];
+        const approvalLines: string[] = [];
 
         for (const run of runs) {
           if (run.status === 'waiting_approval') {
@@ -235,7 +405,7 @@ export async function call(
               const state = await runStore.loadState(run.id);
               for (const app of state.openApprovals) {
                 approvalLines.push(
-                  `| \`${run.id}\` | \`${app.id}\` | **${app.risk.toUpperCase()}** | \`${app.tool}\` | _${app.reason}_ |`
+                  `| \`${run.id}\` | \`${app.id}\` | **${app.risk.toUpperCase()}** | \`${app.tool}\` | _${app.reason}_ |`,
                 );
               }
             } catch {
@@ -261,7 +431,9 @@ export async function call(
         const targetRunId = tokens[1];
         const approvalId = tokens[2];
         if (!targetRunId || !approvalId) {
-          onDone('Error: Please specify both Run ID and Approval ID. Usage: /agent approve <run-id> <approval-id>', { display: 'system' });
+          onDone('Error: Please specify both Run ID and Approval ID. Usage: /agent approve <run-id> <approval-id>', {
+            display: 'system',
+          });
           return null;
         }
 
@@ -275,7 +447,9 @@ export async function call(
         const targetRunId = tokens[1];
         const approvalId = tokens[2];
         if (!targetRunId || !approvalId) {
-          onDone('Error: Please specify both Run ID and Approval ID. Usage: /agent deny <run-id> <approval-id>', { display: 'system' });
+          onDone('Error: Please specify both Run ID and Approval ID. Usage: /agent deny <run-id> <approval-id>', {
+            display: 'system',
+          });
           return null;
         }
 
@@ -304,7 +478,7 @@ export async function call(
           path.join(workspaceRoot, '.ceph'),
           path.join(workspaceRoot, '.ceph', 'runs'),
           path.join(workspaceRoot, '.ceph', 'agents'),
-          path.join(workspaceRoot, '.ceph', 'workflows')
+          path.join(workspaceRoot, '.ceph', 'workflows'),
         ];
 
         for (const dir of dirs) {

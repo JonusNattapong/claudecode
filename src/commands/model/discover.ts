@@ -25,8 +25,9 @@ export async function discoverModels(providerId?: string): Promise<string> {
       configured.length ? `  ${configured.join(', ')}` : '  (none)',
       '',
       'Cached providers:',
-      ...cached.map(r =>
-        `  ${r.providerId.padEnd(16)} ${String(r.models.length).padStart(4)} models  ${r.error ? `(${r.error})` : `fetched ${formatTime(r.fetchedAt - now)}`}`
+      ...cached.map(
+        r =>
+          `  ${r.providerId.padEnd(16)} ${String(r.models.length).padStart(4)} models  ${r.error ? `(${r.error})` : `fetched ${formatTime(r.fetchedAt - now)}`}`,
       ),
     ].join('\n');
   }
@@ -52,11 +53,9 @@ function formatDiscoveryResult(r: import('../../services/ai/ModelDiscoveryServic
   for (const m of r.models.slice(0, 20)) {
     const ctx = m.contextLength ? `${(m.contextLength / 1000).toFixed(0)}K ctx` : '';
     const price = m.pricing?.prompt ? `$${m.pricing.prompt}/M` : '';
-    const tags = [
-      m.supportsTools ? 'tools' : '',
-      m.supportsVision ? 'vision' : '',
-      m.reasoning ? 'reason' : '',
-    ].filter(Boolean).join(',');
+    const tags = [m.supportsTools ? 'tools' : '', m.supportsVision ? 'vision' : '', m.reasoning ? 'reason' : '']
+      .filter(Boolean)
+      .join(',');
     lines.push(`  ${m.id.padEnd(50)} ${ctx.padEnd(12)} ${price.padEnd(12)} ${tags}`);
   }
   if (r.models.length > 20) {

@@ -1,9 +1,9 @@
 import chalk from 'chalk';
 import { readFile, writeFile } from 'fs/promises';
-import { join } from 'path';
 import * as React from 'react';
 import { type OptionWithDescription, Select } from '../../components/CustomSelect/select.js';
 import { GitHubCopilotAuthFlow } from '../../components/GitHubCopilotAuthFlow.js';
+import { GoogleOAuthFlow } from '../../components/GoogleOAuthFlow.js';
 import { OpenAIOAuthFlow } from '../../components/OpenAIOAuthFlow.js';
 import TextInput from '../../components/TextInput.js';
 import { Box, Text } from '../../ink.js';
@@ -19,15 +19,11 @@ import {
   PROVIDER_IDS,
   type ProviderRegistryEntry,
 } from '../../services/ai/providerRegistry.js';
+import type { GoogleOAuthTokens } from '../../services/googleOAuth/index.js';
 import type { GitHubOAuthTokens } from '../../services/oauth/githubOAuth.js';
 import type { OpenAIOAuthTokens } from '../../services/openaiOAuth/index.js';
 import { useAppState, useSetAppState } from '../../state/AppState.js';
-import type {
-  LocalCommandResult,
-  LocalJSXCommandCall,
-  LocalJSXCommandContext,
-  LocalJSXCommandOnDone,
-} from '../../types/command.js';
+import type { LocalCommandResult, LocalJSXCommandCall, LocalJSXCommandOnDone } from '../../types/command.js';
 import { getOauthAccountInfo } from '../../utils/auth.js';
 import { Login as AnthropicLogin } from '../login/login.js';
 
@@ -39,7 +35,7 @@ type ProviderConfig = {
   apiKeys?: Partial<Record<(typeof PROVIDER_IDS)[number], string>>;
   providerConfig?: SerializableProviderRegistryEntry & {
     anthropicType?: 'direct' | 'bedrock' | 'vertex' | 'foundry' | 'subscriber';
-    googleType?: 'direct' | 'vertex';
+    googleType?: 'direct' | 'vertex' | 'subscriber';
     openaiType?: 'direct' | 'subscriber' | 'azure';
   };
 };
@@ -408,11 +404,12 @@ function ProviderPicker({ onDone }: { onDone: LocalJSXCommandOnDone }): React.Re
   const [anthropicType, setAnthropicType] = React.useState<
     'direct' | 'bedrock' | 'vertex' | 'foundry' | 'subscriber' | null
   >(null);
-  const [googleType, setGoogleType] = React.useState<'direct' | 'vertex' | null>(null);
+  const [googleType, setGoogleType] = React.useState<'direct' | 'vertex' | 'subscriber' | null>(null);
   const [openaiType, setOpenaiType] = React.useState<'direct' | 'subscriber' | 'azure' | null>(null);
   const [searchQuery, setSearchQuery] = React.useState('');
   const [searchCursorOffset, setSearchCursorOffset] = React.useState(0);
   const [showOpenAIOAuth, setShowOpenAIOAuth] = React.useState(false);
+  const [showGoogleOAuth, setShowGoogleOAuth] = React.useState(false);
   const [showAnthropicOAuth, setShowAnthropicOAuth] = React.useState(false);
   const [showGitHubCopilotAuth, setShowGitHubCopilotAuth] = React.useState(false);
   const setAppState = useSetAppState();
@@ -524,6 +521,40 @@ function ProviderPicker({ onDone }: { onDone: LocalJSXCommandOnDone }): React.Re
     applyProviderSelectionToSession(setAppState, { model: currentModel, provider }, false);
 
     onDone(`Set provider to ${provider} (ChatGPT Plus)\nModel: ${currentModel}\n(Session only)`, { display: 'system' });
+  }
+
+  // Store Google OAuth token
+  async function saveGoogleToken(token: string) {
+    if (!provider) return;
+
+    const currentConfig = await loadConfig();
+    const nextConfig: ProviderConfig = {
+      provider,
+      model: (currentSessionModel as string) || currentConfig?.model || getDefaultModelForProvider(provider) || '',
+      providerConfig: {
+        ...getSerializableProviderInfo(provider),
+        googleType: 'subscriber',
+      } as any,
+      apiKeys: {
+        ...(currentConfig?.apiKeys ?? {}),
+        google: token,
+      },
+    };
+
+    await saveConfig(nextConfig);
+    clearProviderModelsCache(provider);
+
+    // Set the session token in environment for immediate use
+    process.env.GOOGLE_OAUTH_TOKEN = token;
+
+    // Invalidate provider config cache to force reload
+    const providerManager = ProviderManager.getInstance();
+    providerManager.invalidateConfigCache();
+
+    const currentModel = nextConfig.model || getDefaultModelForProvider(provider);
+    applyProviderSelectionToSession(setAppState, { model: currentModel, provider }, false);
+
+    onDone(`Set provider to ${provider} (Google OAuth)\nModel: ${currentModel}\n(Session only)`, { display: 'system' });
   }
 
   // Store GitHub Copilot token
@@ -751,7 +782,7 @@ function ProviderPicker({ onDone }: { onDone: LocalJSXCommandOnDone }): React.Re
   }
 
   // Sub-menu for Google implementation type
-  if (provider === 'google' && !googleType && !showChangeKey) {
+  if (provider === 'google' && !googleType && !showChangeKey && !showGoogleOAuth) {
     return React.createElement(
       Box,
       { flexDirection: 'column' },
@@ -762,7 +793,13 @@ function ProviderPicker({ onDone }: { onDone: LocalJSXCommandOnDone }): React.Re
           { label: 'Google Vertex AI', value: 'vertex', description: 'Use GCP credentials' },
         ],
         visibleOptionCount: 2,
-        onChange: value => setGoogleType(value as any),
+        onChange: value => {
+          if (value === 'subscriber') {
+            setShowGoogleOAuth(true);
+          } else {
+            setGoogleType(value as any);
+          }
+        },
         onCancel: () => {
           setProvider(null);
           setSearchQuery('');
@@ -825,10 +862,34 @@ function ProviderPicker({ onDone }: { onDone: LocalJSXCommandOnDone }): React.Re
     });
   }
 
+  // Google OAuth flow for subscriber (Google OAuth Login)
+  if (provider === 'google' && showGoogleOAuth) {
+    return React.createElement(GoogleOAuthFlow, {
+      onDone: (tokens: GoogleOAuthTokens | null) => {
+        setShowGoogleOAuth(false);
+        if (tokens?.accessToken) {
+          setGoogleType('subscriber');
+          // Store the session token
+          void saveGoogleToken(tokens.accessToken);
+        } else {
+          // Cancelled, go back to type selection
+          setGoogleType(null);
+        }
+      },
+      onCancel: () => {
+        setShowGoogleOAuth(false);
+        setGoogleType(null);
+        setProvider(null);
+        setSearchQuery('');
+        setSearchCursorOffset(0);
+      },
+    });
+  }
+
   // Anthropic OAuth flow for Subscription
   if (provider === 'anthropic' && showAnthropicOAuth) {
     return React.createElement(AnthropicLogin, {
-      onDone: (success: boolean, mainLoopModel: string) => {
+      onDone: (success: boolean, _mainLoopModel: string) => {
         setShowAnthropicOAuth(false);
         if (success) {
           void saveProviderSelection();

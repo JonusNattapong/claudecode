@@ -5,12 +5,7 @@ import { Dialog } from '../../components/design-system/Dialog.js';
 import { Box, Text } from '../../ink.js';
 import { useKeybindings } from '../../keybindings/useKeybinding.js';
 import type { LocalJSXCommandOnDone } from '../../types/command.js';
-import {
-  type AntBetaKey,
-  ANT_BETA_LABELS,
-  getAntBetaStatus,
-  setAntBetaSetting,
-} from '../../utils/antBetas.js';
+import { ANT_BETA_LABELS, type AntBetaKey, getAntBetaStatus, setAntBetaSetting } from '../../utils/antBetas.js';
 import { clearBetasCaches } from '../../utils/betas.js';
 
 const ALL_KEYS: AntBetaKey[] = ['cliInternal', 'connectorText', 'tokenEfficientTools', 'numericEffort'];
@@ -39,9 +34,7 @@ export function AntPicker({ onDone }: AntPickerProps): React.ReactNode {
     clearBetasCaches();
     const enabled = ALL_KEYS.filter(k => toggles[k]);
     const label =
-      enabled.length === 0
-        ? 'All ant betas disabled'
-        : `Enabled: ${enabled.map(k => ANT_BETA_LABELS[k]).join(', ')}`;
+      enabled.length === 0 ? 'All ant betas disabled' : `Enabled: ${enabled.map(k => ANT_BETA_LABELS[k]).join(', ')}`;
     onDone(label, { display: 'system' });
   }
 
