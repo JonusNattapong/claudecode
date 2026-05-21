@@ -78,7 +78,7 @@ const AGENT_ID = `daemon-${process.pid}-${Date.now().toString(36)}`;
 
 // ─── State ────────────────────────────────────────────────────
 
-let status: AutonomousStatus = {
+const status: AutonomousStatus = {
   running: false,
   startedAt: 0,
   lastHeartbeat: 0,
@@ -90,7 +90,7 @@ let status: AutonomousStatus = {
 
 let running = false;
 let heartbeatInterval: ReturnType<typeof setInterval> | null = null;
-let activeWorkers: Map<string, WorkerSession> = new Map();
+const activeWorkers: Map<string, WorkerSession> = new Map();
 
 // ─── Status Persistence ───────────────────────────────────────
 

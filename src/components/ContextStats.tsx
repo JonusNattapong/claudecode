@@ -24,6 +24,13 @@ type BreakdownRow = {
   color?: string;
 };
 
+type OverviewRow = {
+  key: string;
+  label: string;
+  tokens: number;
+  color: string;
+};
+
 const RESERVED_CATEGORY_NAME = 'Autocompact buffer';
 const VISIBLE_BREAKDOWN_ROWS = 9;
 const BAR_WIDTH = 42;
@@ -36,10 +43,60 @@ const DISPLAY_NAMES: Record<string, string> = {
   'MCP tools (deferred)': 'MCP deferred',
   'System tools (deferred)': 'Tools deferred',
   'Custom agents': 'Subagents',
-  'Memory files': 'Memory',
+  'Memory files': 'Rules',
   Skills: 'Skills',
   Messages: 'Conversation',
 };
+
+const OVERVIEW_ROWS: Array<{
+  key: string;
+  label: string;
+  color: string;
+  categoryNames: string[];
+}> = [
+  {
+    key: 'system-prompt',
+    label: 'System prompt',
+    color: 'gray',
+    categoryNames: ['System prompt'],
+  },
+  {
+    key: 'tools',
+    label: 'Tools',
+    color: 'blue',
+    categoryNames: ['System tools', '[ANT-ONLY] System tools'],
+  },
+  {
+    key: 'rules',
+    label: 'Rules',
+    color: 'green',
+    categoryNames: ['Memory files'],
+  },
+  {
+    key: 'skills',
+    label: 'Skills',
+    color: 'yellow',
+    categoryNames: ['Skills'],
+  },
+  {
+    key: 'mcp',
+    label: 'MCP',
+    color: 'magenta',
+    categoryNames: ['MCP tools'],
+  },
+  {
+    key: 'subagents',
+    label: 'Subagents',
+    color: 'cyan',
+    categoryNames: ['Custom agents'],
+  },
+  {
+    key: 'conversation',
+    label: 'Conversation',
+    color: 'red',
+    categoryNames: ['Messages'],
+  },
+];
 
 function displayName(name: string): string {
   return DISPLAY_NAMES[name] ?? name;
@@ -170,18 +227,37 @@ export function ContextStats({ data, onClose }: Props): React.ReactNode {
     return segments;
   }, [categories]);
 
-  const legendCategories = useMemo(() => {
-    return categories
+  const overviewRows = useMemo((): OverviewRow[] => {
+    const tokensByName = new Map<string, number>();
+    for (const category of categories) {
+      tokensByName.set(category.name, (tokensByName.get(category.name) ?? 0) + category.tokens);
+    }
+
+    const knownCategoryNames = new Set(OVERVIEW_ROWS.flatMap(row => row.categoryNames));
+    const fixedRows = OVERVIEW_ROWS.map(row => ({
+      key: row.key,
+      label: row.label,
+      color: row.color,
+      tokens: row.categoryNames.reduce((sum, name) => sum + (tokensByName.get(name) ?? 0), 0),
+    }));
+
+    const extraRows = categories
       .filter(category => {
         return (
           category.tokens > 0 &&
           category.name !== 'Free space' &&
           category.name !== RESERVED_CATEGORY_NAME &&
-          !category.isDeferred
+          !knownCategoryNames.has(category.name)
         );
       })
-      .slice()
-      .sort((a, b) => b.tokens - a.tokens);
+      .map(category => ({
+        key: `extra-${category.name}`,
+        label: displayName(category.name),
+        color: category.color,
+        tokens: category.tokens,
+      }));
+
+    return [...fixedRows, ...extraRows];
   }, [categories]);
 
   const breakdownRows = useMemo((): BreakdownRow[] => {
@@ -206,6 +282,12 @@ export function ContextStats({ data, onClose }: Props): React.ReactNode {
         color,
       });
     };
+
+    addSection('Summary');
+
+    for (const row of overviewRows) {
+      addItem(row.label, formatTokens(row.tokens), row.color);
+    }
 
     if (systemPromptSections.length > 0) {
       addSection('System prompt');
@@ -301,7 +383,7 @@ export function ContextStats({ data, onClose }: Props): React.ReactNode {
     }
 
     return rows;
-  }, [systemPromptSections, mcpTools, systemTools, agents, memoryFiles, skills, messageBreakdown]);
+  }, [overviewRows, systemPromptSections, mcpTools, systemTools, agents, memoryFiles, skills, messageBreakdown]);
 
   const maxScrollOffset = Math.max(0, breakdownRows.length - VISIBLE_BREAKDOWN_ROWS);
 
@@ -389,30 +471,30 @@ export function ContextStats({ data, onClose }: Props): React.ReactNode {
             <Box flexDirection="column" width={56} paddingX={1} marginTop={1}>
               <Box flexDirection="row" justifyContent="space-between">
                 <Text bold>Sources</Text>
-                <Text dimColor>{legendCategories.length} active</Text>
+                <Text dimColor>{overviewRows.filter(row => row.tokens > 0).length} active</Text>
               </Box>
 
               <Box flexDirection="column" marginTop={1}>
-                {legendCategories.length === 0 ? (
+                {overviewRows.length === 0 ? (
                   <Text dimColor>No active context sources</Text>
                 ) : (
-                  legendCategories
+                  overviewRows
                     .slice(0, 8)
-                    .map(category => (
+                    .map(row => (
                       <SourceRow
-                        key={`cat-${category.name}`}
+                        key={row.key}
                         marker="■"
-                        label={displayName(category.name)}
-                        value={formatTokens(category.tokens)}
-                        color={category.color}
+                        label={row.label}
+                        value={formatTokens(row.tokens)}
+                        color={row.color}
                       />
                     ))
                 )}
               </Box>
 
-              {legendCategories.length > 8 ? (
+              {overviewRows.length > 8 ? (
                 <Box marginTop={1}>
-                  <Text dimColor>+{legendCategories.length - 8} more in Breakdown</Text>
+                  <Text dimColor>+{overviewRows.length - 8} more in Breakdown</Text>
                 </Box>
               ) : null}
             </Box>

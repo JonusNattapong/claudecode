@@ -35,7 +35,6 @@ import {
   logEvent,
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
 } from 'src/services/analytics/index.js';
-import { isBridgeEnabled } from '../../bridge/bridgeEnabled.js';
 import { ThemePicker } from '../ThemePicker.js';
 import { useAppState, useSetAppState, useAppStateStore } from '../../state/AppState.js';
 import { ModelPicker } from '../ModelPicker.js';
@@ -978,56 +977,50 @@ export function Config({
           ];
         })()
       : []),
-    // Remote at startup toggle — gated on build flag + GrowthBook + policy
-    ...(feature('BRIDGE_MODE') && isBridgeEnabled()
-      ? [
-          {
-            id: 'remoteControlAtStartup',
-            label: 'Enable Remote Control for all sessions',
-            value:
-              globalConfig.remoteControlAtStartup === undefined
-                ? 'default'
-                : String(globalConfig.remoteControlAtStartup),
-            options: ['true', 'false', 'default'],
-            type: 'enum' as const,
-            onChange(selected: string) {
-              if (selected === 'default') {
-                // Unset the config key so it falls back to the platform default
-                saveGlobalConfig(current => {
-                  if (current.remoteControlAtStartup === undefined) return current;
-                  const next = { ...current };
-                  delete next.remoteControlAtStartup;
-                  return next;
-                });
-                setGlobalConfig({
-                  ...getGlobalConfig(),
-                  remoteControlAtStartup: undefined,
-                });
-              } else {
-                const enabled = selected === 'true';
-                saveGlobalConfig(current => {
-                  if (current.remoteControlAtStartup === enabled) return current;
-                  return { ...current, remoteControlAtStartup: enabled };
-                });
-                setGlobalConfig({
-                  ...getGlobalConfig(),
-                  remoteControlAtStartup: enabled,
-                });
-              }
-              // Sync to AppState so useReplBridge reacts immediately
-              const resolved = getRemoteControlAtStartup();
-              setAppState(prev => {
-                if (prev.replBridgeEnabled === resolved && !prev.replBridgeOutboundOnly) return prev;
-                return {
-                  ...prev,
-                  replBridgeEnabled: resolved,
-                  replBridgeOutboundOnly: false,
-                };
-              });
-            },
-          },
-        ]
-      : []),
+    // Remote at startup toggle — always show as requested
+    {
+      id: 'remoteControlAtStartup',
+      label: 'Enable Remote Control for all sessions',
+      value:
+        globalConfig.remoteControlAtStartup === undefined ? 'default' : String(globalConfig.remoteControlAtStartup),
+      options: ['true', 'false', 'default'],
+      type: 'enum' as const,
+      onChange(selected: string) {
+        if (selected === 'default') {
+          // Unset the config key so it falls back to the platform default
+          saveGlobalConfig(current => {
+            if (current.remoteControlAtStartup === undefined) return current;
+            const next = { ...current };
+            delete next.remoteControlAtStartup;
+            return next;
+          });
+          setGlobalConfig({
+            ...getGlobalConfig(),
+            remoteControlAtStartup: undefined,
+          });
+        } else {
+          const enabled = selected === 'true';
+          saveGlobalConfig(current => {
+            if (current.remoteControlAtStartup === enabled) return current;
+            return { ...current, remoteControlAtStartup: enabled };
+          });
+          setGlobalConfig({
+            ...getGlobalConfig(),
+            remoteControlAtStartup: enabled,
+          });
+        }
+        // Sync to AppState so useReplBridge reacts immediately
+        const resolved = getRemoteControlAtStartup();
+        setAppState(prev => {
+          if (prev.replBridgeEnabled === resolved && !prev.replBridgeOutboundOnly) return prev;
+          return {
+            ...prev,
+            replBridgeEnabled: resolved,
+            replBridgeOutboundOnly: false,
+          };
+        });
+      },
+    },
     ...(shouldShowExternalIncludesToggle
       ? [
           {

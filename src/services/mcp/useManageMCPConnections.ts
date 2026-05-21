@@ -45,7 +45,7 @@ import {
 import type { AppState } from 'src/state/AppState.js';
 import type { PluginError } from 'src/types/plugin.js';
 import { logForDebugging } from 'src/utils/debug.js';
-import { getAllowedChannels } from '../../bootstrap/state.js';
+import { getAllowedChannels, setAllowedChannels } from '../../bootstrap/state.js';
 import { useNotifications } from '../../context/notifications.js';
 import { useAppState, useAppStateStore, useSetAppState } from '../../state/AppState.js';
 import { errorMessage } from '../../utils/errors.js';
@@ -146,7 +146,7 @@ export function useManageMCPConnections(
   // AppState so interactiveHandler can subscribe. The pending Map lives inside
   // the closure (not module-level, not AppState — functions-in-state is brittle).
   const channelPermCallbacksRef = useRef<ChannelPermissionCallbacks | null>(null);
-  if ((feature('KAIROS') || feature('KAIROS_CHANNELS')) && channelPermCallbacksRef.current === null) {
+  if (feature('KAIROS') || feature('KAIROS_CHANNELS') && channelPermCallbacksRef.current === null) {
     channelPermCallbacksRef.current = createChannelPermissionCallbacks();
   }
   // Store callbacks in AppState so interactiveHandler.ts can reach them via

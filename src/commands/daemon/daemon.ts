@@ -13,7 +13,7 @@ import {
 function parseArgs(args: string): string[] {
   const result: string[] = [];
   let current = '';
-  let inQuotes = false;
+  const inQuotes = false;
   for (let i = 0; i < args.length; i++) {
     const char = args[i]!;
     if (char === ' ' && !inQuotes) {

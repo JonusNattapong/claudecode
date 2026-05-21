@@ -16,7 +16,8 @@ export function registerCommitSkill(): void {
     name: 'commit',
     description: 'Stage, commit, and push git changes with a conventional commit message.',
     userInvocable: true,
-    content: [{ type: 'text', text: SKILL_BODY }],
-    source: 'bundled',
+    async getPromptForCommand() {
+      return [{ type: 'text', text: SKILL_BODY }];
+    },
   });
 }

@@ -143,16 +143,12 @@ export const SUPPORTED_SETTINGS: Record<string, SettingConfig> = {
         },
       }
     : {}),
-  ...(feature('BRIDGE_MODE')
-    ? {
-        remoteControlAtStartup: {
-          source: 'global' as const,
-          type: 'boolean' as const,
-          description: 'Enable Remote Control for all sessions (true | false | default)',
-          formatOnRead: () => getRemoteControlAtStartup(),
-        },
-      }
-    : {}),
+  remoteControlAtStartup: {
+    source: 'global' as const,
+    type: 'boolean' as const,
+    description: 'Enable Remote Control for all sessions (true | false | default)',
+    formatOnRead: () => getRemoteControlAtStartup(),
+  },
   ...(feature('KAIROS') || feature('KAIROS_PUSH_NOTIFICATION')
     ? {
         taskCompleteNotifEnabled: {

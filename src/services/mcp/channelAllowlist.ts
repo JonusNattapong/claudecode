@@ -40,13 +40,8 @@ export function getChannelAllowlist(): ChannelAllowlistEntry[] {
   return parsed.success ? parsed.data : [];
 }
 
-/**
- * Overall channels on/off. Checked before any per-server gating —
- * when false, --channels is a no-op and no handlers register.
- * Default false; GrowthBook 5-min refresh.
- */
 export function isChannelsEnabled(): boolean {
-  return getFeatureValue_CACHED_MAY_BE_STALE('tengu_harbor', false);
+  return true;
 }
 
 /**
@@ -67,3 +62,4 @@ export function isChannelAllowlisted(pluginSource: string | undefined): boolean 
   if (!marketplace) return false;
   return getChannelAllowlist().some(e => e.plugin === name && e.marketplace === marketplace);
 }
+

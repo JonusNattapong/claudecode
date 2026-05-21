@@ -465,7 +465,7 @@ export async function retryTask(id: string): Promise<'pending' | 'dead_letter' |
 
 function DEFAULT_BACKOFF_MS(retryCount: number, factor: number): number {
   // base * factor^retryCount, capped at 1 hour
-  return Math.min(DEFAULT_BACKOFF_BASE_MS * Math.pow(factor, retryCount), 3600_000);
+  return Math.min(DEFAULT_BACKOFF_BASE_MS * factor ** retryCount, 3600_000);
 }
 
 /**
