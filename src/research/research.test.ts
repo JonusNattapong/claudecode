@@ -49,7 +49,7 @@ describe('Research Agent Pipeline', () => {
 
     const statusAfter = await getResearchWorkspaceStatus(tempCwd);
     expect(statusAfter.initialized).toBe(true);
-    expect(statusAfter.researchDir).toContain('.ceph');
+    expect(statusAfter.researchDir).toContain('.claude');
   });
 
   test('Research Planner generates valid plans', () => {
@@ -210,9 +210,9 @@ describe('Research Agent Pipeline', () => {
     expect(fsImpl.existsSync(wikiPath)).toBe(true);
 
     const firstContent = fsImpl.readFileSync(wikiPath, { encoding: 'utf-8' });
-    expect(firstContent).toContain('<!-- ceph:auto:start -->');
+    expect(firstContent).toContain('<!-- claude:auto:start -->');
     expect(firstContent).toContain('Some important facts');
-    expect(firstContent).toContain('<!-- ceph:user:start -->');
+    expect(firstContent).toContain('<!-- claude:user:start -->');
     expect(firstContent).toContain(
       '*(Add your custom notes here. This block is preserved during future research updates.)*',
     );

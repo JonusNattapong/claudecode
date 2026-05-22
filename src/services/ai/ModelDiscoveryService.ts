@@ -16,8 +16,8 @@ import { join } from 'path';
 import { getGlobalConfig } from '../../utils/config.js';
 import { logForDebugging } from '../../utils/debug.js';
 import { getClaudeConfigHomeDir } from '../../utils/envUtils.js';
-import { logError } from '../../utils/log.js';
 import { toError } from '../../utils/errors.js';
+import { logError } from '../../utils/log.js';
 import providersConfig from './providers.json' with { type: 'json' };
 
 // ── Types ─────────────────────────────────────────────────────────────

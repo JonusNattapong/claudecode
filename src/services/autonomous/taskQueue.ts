@@ -13,7 +13,7 @@
  */
 
 import { existsSync, readFileSync, watch, writeFileSync } from 'fs';
-import { mkdir, readFile, writeFile, appendFile } from 'fs/promises';
+import { appendFile, mkdir, readFile, writeFile } from 'fs/promises';
 import { join } from 'path';
 import { getClaudeConfigHomeDir } from '../../utils/envUtils.js';
 import { jsonParse } from '../../utils/slowOperations.js';
@@ -43,8 +43,8 @@ export interface TaskQueueEntry {
   agentId?: string;
   retryCount: number;
   maxRetries: number;
-  retryAfter?: number;        // Minimum timestamp before next retry (backoff)
-  backoffFactor?: number;     // Multiplier for exponential backoff (default 2)
+  retryAfter?: number; // Minimum timestamp before next retry (backoff)
+  backoffFactor?: number; // Multiplier for exponential backoff (default 2)
   /** Project root the task belongs to — prevents cross-repo execution */
   projectRoot?: string;
   /** Lease owner ID — prevents duplicate claim by multiple daemon processes */
@@ -82,7 +82,7 @@ const QUEUE_PATH = join(DAEMON_DIR, 'tasks.json');
 const LOGS_DIR = join(DAEMON_DIR, 'logs');
 const DEFAULT_LEASE_MS = 5 * 60 * 1000; // 5 minutes
 const DEFAULT_BACKOFF_BASE_MS = 30_000; // 30s initial backoff
-const WATCH_DEBOUNCE_MS = 300;          // 300ms debounce for file watcher
+const WATCH_DEBOUNCE_MS = 300; // 300ms debounce for file watcher
 
 // ─── State ────────────────────────────────────────────────────
 
@@ -138,7 +138,9 @@ export async function saveQueue(): Promise<void> {
     await writeFile(QUEUE_PATH, JSON.stringify(queue, null, 2), 'utf-8');
   } finally {
     // Reset flag after write completes — debounce in watcher uses this
-    setTimeout(() => { ourWriteInProgress = false; }, WATCH_DEBOUNCE_MS);
+    setTimeout(() => {
+      ourWriteInProgress = false;
+    }, WATCH_DEBOUNCE_MS);
   }
 }
 
@@ -162,14 +164,22 @@ export function watchQueue(callback: (tasks: Record<string, TaskQueueEntry>) => 
               if (parsed.version && parsed.tasks) {
                 queue = parsed;
                 for (const cb of watchCallbacks) {
-                  try { cb(queue.tasks); } catch { /* ignore callback errors */ }
+                  try {
+                    cb(queue.tasks);
+                  } catch {
+                    /* ignore callback errors */
+                  }
                 }
               }
-            } catch { /* ignore file read errors */ }
+            } catch {
+              /* ignore file read errors */
+            }
           }, WATCH_DEBOUNCE_MS);
         });
       }
-    } catch { /* watcher not supported on all platforms */ }
+    } catch {
+      /* watcher not supported on all platforms */
+    }
   }
 
   return () => {
@@ -306,7 +316,28 @@ export function getNextTask(): TaskQueueEntry | undefined {
 
 export async function updateTask(
   id: string,
-  updates: Partial<Pick<TaskQueueEntry, 'status' | 'title' | 'description' | 'priority' | 'result' | 'error' | 'lastError' | 'startedAt' | 'completedAt' | 'agentId' | 'retryCount' | 'retryAfter' | 'tags' | 'dependsOn' | 'leaseOwner' | 'leaseExpiresAt' | 'deadLetterReason'>>,
+  updates: Partial<
+    Pick<
+      TaskQueueEntry,
+      | 'status'
+      | 'title'
+      | 'description'
+      | 'priority'
+      | 'result'
+      | 'error'
+      | 'lastError'
+      | 'startedAt'
+      | 'completedAt'
+      | 'agentId'
+      | 'retryCount'
+      | 'retryAfter'
+      | 'tags'
+      | 'dependsOn'
+      | 'leaseOwner'
+      | 'leaseExpiresAt'
+      | 'deadLetterReason'
+    >
+  >,
 ): Promise<boolean> {
   if (!queue.tasks[id]) return false;
   Object.assign(queue.tasks[id], updates);

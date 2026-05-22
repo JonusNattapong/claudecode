@@ -9,6 +9,36 @@ This project follows a practical changelog format based on:
 - `Security` for permission, sandbox, auth, and trust-related hardening
 - `Internal` for tests, types, refactors, and developer-facing implementation work
 
+## [2.1.156] - 2026-05-22
+
+### Added
+
+- **Visual Segmented Memory & Context HUD** — Replaced basic context percentage indicators with a vibrant, high-fidelity Segmented Progress Bar displaying live token distribution (System Prompt, Tools, Rules, Chat, and Subagents).
+  - Integrated a 36-character HUD inside the prompt input warning (`TokenWarning.tsx`) with color-coded category bullets underneath.
+  - Upgraded the `/context` command screen (`ContextStats.tsx`) with an increased 55-character bar resolution and a premium HSL-based TrueColor palette.
+  - Implemented a mathematical proportional scaling context estimator (`contextBar.ts`) for real-time, lag-free token breakdown estimation.
+
+## [2.1.155] - 2026-05-22
+
+### Added
+
+- **`/autofix-pr`** — Launch a remote Claude Code on the web session to fix CI errors and address review comments on a GitHub PR. Detects PR number from current branch or accepts as argument, launches with `githubPr` context, and registers a `RemoteAgentTask` for polling results.
+- **`/loop`** — Run a prompt or slash command on a recurring interval (e.g. `/loop 5m /babysit-prs`). Previously gated behind `AGENT_TRIGGERS` feature flag; now always available. Accepts intervals in `s`/`m`/`h`/`d` suffixes and parses "every N minutes" clauses from the prompt.
+- **Interactive Argument Ghost Text** — Command parameter hints now render as inline ghost text after the cursor. Typing `/goal ` shows `[condition]` in dim text; press Tab or Right Arrow to accept and fill the placeholder. Supports progressive hints for multiple args (`[name] [priority]`) and static argument hints (`<plugin-name>`).
+- **`/plugin-details` / `/plugin-info`** — Show component inventory (skills, commands, agents, hooks, MCP servers) and estimated per-session token cost for any installed plugin.
+
+### Changed
+
+- **Remote Control enabled by default** — `getRemoteControlAtStartup()` now returns `true` instead of `false`. All sessions are remote-control-ready without needing `/rc`, `--remote-control`, or explicit config. Set `"remoteControlAtStartup": false` in settings to opt out.
+- **`/autofix-pr` available to all users** — Moved from `INTERNAL_ONLY_COMMANDS` (restricted to `USER_TYPE=ant`) to the main `COMMANDS` array so fork users can access it.
+- **`/loop` skill un-gated** — Removed `AGENT_TRIGGERS` feature flag requirement from the loop skill registration and its underlying cron tools (CronCreate, CronDelete, CronList).
+
+### Internal
+
+- `cronScheduler.ts` — Cron tools no longer gated behind `AGENT_TRIGGERS` feature flag.
+- `useTypeahead.tsx` — Added `syncArgGhostText` for progressive argument hint ghost text.
+- `useTextInput.ts` — Tab and Right Arrow now accept inline ghost text when present at cursor.
+
 ## [2.1.154] - 2026-05-22
 
 ### Added
@@ -74,7 +104,7 @@ This project follows a practical changelog format based on:
 
 ### Fixed
 
-- npm publish: fix bin/ceph wrapper to use bash shebang instead of bun import
+- npm publish: fix bin/claude wrapper to use bash shebang instead of bun import
 
 ## [2.1.150] - 2026-05-21
 
@@ -90,9 +120,9 @@ This project follows a practical changelog format based on:
 
 - **Agent Runtime & Orchestration Engine** — Local-first, durable orchestration engine for spawning, checkpointing, and executing complex multi-agent workflows.
   - **`src/agentRuntime/` Core Engine** — Includes `orchestrator.ts` driving agents through step-by-step state graph transitions, checkpointing state to disk, handling manual or automatic pause/resume, and routing handoffs between agent profiles.
-  - **`runStore.ts` with Secret Scrubbing** — Saves and loads execution runs locally (`.ceph/runs/`) with robust token and key scrubbing rules, ensuring zero leakage of API keys (e.g., Google, Anthropic, custom keys) into diagnostic history logs.
+  - **`runStore.ts` with Secret Scrubbing** — Saves and loads execution runs locally (`.claude/runs/`) with robust token and key scrubbing rules, ensuring zero leakage of API keys (e.g., Google, Anthropic, custom keys) into diagnostic history logs.
   - **`toolGateway.ts` Security Layer** — Multi-permission agent capability gateway validating sandbox access and halting on guarded shell commands (e.g., destructive operations like `rm`, `push`) to request explicit human approval.
-  - **`agentRegistry.ts` & `workflowRegistry.ts`** — Markdown frontmatter parser for `.ceph/agents/` configurations and YAML validator for `.ceph/workflows/` DAG pipelines.
+  - **`agentRegistry.ts` & `workflowRegistry.ts`** — Markdown frontmatter parser for `.claude/agents/` configurations and YAML validator for `.claude/workflows/` DAG pipelines.
   - **`reportBuilder.ts` Summarizer** — Generates standardized markdown outcomes summarizing agent steps, file changes, and test validations.
 - **`/agent` CLI command suite** — Built-in slash command for comprehensive local agent management:
   - `/agent run "<prompt>"` starts a designated workspace agent workflow.
@@ -180,13 +210,13 @@ This project follows a practical changelog format based on:
 ### Breaking / Migration Notes
 
 - Rebranded the project-facing name from **Claude Code** / **dek1milliontoken** to **Claude Code** across README, docs, terminal UI, onboarding, trust dialogs, stats, and logo components.
-- Renamed the npm package metadata from `@jonusnattapong/claudecode` to `cephcode`.
+- Renamed the npm package metadata from `@jonusnattapong/claudecode` to `claudecode`.
 - Added the direct global binary mapping:
 
   ```json
   {
     "bin": {
-      "cephcode": "./dist/main.js"
+      "claudecode": "./dist/main.js"
     }
   }
   ```
@@ -202,9 +232,9 @@ This project follows a practical changelog format based on:
   to:
 
   ```bash
-  npm install -g cephcode
-  bun install -g cephcode
-  cephcode
+  npm install -g claudecode
+  bun install -g claudecode
+  claudecode
   ```
 
 ### Added

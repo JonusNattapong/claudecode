@@ -190,8 +190,8 @@ export class ToolGateway {
     const results: string[] = [];
     const list = await fs.readdir(dir, { withFileTypes: true });
     for (const file of list) {
-      // Ignore git, node_modules, and ceph runs
-      if (['.git', 'node_modules', '.ceph', 'dist'].includes(file.name)) continue;
+      // Ignore git, node_modules, and claude runs
+      if (['.git', 'node_modules', '.claude', 'dist'].includes(file.name)) continue;
 
       const res = path.resolve(dir, file.name);
       if (file.isDirectory()) {
@@ -272,7 +272,7 @@ export class ToolGateway {
 
   private async executeMemorySearch(query: string): Promise<Record<string, unknown>> {
     const results: string[] = [];
-    const memoryDir = path.join(this.workspaceRoot, '.ceph', 'memory');
+    const memoryDir = path.join(this.workspaceRoot, '.claude', 'memory');
     try {
       const list = await fs.readdir(memoryDir);
       for (const file of list) {

@@ -18,9 +18,10 @@ import { mkdir, readFile, writeFile } from 'fs/promises';
 import { join } from 'path';
 import { getClaudeConfigHomeDir } from '../../utils/envUtils.js';
 import { jsonParse } from '../../utils/slowOperations.js';
+import { ensureSupervisor, sendRequest } from '../Supervisor/ipcClient.js';
 import {
-  type TaskQueueEntry,
   buildWorkerPrompt,
+  closeWatcher as closeQueueWatcher,
   expireLeases,
   getNextTask,
   getTaskLogDir,
@@ -32,22 +33,21 @@ import {
   releaseLease,
   retryTask,
   saveQueue,
+  type TaskQueueEntry,
   updateTask,
   watchQueue,
-  closeWatcher as closeQueueWatcher,
   writeTaskLog,
 } from './taskQueue.js';
-import { ensureSupervisor, sendRequest } from '../Supervisor/ipcClient.js';
 
 // ─── Constants ────────────────────────────────────────────────
 
 const DAEMON_DIR = join(getClaudeConfigHomeDir(), 'daemon');
 const STATUS_PATH = join(DAEMON_DIR, 'autonomous.json');
-const LOOP_SLEEP_MS = 15_000;          // 15s between queue checks when idle
-const WORKER_POLL_MS = 5_000;           // 5s between worker status checks
+const LOOP_SLEEP_MS = 15_000; // 15s between queue checks when idle
+const WORKER_POLL_MS = 5_000; // 5s between worker status checks
 const MAX_CONCURRENT_WORKERS = 3;
 const TASK_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes max per task
-const STARTUP_LEASE_EXPIRE_MS = 2_000;  // Wait 2s on start for lease expiry
+const STARTUP_LEASE_EXPIRE_MS = 2_000; // Wait 2s on start for lease expiry
 
 // ─── Types ────────────────────────────────────────────────────
 

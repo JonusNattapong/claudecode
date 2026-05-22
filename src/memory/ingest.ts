@@ -1,7 +1,7 @@
 import type { Database } from 'bun:sqlite';
 import { getFsImplementation } from '../utils/fsOperations.js';
 import { chunkMarkdown } from './chunker.js';
-import { type CephMemoryConfig, getDefaultConfig } from './config.js';
+import { type ClaudeMemoryConfig, getDefaultConfig } from './config.js';
 import { getMemoryDb } from './db.js';
 import { scanDirectory } from './loader.js';
 import { redactSecrets } from './redact.js';
@@ -16,7 +16,7 @@ export interface IngestResult {
   totalChunks: number;
 }
 
-export async function ingestMemoryWorkspace(cwd: string, config: CephMemoryConfig): Promise<IngestResult> {
+export async function ingestMemoryWorkspace(cwd: string, config: ClaudeMemoryConfig): Promise<IngestResult> {
   const db = getMemoryDb(cwd);
   const fsImpl = getFsImplementation();
 

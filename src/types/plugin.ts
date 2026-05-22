@@ -80,7 +80,7 @@ export type LoadedPlugin = {
   hooksConfig?: HooksSettings;
   /** Component folder names (e.g. "commands") that exist on disk but are
    *  ignored because plugin.json sets the matching key. Shown as warnings
-   *  in /doctor, ceph plugin list, and /plugin. */
+   *  in /doctor, claude plugin list, and /plugin. */
   suppressedFolders?: string[];
   mcpServers?: Record<string, McpServerConfig>;
   lspServers?: Record<string, LspServerConfig>;
@@ -372,6 +372,6 @@ export function getPluginErrorMessage(error: PluginError): string {
       return `Dependency "${error.dependency}" is ${hint}`;
     }
     case 'plugin-cache-miss':
-      return `Plugin "${error.plugin}" not cached at ${error.installPath} — run /plugins to refresh, or \`ceph plugin install ${error.plugin}\` to install it`;
+      return `Plugin "${error.plugin}" not cached at ${error.installPath} — run /plugins to refresh, or \`claude plugin install ${error.plugin}\` to install it`;
   }
 }

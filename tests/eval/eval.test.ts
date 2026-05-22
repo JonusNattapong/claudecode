@@ -34,8 +34,8 @@ describe('PLAN G — Eval & Verification Harness Unit Tests', () => {
 
   test('Workspace initialization & config correctness', async () => {
     const config = getEvalConfig(TEST_CWD);
-    expect(config.tasksDir.replace(/\\/g, '/')).toContain('.ceph/evals/tasks');
-    expect(config.gradersDir.replace(/\\/g, '/')).toContain('.ceph/evals/graders');
+    expect(config.tasksDir.replace(/\\/g, '/')).toContain('.claude/evals/tasks');
+    expect(config.gradersDir.replace(/\\/g, '/')).toContain('.claude/evals/graders');
 
     await initializeEvalWorkspace(TEST_CWD);
     const fsImpl = getFsImplementation();

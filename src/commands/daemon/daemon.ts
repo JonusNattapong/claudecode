@@ -3,13 +3,13 @@
  */
 
 import { createElement, type ReactNode } from 'react';
-import type { ToolUseContext } from '../../Tool.js';
-import type { LocalJSXCommandContext, LocalJSXCommandOnDone } from '../../types/command.js';
 import {
   getAutonomousStatus,
   startAutonomousAgent,
   stopAutonomousAgent,
 } from '../../services/autonomous/supervisorIntegration.js';
+import type { ToolUseContext } from '../../Tool.js';
+import type { LocalJSXCommandContext, LocalJSXCommandOnDone } from '../../types/command.js';
 import { DaemonMenu } from './DaemonMenu.js';
 import { formatDaemonStatus } from './daemonStatus.js';
 

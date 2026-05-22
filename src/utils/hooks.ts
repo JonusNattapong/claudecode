@@ -1383,7 +1383,9 @@ async function prepareIfConditionMatcher(
   const inputStr: string | undefined = patternMatcher
     ? undefined
     : hookInput.tool_input
-      ? Object.values(hookInput.tool_input).filter(v => typeof v === 'string').join(' ')
+      ? Object.values(hookInput.tool_input)
+          .filter(v => typeof v === 'string')
+          .join(' ')
       : undefined;
 
   return ifCondition => {

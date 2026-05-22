@@ -9,7 +9,7 @@ export async function saveReportToWiki(
   runId: string,
 ): Promise<string> {
   const fsImpl = getFsImplementation();
-  const wikiDir = join(cwd, '.ceph', 'wiki', 'Research');
+  const wikiDir = join(cwd, '.claude', 'wiki', 'Research');
 
   if (!fsImpl.existsSync(wikiDir)) {
     await mkdir(wikiDir, { recursive: true });
@@ -18,10 +18,10 @@ export async function saveReportToWiki(
   const sanitizedTopic = topic.replace(/[\\/:*?"<>|]/g, '_');
   const wikiFilePath = join(wikiDir, `${sanitizedTopic}.md`);
 
-  const autoBlockStart = '<!-- ceph:auto:start -->';
-  const autoBlockEnd = '<!-- ceph:auto:end -->';
-  const userBlockStart = '<!-- ceph:user:start -->';
-  const userBlockEnd = '<!-- ceph:user:end -->';
+  const autoBlockStart = '<!-- claude:auto:start -->';
+  const autoBlockEnd = '<!-- claude:auto:end -->';
+  const userBlockStart = '<!-- claude:user:start -->';
+  const userBlockEnd = '<!-- claude:user:end -->';
 
   let userNotes =
     '## User Notes\n\n*(Add your custom notes here. This block is preserved during future research updates.)*';

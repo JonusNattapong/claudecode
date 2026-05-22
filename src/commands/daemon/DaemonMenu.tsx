@@ -1,5 +1,6 @@
 import type * as React from 'react';
 import { useEffect, useState } from 'react';
+import { AutonomousExecutionAccordion } from '../../components/AutonomousExecutionAccordion.js';
 import { Dialog } from '../../components/design-system/Dialog.js';
 import { Box, Text, useInput } from '../../ink.js';
 import {
@@ -8,7 +9,7 @@ import {
   stopAutonomousAgent,
 } from '../../services/autonomous/supervisorIntegration.js';
 import type { LocalJSXCommandOnDone } from '../../types/command.js';
-import { formatDaemonStatus, type DaemonStatus } from './daemonStatus.js';
+import { type DaemonStatus, formatDaemonStatus } from './daemonStatus.js';
 
 type Action = 'start' | 'stop' | 'restart' | 'refresh' | 'status' | 'task' | 'list' | 'close';
 
@@ -156,6 +157,7 @@ export function DaemonMenu({ onDone }: { onDone: LocalJSXCommandOnDone }): React
     >
       <Box flexDirection="column" gap={1}>
         <StatusSummary status={status} />
+        <AutonomousExecutionAccordion isLoading={busy} />
         <Box flexDirection="column">
           {ACTIONS.map((action, index) => {
             const isFocused = index === focused;

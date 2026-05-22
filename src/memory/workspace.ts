@@ -1,14 +1,14 @@
 import { mkdir, writeFile } from 'fs/promises';
 import { join } from 'path';
 import { getFsImplementation } from '../utils/fsOperations.js';
-import { type CephMemoryConfig, getDefaultConfig } from './config.js';
+import { type ClaudeMemoryConfig, getDefaultConfig } from './config.js';
 
-export async function initMemoryWorkspace(cwd: string): Promise<CephMemoryConfig> {
+export async function initMemoryWorkspace(cwd: string): Promise<ClaudeMemoryConfig> {
   const fsImpl = getFsImplementation();
   const config = getDefaultConfig(cwd);
 
   const dirs = [
-    join(cwd, '.ceph'),
+    join(cwd, '.claude'),
     config.memoryDir,
     join(config.memoryDir, 'user'),
     join(config.memoryDir, 'project'),
@@ -31,7 +31,7 @@ export async function initMemoryWorkspace(cwd: string): Promise<CephMemoryConfig
   }
 
   // Create default config.json
-  const configPath = join(cwd, '.ceph', 'config.json');
+  const configPath = join(cwd, '.claude', 'config.json');
   if (!fsImpl.existsSync(configPath)) {
     await writeFile(configPath, JSON.stringify(config, null, 2), 'utf-8');
   }
@@ -41,7 +41,7 @@ export async function initMemoryWorkspace(cwd: string): Promise<CephMemoryConfig
     if (!fsImpl.existsSync(filePath)) {
       const defaultContent = [
         '---',
-        `id: ceph:memory:${type}:${title.toLowerCase().replace(/\s+/g, '-')}`,
+        `id: claude:memory:${type}:${title.toLowerCase().replace(/\s+/g, '-')}`,
         `type: ${type}`,
         'scope: repo',
         'confidence: high',
@@ -104,11 +104,11 @@ export function getMemoryWorkspaceStatus(cwd: string): {
   configPath: string;
 } {
   const fsImpl = getFsImplementation();
-  const memoryDir = join(cwd, '.ceph', 'memory');
-  const wikiDir = join(cwd, '.ceph', 'wiki');
-  const indexDir = join(cwd, '.ceph', 'index');
-  const runsDir = join(cwd, '.ceph', 'runs');
-  const configPath = join(cwd, '.ceph', 'config.json');
+  const memoryDir = join(cwd, '.claude', 'memory');
+  const wikiDir = join(cwd, '.claude', 'wiki');
+  const indexDir = join(cwd, '.claude', 'index');
+  const runsDir = join(cwd, '.claude', 'runs');
+  const configPath = join(cwd, '.claude', 'config.json');
 
   const initialized =
     fsImpl.existsSync(memoryDir) &&

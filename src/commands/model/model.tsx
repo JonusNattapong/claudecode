@@ -333,9 +333,7 @@ function ShowModelListAndClose({ onDone }: { onDone: (result: string) => void })
         const providerLabel = entry?.label ?? providerId;
 
         // Check if provider supports fetching models from API
-        const { supportsModelFetching, fetchProviderModels } = await import(
-          '../../utils/model/fetchProviderModels.js',
-        );
+        const { supportsModelFetching, fetchProviderModels } = await import('../../utils/model/fetchProviderModels.js');
 
         // Show a transient "loading…" status
         onDone(chalk.dim(`Fetching live model list from ${providerLabel} API…`));
@@ -354,15 +352,17 @@ function ShowModelListAndClose({ onDone }: { onDone: (result: string) => void })
               // API returned nothing — show warning + static fallback
               const staticModels = (providersConfig as any)?.[providerId]?.models ?? [];
               lines = [
-                chalk.yellow(
-                  `${providerLabel} /v1/models returned no results — check your API key and network.`,
-                ),
+                chalk.yellow(`${providerLabel} /v1/models returned no results — check your API key and network.`),
                 '',
                 `${chalk.dim('Static fallback (providers.json)')}:`,
                 ...buildStaticEntries(staticModels),
               ];
             } else {
-              lines = [`${fetched.length} model${fetched.length !== 1 ? 's' : ''} available (${providerLabel}):`, '', ...buildFetchedEntries(fetched)];
+              lines = [
+                `${fetched.length} model${fetched.length !== 1 ? 's' : ''} available (${providerLabel}):`,
+                '',
+                ...buildFetchedEntries(fetched),
+              ];
             }
           } catch (apiErr) {
             const staticModels = (providersConfig as any)?.[providerId]?.models ?? [];
@@ -406,7 +406,11 @@ function buildStaticEntries(staticModels: any[]): string[] {
 }
 
 function buildStaticList(providerLabel: string, staticModels: any[]): string[] {
-  return [`${staticModels.length} model${staticModels.length !== 1 ? 's' : ''} available (${providerLabel} — static):`, '', ...buildStaticEntries(staticModels)];
+  return [
+    `${staticModels.length} model${staticModels.length !== 1 ? 's' : ''} available (${providerLabel} — static):`,
+    '',
+    ...buildStaticEntries(staticModels),
+  ];
 }
 
 function buildFetchedEntries(fetched: Array<{ id: string; label: string; contextWindow?: number }>): string[] {

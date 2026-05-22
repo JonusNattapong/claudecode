@@ -124,3 +124,97 @@ export function renderUsageBar(usedPct: number, width: number = 10): string {
 
   return chars.join('');
 }
+
+/**
+ * Synchronously estimate context token breakdown based on conversation messages.
+ * Uses proportional scaling to ensure the sum of all categories matches totalTokens exactly.
+ */
+export function estimateContextBreakdown(
+  messages: any[],
+  totalTokens: number,
+): Array<{ label: string; tokens: number; colorHex: string }> {
+  // 1. Initial base estimates for static items
+  let systemTokens = 8500;
+  let toolsTokens = 5500;
+  let rulesTokens = 1500;
+  let conversationTokens = 0;
+  let subagentsTokens = 0;
+
+  // 2. Iterate through messages to compute relative dynamic sizes
+  for (const msg of messages) {
+    if (!msg) continue;
+    // Check if the message is from or for a subagent
+    const isSubagent =
+      msg.type === 'subagent' ||
+      typeof msg.agentType === 'string' ||
+      typeof msg.agentName === 'string' ||
+      (typeof msg.content === 'string' && msg.content.includes('[Agent]')) ||
+      (msg.parent_tool_use_id ? true : false);
+
+    // Sum character length to approximate tokens
+    let charCount = 0;
+    if (typeof msg.text === 'string') {
+      charCount += msg.text.length;
+    }
+    if (typeof msg.content === 'string') {
+      charCount += msg.content.length;
+    } else if (msg.content && typeof msg.content === 'object') {
+      try {
+        charCount += JSON.stringify(msg.content).length;
+      } catch {
+        // ignore
+      }
+    }
+    if (msg.message && typeof msg.message === 'object') {
+      try {
+        charCount += JSON.stringify(msg.message).length;
+      } catch {
+        // ignore
+      }
+    }
+
+    const estimatedTokens = Math.max(10, Math.round(charCount / 4));
+
+    if (isSubagent) {
+      subagentsTokens += estimatedTokens;
+    } else {
+      conversationTokens += estimatedTokens;
+    }
+  }
+
+  // Ensure minimum conversation tokens if there are messages
+  if (conversationTokens === 0 && messages.length > 0) {
+    conversationTokens = 1000;
+  }
+
+  // 3. Proportional scaling to match totalTokens exactly
+  const sumEstimates = systemTokens + toolsTokens + rulesTokens + conversationTokens + subagentsTokens;
+  if (sumEstimates > 0 && totalTokens > 0) {
+    const scale = totalTokens / sumEstimates;
+    systemTokens = Math.max(1, Math.round(systemTokens * scale));
+    toolsTokens = Math.max(1, Math.round(toolsTokens * scale));
+    rulesTokens = Math.max(1, Math.round(rulesTokens * scale));
+    conversationTokens = Math.max(1, Math.round(conversationTokens * scale));
+    subagentsTokens = Math.max(0, Math.round(subagentsTokens * scale));
+  } else {
+    // Fallback if no totalTokens or estimate
+    return [{ label: 'System', tokens: totalTokens, colorHex: '#94A3B8' }];
+  }
+
+  // 4. Return formatted categories with premium TrueColor hex colors
+  const results = [
+    { label: 'System', tokens: systemTokens, colorHex: '#94A3B8' }, // Slate
+    { label: 'Tools', tokens: toolsTokens, colorHex: '#38BDF8' }, // Sky Blue
+    { label: 'Rules', tokens: rulesTokens, colorHex: '#34D399' }, // Emerald Green
+  ];
+
+  if (conversationTokens > 0) {
+    results.push({ label: 'Chat', tokens: conversationTokens, colorHex: '#F87171' }); // Rose Red
+  }
+
+  if (subagentsTokens > 0) {
+    results.push({ label: 'Agents', tokens: subagentsTokens, colorHex: '#A78BFA' }); // Purple
+  }
+
+  return results;
+}

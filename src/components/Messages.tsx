@@ -258,6 +258,8 @@ type Props = {
   streamingText?: string | null;
   /** When true, only show Brief tool output (hide everything else) */
   isBriefOnly?: boolean;
+  /** Compact completed transcript rows while autonomous execution is active. */
+  autonomousCompact?: boolean;
   /** Fullscreen-mode "─── N new ───" divider. Renders before the first
    *  renderableMessage derived from firstUnseenUuid (matched by the 24-char
    *  prefix that deriveUUID preserves). */
@@ -383,6 +385,7 @@ const MessagesImpl = ({
   streamingThinking,
   streamingText,
   isBriefOnly = false,
+  autonomousCompact = false,
   unseenDivider,
   scrollRef,
   trackStickyPrompt,
@@ -604,12 +607,32 @@ const MessagesImpl = ({
     // post-grouping array so each chunk gets correct tool-call grouping.
     const capApplies = !virtualScrollRuntimeGate && !disableRenderCap;
     const sliceStart = capApplies ? computeSliceStart(collapsed, sliceAnchorRef) : 0;
-    return renderRange
+    const sliced = renderRange
       ? collapsed.slice(renderRange[0], renderRange[1])
       : sliceStart > 0
         ? collapsed.slice(sliceStart)
         : collapsed;
-  }, [collapsed, renderRange, virtualScrollRuntimeGate, disableRenderCap]);
+
+    if (!autonomousCompact || verbose || isTranscriptMode || sliced.length <= 18) {
+      return sliced;
+    }
+
+    const keepFrom = Math.max(0, sliced.length - 12);
+    return sliced.filter((msg, index) => {
+      if (index >= keepFrom) return true;
+      const toolUseID = getToolUseID(msg);
+      return toolUseID ? inProgressToolUseIDs.has(toolUseID) : false;
+    });
+  }, [
+    collapsed,
+    renderRange,
+    virtualScrollRuntimeGate,
+    disableRenderCap,
+    autonomousCompact,
+    verbose,
+    isTranscriptMode,
+    inProgressToolUseIDs,
+  ]);
 
   const streamingToolUseIDs = useMemo(
     () => new Set(streamingToolUses.map(_ => _.contentBlock.id)),
@@ -860,6 +883,12 @@ const MessagesImpl = ({
       ) : (
         renderableMessages.flatMap(renderMessageRow)
       )}
+
+      {autonomousCompact && !verbose && !isTranscriptMode && collapsed.length > renderableMessages.length ? (
+        <Box marginTop={1}>
+          <Text dimColor>✓ {collapsed.length - renderableMessages.length} completed autonomous rows collapsed</Text>
+        </Box>
+      ) : null}
 
       {streamingText && !isBriefOnly && (
         <Box alignItems="flex-start" flexDirection="row" marginTop={1} width="100%">

@@ -61,7 +61,7 @@ import theme from './commands/theme/index.js';
 import { feature } from 'bun:bundle';
 // Dead code elimination: conditional imports
 /* eslint-disable @typescript-eslint/no-require-imports */
-// Feature-gated commands (enable via env vars: KAIROS=1 VOICE_MODE=1 BRIDGE_MODE=1)
+// Feature-gated commands (enable via env vars/defines: KAIROS=1 VOICE_MODE=1 BRIDGE_MODE=1)
 // Default commands (always available):
 const buddy = require('./commands/buddy/index.js').default;
 
@@ -79,9 +79,10 @@ const bridge = _hasFeature('BRIDGE_MODE')
   ? (require('./commands/bridge/index.ts') as typeof import('./commands/bridge/index.ts')).default
   : null;
 const remoteControlServerCommand = null;
-const voiceCommand = _hasFeature('VOICE_MODE')
-  ? (require('./commands/voice/index.ts') as typeof import('./commands/voice/index.ts')).default
-  : null;
+const voiceCommand =
+  feature('VOICE_MODE') || _hasFeature('VOICE_MODE')
+    ? (require('./commands/voice/index.ts') as typeof import('./commands/voice/index.ts')).default
+    : null;
 const forceSnip = null;
 const webCmd = null;
 const clearSkillIndexCache = null;
@@ -122,6 +123,7 @@ import ant from './commands/ant/index.js';
 import stickers from './commands/stickers/index.js';
 import goal from './commands/goal/index.js';
 import daemonCmd from './commands/daemon/index.js';
+import dashboard from './commands/dashboard/index.js';
 import taskCmd from './commands/task/index.js';
 import scrollSpeed from './commands/scroll-speed/index.js';
 import searxng from './commands/searxng/index.js';
@@ -211,7 +213,6 @@ export const INTERNAL_ONLY_COMMANDS = [
   resetLimits,
   resetLimitsNonInteractive,
   onboarding,
-  teamOnboarding,
   share,
   summary,
   teleport,
@@ -221,7 +222,6 @@ export const INTERNAL_ONLY_COMMANDS = [
   oauthRefresh,
   debugToolCall,
   agentsPlatform,
-  autofixPr,
 ].filter(Boolean);
 
 // Declared as a function so that we don't run this until getCommands is called,
@@ -232,6 +232,7 @@ const COMMANDS = memoize((): Command[] => [
   agentCmd,
   agents,
   ant,
+  autofixPr,
   branch,
   btw,
   capabilities,
@@ -247,6 +248,7 @@ const COMMANDS = memoize((): Command[] => [
   contextNonInteractive,
   cost,
   daemonCmd,
+  dashboard,
   diff,
   doctor,
   effort,

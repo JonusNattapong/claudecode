@@ -8,7 +8,7 @@ export function getMemoryDb(cwd: string): Database {
   if (_db) return _db;
 
   const fsImpl = getFsImplementation();
-  const indexDir = join(cwd, '.ceph', 'index');
+  const indexDir = join(cwd, '.claude', 'index');
   const dbPath = join(indexDir, 'chunks.db');
 
   _db = new Database(dbPath, { create: true });

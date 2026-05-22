@@ -622,7 +622,7 @@ async function performMCPXaaAuth(
   const idp = getXaaIdpSettings();
   if (!idp) {
     throw new Error(
-      "XAA: no IdP connection configured. Run 'ceph mcp xaa setup --issuer <url> --client-id <id> --client-secret' to configure.",
+      "XAA: no IdP connection configured. Run 'claude mcp xaa setup --issuer <url> --client-id <id> --client-secret' to configure.",
     );
   }
 

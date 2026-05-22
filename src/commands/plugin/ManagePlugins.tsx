@@ -286,10 +286,9 @@ function PluginComponentsDisplay({
         if (pluginEntry) {
           // Combine commands from both sources, deduping overlapping paths
           // (manifest paths may duplicate the default directory)
-          const commandPathList = [...new Set([
-            ...(plugin.commandsPath ? [plugin.commandsPath] : []),
-            ...(plugin.commandsPaths ?? []),
-          ])];
+          const commandPathList = [
+            ...new Set([...(plugin.commandsPath ? [plugin.commandsPath] : []), ...(plugin.commandsPaths ?? [])]),
+          ];
 
           // Get base file names from all command paths
           const commandList: string[] = [];
@@ -302,10 +301,9 @@ function PluginComponentsDisplay({
           }
 
           // Combine agents from both sources, deduping overlapping paths
-          const agentPathList = [...new Set([
-            ...(plugin.agentsPath ? [plugin.agentsPath] : []),
-            ...(plugin.agentsPaths ?? []),
-          ])];
+          const agentPathList = [
+            ...new Set([...(plugin.agentsPath ? [plugin.agentsPath] : []), ...(plugin.agentsPaths ?? [])]),
+          ];
 
           // Get base file names from all agent paths
           const agentList: string[] = [];
@@ -318,10 +316,9 @@ function PluginComponentsDisplay({
           }
 
           // Combine skills from both sources, deduping overlapping paths
-          const skillPathList = [...new Set([
-            ...(plugin.skillsPath ? [plugin.skillsPath] : []),
-            ...(plugin.skillsPaths ?? []),
-          ])];
+          const skillPathList = [
+            ...new Set([...(plugin.skillsPath ? [plugin.skillsPath] : []), ...(plugin.skillsPaths ?? [])]),
+          ];
 
           // Get skill directory names from all skill paths
           // Skills are directories containing SKILL.md files

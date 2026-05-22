@@ -17,7 +17,7 @@ export async function runDiagnostics(cwd: string): Promise<DoctorResult> {
   const config = getEvalConfig(cwd);
   const errors: string[] = [];
 
-  const evalsDir = join(cwd, '.ceph', 'evals');
+  const evalsDir = join(cwd, '.claude', 'evals');
   if (!fsImpl.existsSync(evalsDir)) {
     return {
       initialized: false,

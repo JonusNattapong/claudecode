@@ -33,7 +33,17 @@ type OverviewRow = {
 
 const RESERVED_CATEGORY_NAME = 'Autocompact buffer';
 const VISIBLE_BREAKDOWN_ROWS = 9;
-const BAR_WIDTH = 42;
+const BAR_WIDTH = 55;
+
+const COLOR_MAP: Record<string, string> = {
+  gray: '#94A3B8', // Slate
+  blue: '#38BDF8', // Sky Blue
+  green: '#34D399', // Emerald Green
+  yellow: '#FBBF24', // Glowing Amber
+  magenta: '#EC4899', // Hot Pink
+  cyan: '#A78BFA', // Purple
+  red: '#F87171', // Rose Red
+};
 
 const DISPLAY_NAMES: Record<string, string> = {
   'System prompt': 'System prompt',
@@ -171,10 +181,11 @@ function SourceRow({
   value: string;
   color?: string;
 }): React.ReactNode {
+  const displayColor = color ? COLOR_MAP[color] || color : undefined;
   return (
     <Box flexDirection="row" justifyContent="space-between">
       <Box flexDirection="row" gap={1}>
-        <Text color={color}>{marker}</Text>
+        <Text color={displayColor}>{marker}</Text>
         <Text>{label}</Text>
       </Box>
       <Text dimColor>{value}</Text>
@@ -522,7 +533,7 @@ export function ContextStats({ data, onClose }: Props): React.ReactNode {
                   <Box key={key} flexDirection="row" justifyContent="space-between">
                     <Box flexDirection="row" gap={1}>
                       <Text dimColor>├─</Text>
-                      <Text color={row.color}>{row.label}</Text>
+                      <Text color={COLOR_MAP[row.color || ''] || row.color}>{row.label}</Text>
                     </Box>
 
                     {row.value ? <Text dimColor>{row.value}</Text> : null}

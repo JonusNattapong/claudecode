@@ -17,7 +17,7 @@ import { getMemoryWorkspaceStatus, initMemoryWorkspace } from './workspace.js';
 
 const tempCwd = join(process.cwd(), 'temp-test-memory-workspace');
 
-describe('Ceph Memory System (PLAN E)', () => {
+describe('Claude Memory System (PLAN E)', () => {
   beforeAll(async () => {
     closeMemoryDb();
     const fsImpl = getFsImplementation();
@@ -53,13 +53,13 @@ describe('Ceph Memory System (PLAN E)', () => {
 
     const statusAfter = getMemoryWorkspaceStatus(tempCwd);
     expect(statusAfter.initialized).toBe(true);
-    expect(statusAfter.memoryDir).toContain('.ceph');
+    expect(statusAfter.memoryDir).toContain('.claude');
   });
 
   test('Frontmatter parsing & stringifying', () => {
     const sampleText = [
       '---',
-      'id: ceph:memory:project:conventions',
+      'id: claude:memory:project:conventions',
       'type: project',
       'scope: repo',
       'confidence: high',
@@ -70,7 +70,7 @@ describe('Ceph Memory System (PLAN E)', () => {
     ].join('\n');
 
     const parsed = parseFrontmatter(sampleText, 'default-id', 'project');
-    expect(parsed.metadata.id).toBe('ceph:memory:project:conventions');
+    expect(parsed.metadata.id).toBe('claude:memory:project:conventions');
     expect(parsed.metadata.type).toBe('project');
     expect(parsed.metadata.scope).toBe('repo');
     expect(parsed.metadata.confidence).toBe('high');
@@ -79,7 +79,7 @@ describe('Ceph Memory System (PLAN E)', () => {
     expect(parsed.content).toContain('# Coding Conventions');
 
     const reserialized = stringifyFrontmatter(parsed.metadata, parsed.content);
-    expect(reserialized).toContain('id: ceph:memory:project:conventions');
+    expect(reserialized).toContain('id: claude:memory:project:conventions');
     expect(reserialized).toContain('tags: [conventions, test]');
     expect(reserialized).toContain('Use spaces not tabs.');
   });
@@ -126,7 +126,7 @@ describe('Ceph Memory System (PLAN E)', () => {
       sourceType: 'project',
       uri: 'project/conventions.md',
       title: 'Coding Conventions',
-      sourcePath: join(tempCwd, '.ceph', 'memory', 'project', 'conventions.md'),
+      sourcePath: join(tempCwd, '.claude', 'memory', 'project', 'conventions.md'),
       contentHash: 'hash-abc',
       truthPriority: 60,
       editable: 1,
@@ -198,7 +198,7 @@ describe('Ceph Memory System (PLAN E)', () => {
     closeMemoryDb();
     const obs = 'Use dynamic provider routing for growthbook integrations.';
     const pendingId = await proposeMemory(tempCwd, obs, 'project');
-    expect(pendingId).toContain('ceph:pending');
+    expect(pendingId).toContain('claude:pending');
 
     const suggestions = await listPending(tempCwd);
     expect(suggestions.length).toBe(1);
@@ -255,7 +255,7 @@ describe('Ceph Memory System (PLAN E)', () => {
       {
         id: 'chunk-1',
         title: 'Project Memory',
-        sourcePath: '.ceph/memory/MEMORY.md',
+        sourcePath: '.claude/memory/MEMORY.md',
         sourceType: 'project',
         excerpt: 'We use Bun Offline-first architecture.',
         score: 0.95,

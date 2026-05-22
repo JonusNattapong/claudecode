@@ -1,7 +1,7 @@
 services:
   searxng:
     image: searxng/searxng:latest
-    container_name: ceph-searxng
+    container_name: claude-searxng
     restart: unless-stopped
     ports:
       - "${SEARXNG_HOST:-127.0.0.1}:${SEARXNG_PORT:-18889}:8080"

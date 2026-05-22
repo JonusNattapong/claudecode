@@ -24,7 +24,7 @@
       <a href="#features">Features</a>
       <a href="#commands">Commands</a>
       <a href="quick-start.html">Docs</a>
-      <a href="https://github.com/CephCore/cephcode" target="_blank">GitHub</a>
+      <a href="https://github.com/ClaudeCore/claudecode" target="_blank">GitHub</a>
     </nav>
     <button class="menu-btn" id="menuToggle" aria-label="Toggle navigation">
       <span></span><span></span><span></span>
@@ -45,7 +45,7 @@
     <section class="hero">
       <div class="hero-badge">
         <span class="dot"></span>
-        v2.1.154 — Multi-Provider AI CLI
+        v2.1.155 — Multi-Provider AI CLI
       </div>
       <h1>
         Code with<br>
@@ -57,10 +57,10 @@
         for professional development workflows.
       </p>
       <div class="hero-actions">
-        <a href="https://npmjs.com/package/cephcode" class="btn btn-primary">
-          npm install -g cephcode
+        <a href="https://npmjs.com/package/claudecode" class="btn btn-primary">
+          npm install -g claudecode
         </a>
-        <a href="https://github.com/CephCore/cephcode" class="btn btn-ghost" target="_blank">
+        <a href="https://github.com/ClaudeCore/claudecode" class="btn btn-ghost" target="_blank">
           GitHub →
         </a>
       </div>
@@ -72,10 +72,10 @@
         <span class="terminal-dot"></span>
         <span class="terminal-dot"></span>
         <span class="terminal-dot"></span>
-        <span class="terminal-title">ceph — ~/project</span>
+        <span class="terminal-title">claude — ~/project</span>
       </div>
       <div class="terminal-body">
-        <span class="line"><span class="prompt">$</span> <span class="cmd">ceph</span></span>
+        <span class="line"><span class="prompt">$</span> <span class="cmd">claude</span></span>
         <span class="line"><span class="output">╭──────────────────────────────────────────╮</span></span>
         <span class="line"><span class="output">│ <span class="highlight-amber">Claude Code</span> · model: <span class="highlight-cyan">deepseek-v4-flash</span>  │</span></span>
         <span class="line"><span class="output">│ provider: <span class="highlight-cyan">DeepSeek</span> · context: <span class="highlight-amber">78%</span>  │</span></span>
@@ -175,9 +175,9 @@
     <h2 class="section-title" id="usage">Quick Start</h2>
     <p class="section-subtitle">From zero to coding in under a minute.</p>
 
-    <pre><code><span style="color:var(--orange-500)">$</span> <span style="color:var(--text-primary)">npm install -g cephcode</span>
+    <pre><code><span style="color:var(--orange-500)">$</span> <span style="color:var(--text-primary)">npm install -g claudecode</span>
 <span style="color:var(--orange-500)">$</span> <span style="color:var(--text-primary)">export ANTHROPIC_API_KEY=sk-ant-...</span>
-<span style="color:var(--orange-500)">$</span> <span style="color:var(--text-primary)">ceph</span>
+<span style="color:var(--orange-500)">$</span> <span style="color:var(--text-primary)">claude</span>
 
 <span style="color:var(--text-tertiary)"># Ask a question</span>
 <span style="color:var(--orange-500)">></span> <span style="color:var(--text-primary)">"find all unused exports in src/"</span>
@@ -206,7 +206,8 @@
         <tr><td><span style="color:var(--orange-400)">Session</span></td><td><code>/clear</code> <code>/compact</code> <code>/resume</code> <code>/session</code> <code>/rewind</code></td><td>Context and session management</td></tr>
         <tr><td><span style="color:var(--orange-400)">Config</span></td><td><code>/permissions</code> <code>/plan</code> <code>/config</code> <code>/theme</code></td><td>Settings and preferences</td></tr>
         <tr><td><span style="color:var(--orange-400)">Extend</span></td><td><code>/plugin</code> <code>/skill</code> <code>/agent</code> <code>/agents</code> <code>/mcp</code></td><td>Plugins, skills, agents, MCP</td></tr>
-        <tr><td><span style="color:var(--orange-400)">Daemon</span></td><td><code>/daemon</code> <code>/task</code></td><td>24/7 autonomous agent and task queue</td></tr>
+        <tr><td><span style="color:var(--orange-400)">Daemon</span></td><td><code>/daemon</code> <code>/task</code> <code>/loop</code></td><td>24/7 autonomous agent, task queue, and recurring tasks</td></tr>
+        <tr><td><span style="color:var(--orange-400)">Automation</span></td><td><code>/autofix-pr</code></td><td>Fix CI errors and review comments on a PR via Claude Code on the web</td></tr>
         <tr><td><span style="color:var(--orange-400)">System</span></td><td><code>/help</code> <code>/status</code> <code>/doctor</code> <code>/exit</code></td><td>Help, diagnostics, and exit</td></tr>
       </tbody>
     </table>
@@ -262,29 +263,26 @@
     </div>
 
     <!-- ─── Changelog ─── -->
-    <h2 class="section-title" id="updates">v2.1.154 Updates</h2>
+    <h2 class="section-title" id="updates">v2.1.155 Updates</h2>
     <ul>
-      <li><strong>Interactive Scheduled Tasks</strong> — Running <code>/task</code> with no subcommand opens a form for name, schedule, prompt, and storage mode</li>
-      <li><strong>24/7 Autonomous Mode</strong> — Persistent daemon runs continuously, picks tasks from queue, spawns workers, auto-retries on failure</li>
-      <li><strong><code>/daemon</code> &amp; <code>/task</code></strong> — Interactive daemon control panel plus scheduled task creation from a form</li>
-      <li><strong>Persistent Task Queue</strong> — File-backed queue at <code>~/.claude/daemon/tasks.json</code> with priorities, scheduling, and dependency chains</li>
-      <li><strong>Auto-Start &amp; Health Checks</strong> — Supervisor auto-launches autonomous agent on boot, monitors heartbeat, respawns on crash</li>
-      <li><strong>Worker Session Orchestration</strong> — Brain agent spawns isolated worker sessions for each task via supervisor IPC</li>
-      <li><strong>Auto-Retry</strong> — Failed tasks automatically retry (configurable max attempts) before marking as failed</li>
-      <li><strong>Concurrent Worker Limit</strong> — Configurable max parallel workers (default 3) for resource management</li>
+      <li><strong>Remote Control enabled by default</strong> — All sessions are now remote-control-ready without needing <code>/rc</code> or <code>--remote-control</code>. Set <code>"remoteControlAtStartup": false</code> in settings to opt out.</li>
+      <li><strong><code>/loop</code></strong> — Run a prompt on a recurring interval (<code>/loop 5m /check-deploy</code>). Previously gated behind a feature flag; now available to all users.</li>
+      <li><strong><code>/autofix-pr</code></strong> — Fix CI errors and address review comments on a PR via a remote Claude Code on the web session.</li>
+      <li><strong><code>/plugin-details</code></strong> — Show component inventory (skills, commands, hooks, MCP servers) and estimated per-session token cost for any installed plugin.</li>
+      <li><strong>Interactive Argument Ghost Text</strong> — Parameter hints now render as inline dim text after the cursor. Press <kbd>Tab</kbd> or <kbd>→</kbd> to accept and fill placeholders like <code>[condition]</code>.</li>
     </ul>
 
     <div style="margin-top:var(--space-lg)">
-      <a href="https://github.com/CephCore/cephcode/blob/main/CHANGELOG.md" class="btn btn-ghost">Full Changelog →</a>
+      <a href="https://github.com/ClaudeCore/claudecode/blob/main/CHANGELOG.md" class="btn btn-ghost">Full Changelog →</a>
     </div>
 
     <!-- ─── Footer ─── -->
     <footer class="footer">
-      <span>Claude Code v2.1.154 — Open Source (MIT)</span>
+      <span>Claude Code v2.1.155 — Open Source (MIT)</span>
       <div class="footer-links">
-        <a href="https://github.com/CephCore/cephcode">GitHub</a>
-        <a href="https://github.com/CephCore/cephcode/issues">Issues</a>
-        <a href="https://npmjs.com/package/cephcode">npm</a>
+        <a href="https://github.com/ClaudeCore/claudecode">GitHub</a>
+        <a href="https://github.com/ClaudeCore/claudecode/issues">Issues</a>
+        <a href="https://npmjs.com/package/claudecode">npm</a>
       </div>
     </footer>
 

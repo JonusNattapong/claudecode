@@ -95,11 +95,7 @@ export function HelpV2({ onClose, commands }: Props): React.ReactNode {
   return (
     <Box flexDirection="column" height={insideModal ? undefined : maxHeight}>
       <Pane color="professionalBlue">
-        <Tabs
-          title="/help"
-          color="professionalBlue"
-          defaultTab="general"
-        >
+        <Tabs title="/help" color="professionalBlue" defaultTab="general">
           {tabs}
         </Tabs>
         <Box marginTop={1}>

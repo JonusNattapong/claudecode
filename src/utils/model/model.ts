@@ -71,7 +71,8 @@ export function isNonCustomOpusModel(model: ModelName): boolean {
     model === getModelStrings().opus40 ||
     model === getModelStrings().opus41 ||
     model === getModelStrings().opus45 ||
-    model === getModelStrings().opus46
+    model === getModelStrings().opus46 ||
+    model === getModelStrings().opus47
   );
 }
 
@@ -208,9 +209,9 @@ export function getDefaultOpusModel(): ModelName {
   // even when values match, since 3P availability lags firstParty and
   // these will diverge again at the next model launch.
   if (getAPIProvider() !== 'firstParty') {
-    return getModelStrings().opus46;
+    return getModelStrings().opus47;
   }
-  return getModelStrings().opus46;
+  return getModelStrings().opus47;
 }
 
 // @[MODEL LAUNCH]: Update the default Sonnet model (3P providers may lag so keep defaults unchanged).
@@ -608,7 +609,7 @@ export function parseUserSpecifiedModel(modelInput: ModelName | ModelAlias): Mod
 
   // Opus 4/4.1 are no longer available on the first-party API (same as
   // Claude.ai) — silently remap to the current Opus default. The 'opus'
-  // alias already resolves to 4.6, so the only users on these explicit
+  // alias already resolves to the current Opus default, so the only users on these explicit
   // strings pinned them in settings/env/--model/SDK before 4.5 launched.
   // 3P providers may not yet have 4.6 capacity, so pass through unchanged.
   if (getAPIProvider() === 'firstParty' && isLegacyOpusFirstParty(modelString) && isLegacyModelRemapEnabled()) {

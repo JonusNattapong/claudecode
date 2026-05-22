@@ -146,7 +146,7 @@ export function useManageMCPConnections(
   // AppState so interactiveHandler can subscribe. The pending Map lives inside
   // the closure (not module-level, not AppState — functions-in-state is brittle).
   const channelPermCallbacksRef = useRef<ChannelPermissionCallbacks | null>(null);
-  if (feature('KAIROS') || feature('KAIROS_CHANNELS') && channelPermCallbacksRef.current === null) {
+  if (feature('KAIROS') || (feature('KAIROS_CHANNELS') && channelPermCallbacksRef.current === null)) {
     channelPermCallbacksRef.current = createChannelPermissionCallbacks();
   }
   // Store callbacks in AppState so interactiveHandler.ts can reach them via

@@ -20,7 +20,7 @@ export async function writeRunSummary(
 ): Promise<string> {
   const fsImpl = getFsImplementation();
   const dateStr = new Date().toISOString().slice(0, 10);
-  const runDir = join(cwd, '.ceph', 'runs', dateStr);
+  const runDir = join(cwd, '.claude', 'runs', dateStr);
 
   if (!fsImpl.existsSync(runDir)) {
     await mkdir(runDir, { recursive: true });
@@ -44,7 +44,7 @@ export async function writeRunSummary(
   // Write Markdown summary
   const markdown = [
     '---',
-    `id: ceph:run:${dateStr}:${runId}`,
+    `id: claude:run:${dateStr}:${runId}`,
     'type: run_summary',
     `created: ${new Date().toISOString()}`,
     'status: completed',

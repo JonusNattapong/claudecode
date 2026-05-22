@@ -12,12 +12,16 @@
  * Imported dynamically from client.ts and useManageMCPConnections.ts
  * under the MCP_SKILLS feature flag.
  */
-import { ListResourcesResultSchema, ReadResourceResultSchema, type ReadResourceResult } from '@modelcontextprotocol/sdk/types.js';
-import { logForDebugging } from '../utils/debug.js';
-import { memoizeWithLRU } from '../utils/memoize.js';
-import { parseFrontmatter } from '../utils/frontmatterParser.js';
+import {
+  ListResourcesResultSchema,
+  type ReadResourceResult,
+  ReadResourceResultSchema,
+} from '@modelcontextprotocol/sdk/types.js';
 import type { MCPServerConnection } from '../services/mcp/types.js';
 import type { Command } from '../types/command.js';
+import { logForDebugging } from '../utils/debug.js';
+import { parseFrontmatter } from '../utils/frontmatterParser.js';
+import { memoizeWithLRU } from '../utils/memoize.js';
 import { getMCPSkillBuilders } from './mcpSkillBuilders.js';
 
 const MCP_FETCH_CACHE_SIZE = 100;
@@ -71,7 +75,10 @@ export const fetchMcpSkillsForClient = memoizeWithLRU(
             )) as ReadResourceResult;
             // Extract text content from the resource contents array
             const textContent = readResult.contents
-              .filter((c): c is { text: string; uri?: string; mimeType?: string } => 'text' in c && typeof c.text === 'string')
+              .filter(
+                (c): c is { text: string; uri?: string; mimeType?: string } =>
+                  'text' in c && typeof c.text === 'string',
+              )
               .map(c => c.text)
               .join('\n\n');
 

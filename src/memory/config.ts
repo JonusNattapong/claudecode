@@ -1,6 +1,6 @@
 import { join } from 'path';
 
-export interface CephMemoryConfig {
+export interface ClaudeMemoryConfig {
   enabled: boolean;
   rootDir: string;
   memoryDir: string;
@@ -17,14 +17,14 @@ export interface CephMemoryConfig {
   excludeGlobs: string[];
 }
 
-export function getDefaultConfig(rootDir: string): CephMemoryConfig {
+export function getDefaultConfig(rootDir: string): ClaudeMemoryConfig {
   return {
     enabled: true,
     rootDir,
-    memoryDir: join(rootDir, '.ceph', 'memory'),
-    wikiDir: join(rootDir, '.ceph', 'wiki'),
-    indexDir: join(rootDir, '.ceph', 'index'),
-    runsDir: join(rootDir, '.ceph', 'runs'),
+    memoryDir: join(rootDir, '.claude', 'memory'),
+    wikiDir: join(rootDir, '.claude', 'wiki'),
+    indexDir: join(rootDir, '.claude', 'index'),
+    runsDir: join(rootDir, '.claude', 'runs'),
     maxChunkTokens: 3000,
     redactSecrets: true,
     autoCapture: true,

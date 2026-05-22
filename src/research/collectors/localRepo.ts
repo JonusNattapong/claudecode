@@ -8,7 +8,7 @@ export async function collectLocalRepo(cwd: string, query: string): Promise<Rese
   const searchDirs = [join(cwd, 'src')];
   const results: ResearchSource[] = [];
 
-  const ignoreDirs = ['node_modules', '.git', 'dist', 'node_modules', 'bin', 'obj', '.ceph'];
+  const ignoreDirs = ['node_modules', '.git', 'dist', 'node_modules', 'bin', 'obj', '.claude'];
 
   async function scan(dirPath: string) {
     if (!fsImpl.existsSync(dirPath)) {

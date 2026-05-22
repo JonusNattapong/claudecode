@@ -6,7 +6,7 @@ import { queryWithModel } from '../../services/api/claude.js';
 import { getCwd } from '../../utils/cwd.js';
 import { toError } from '../../utils/errors.js';
 import { logError } from '../../utils/log.js';
-import { getDefaultOpusModel } from '../../utils/model/model.js';
+import { getBestModel } from '../../utils/model/model.js';
 import { getProjectDir, getSessionFilesWithMtime, loadAllLogsFromSessionFile } from '../../utils/sessionStorage.js';
 import { asSystemPrompt } from '../../utils/systemPromptType.js';
 
@@ -46,7 +46,7 @@ ${JSON.stringify(sessionData, null, 2)}
 
 Output the guide in Markdown format.`;
 
-  const model = getDefaultOpusModel();
+  const model = getBestModel();
   const response = await queryWithModel({
     model,
     userPrompt,

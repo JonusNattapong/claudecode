@@ -214,7 +214,7 @@ export async function initSentry(): Promise<void> {
       // Short timeout so shutdown flush doesn't hang
       shutdownTimeout: 2000,
       // Release + environment for correlation in Sentry dashboard
-      release: typeof MACRO !== 'undefined' && MACRO.VERSION ? `cephcode@${MACRO.VERSION}` : undefined,
+      release: typeof MACRO !== 'undefined' && MACRO.VERSION ? `claudecode@${MACRO.VERSION}` : undefined,
       environment: process.env.NODE_ENV ?? 'production',
       // Disable default integrations that may capture too much
       defaultIntegrations: false,

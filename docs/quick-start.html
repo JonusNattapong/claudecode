@@ -15,7 +15,7 @@
   <div class="header-inner">
     <a href="index.html" class="logo"><span class="logo-mark">~</span><span>Claude Code</span></a>
     <nav class="header-nav">
-      <a href="index.html">Home</a><a href="index.html#features">Features</a><a href="index.html#commands">Commands</a><a href="quick-start.html" class="active">Docs</a><a href="https://github.com/CephCore/cephcode" target="_blank">GitHub</a>
+      <a href="index.html">Home</a><a href="index.html#features">Features</a><a href="index.html#commands">Commands</a><a href="quick-start.html" class="active">Docs</a><a href="https://github.com/ClaudeCore/claudecode" target="_blank">GitHub</a>
     </nav>
     <button class="menu-btn" id="menuToggle" aria-label="Toggle navigation"><span></span><span></span><span></span></button>
   </div>
@@ -28,8 +28,8 @@
     <p class="section-subtitle">From zero to AI-assisted coding in under a minute.</p>
 
     <h2>1. Install</h2>
-    <pre><code>npm install -g cephcode
-ceph --version</code></pre>
+    <pre><code>npm install -g claudecode
+claude --version</code></pre>
 
     <h2>2. Set a Provider Key</h2>
     <p>Set at least one API key as an environment variable. See <a href="providers.html">Providers</a> for all 27 options.</p>
@@ -44,7 +44,7 @@ export GOOGLE_API_KEY=...</code></pre>
 
     <h2>3. Launch</h2>
     <pre><code>cd /path/to/your/project
-ceph</code></pre>
+claude</code></pre>
     <p>The terminal UI starts with model name, provider, and context usage in the status bar.</p>
 
     <h2>4. First Commands</h2>
@@ -72,16 +72,16 @@ ceph</code></pre>
 
     <h2>6. Sessions</h2>
     <pre><code># Continue last conversation
-ceph -c
+claude -c
 
 # Resume a specific session
-ceph -r
+claude -r
 
 # Print mode (non-interactive, pipe-friendly)
-ceph -p "find all unused exports"
+claude -p "find all unused exports"
 
 # With structured output
-ceph -p --output-format json "list all dependencies"</code></pre>
+claude -p --output-format json "list all dependencies"</code></pre>
 
     <div class="callout callout-info">
       <strong>Tips</strong>

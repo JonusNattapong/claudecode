@@ -74,7 +74,7 @@ export const call: LocalCommandCall = async (args, context) => {
       await initWorkspace(cwd);
       return {
         type: 'text',
-        value: '🟢 Research workspace directories initialized successfully under `.ceph/`',
+        value: '🟢 Research workspace directories initialized successfully under `.claude/`',
       };
     }
 

@@ -19,14 +19,11 @@ const getSuggestBackgroundPRTool = () =>
     : null;
 const getSleepTool = () =>
   feature('PROACTIVE') || feature('KAIROS') ? require('./tools/SleepTool/SleepTool.js').SleepTool : null;
-const getCronTools = () =>
-  feature('AGENT_TRIGGERS')
-    ? [
-        require('./tools/ScheduleCronTool/CronCreateTool.js').CronCreateTool,
-        require('./tools/ScheduleCronTool/CronDeleteTool.js').CronDeleteTool,
-        require('./tools/ScheduleCronTool/CronListTool.js').CronListTool,
-      ]
-    : [];
+const getCronTools = () => [
+  require('./tools/ScheduleCronTool/CronCreateTool.js').CronCreateTool,
+  require('./tools/ScheduleCronTool/CronDeleteTool.js').CronDeleteTool,
+  require('./tools/ScheduleCronTool/CronListTool.js').CronListTool,
+];
 const getRemoteTriggerTool = () =>
   feature('AGENT_TRIGGERS_REMOTE') ? require('./tools/RemoteTriggerTool/RemoteTriggerTool.js').RemoteTriggerTool : null;
 // Monitor tool always enabled (v2.1.98+)

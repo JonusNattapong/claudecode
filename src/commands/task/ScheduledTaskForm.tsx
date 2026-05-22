@@ -295,7 +295,7 @@ export function ScheduledTaskForm({ onDone }: { onDone: LocalJSXCommandOnDone })
         </Box>
 
         <Box flexDirection="column">
-          <Text bold>  Project</Text>
+          <Text bold> Project</Text>
           <Box borderStyle="round" borderDimColor paddingX={1}>
             <Text>{projectName || 'current project'}</Text>
           </Box>
@@ -309,7 +309,7 @@ export function ScheduledTaskForm({ onDone }: { onDone: LocalJSXCommandOnDone })
               {selectedKind.label}
               {focus === 'kind' ? ' >' : '  '}
             </Text>
-            <Text dimColor>  {selectedKind.hint}</Text>
+            <Text dimColor> {selectedKind.hint}</Text>
           </Box>
         </Box>
 
@@ -347,25 +347,22 @@ export function ScheduledTaskForm({ onDone }: { onDone: LocalJSXCommandOnDone })
         <Box flexDirection="column">
           <FieldLabel focused={focus === 'durable'}>Storage</FieldLabel>
           <Box>
-            <Text color={focus === 'durable' ? 'suggestion' : undefined}>
-              {durable ? 'Durable' : 'Session-only'}
-            </Text>
+            <Text color={focus === 'durable' ? 'suggestion' : undefined}>{durable ? 'Durable' : 'Session-only'}</Text>
             <Text dimColor>
               {'  '}
               {durable ? 'saved to .claude/scheduled_tasks.json' : 'kept in memory until this session exits'}
             </Text>
           </Box>
-          {!durableAvailable && <Text color="warning">  Durable scheduled tasks are disabled by the runtime gate.</Text>}
+          {!durableAvailable && <Text color="warning"> Durable scheduled tasks are disabled by the runtime gate.</Text>}
         </Box>
 
-        {error && <Text color="error">  {error}</Text>}
+        {error && <Text color="error"> {error}</Text>}
 
         <Box justifyContent="flex-end">
-          <Text dimColor>Esc cancel  </Text>
+          <Text dimColor>Esc cancel </Text>
           <Text color={focus === 'create' ? 'suggestion' : undefined} inverse={focus === 'create'}>
             {' '}
-            Add Scheduled Task
-            {' '}
+            Add Scheduled Task{' '}
           </Text>
         </Box>
       </Box>

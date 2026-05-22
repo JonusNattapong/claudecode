@@ -13,15 +13,15 @@ import { join } from 'path';
 import { getClaudeConfigHomeDir } from '../../utils/envUtils.js';
 import { jsonParse } from '../../utils/slowOperations.js';
 import { type AutonomousStatus, loadStatus } from './agentLoop.js';
-import { loadQueue, getQueueStats } from './taskQueue.js';
+import { getQueueStats, loadQueue } from './taskQueue.js';
 
 // ─── Constants ────────────────────────────────────────────────
 
 const DAEMON_DIR = join(getClaudeConfigHomeDir(), 'daemon');
 const AUTONOMOUS_ENABLED_PATH = join(DAEMON_DIR, 'autonomous-enabled.json');
 
-const HEALTH_CHECK_MS = 30_000;     // check every 30s
-const HEALTH_TIMEOUT_MS = 120_000;  // consider dead after 2 min without heartbeat
+const HEALTH_CHECK_MS = 30_000; // check every 30s
+const HEALTH_TIMEOUT_MS = 120_000; // consider dead after 2 min without heartbeat
 
 // ─── State ────────────────────────────────────────────────────
 

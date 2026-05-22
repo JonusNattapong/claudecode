@@ -2,9 +2,9 @@ import path from 'node:path';
 import type { AgentDefinition, RuntimeBudget, WorkflowDefinition } from './types.js';
 
 export const RUNTIME_DIRS = {
-  runs: '.ceph/runs',
-  agents: '.ceph/agents',
-  workflows: '.ceph/workflows',
+  runs: '.claude/runs',
+  agents: '.claude/agents',
+  workflows: '.claude/workflows',
 };
 
 export const DEFAULT_BUDGET: RuntimeBudget = {

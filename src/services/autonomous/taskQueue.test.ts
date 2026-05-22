@@ -1,6 +1,5 @@
 import { afterAll, beforeAll, expect, test } from 'bun:test';
-import { existsSync } from 'fs';
-import { unlinkSync } from 'fs';
+import { existsSync, unlinkSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
 
@@ -159,7 +158,7 @@ test('leaseTask prevents duplicate claim', async () => {
   const id = await addTask({ title: 'Lease test' });
   expect(await leaseTask(id, 'owner-1')).toBe(true); // first claim
   expect(await leaseTask(id, 'owner-2')).toBe(false); // different owner blocked
-  expect(await leaseTask(id, 'owner-1')).toBe(true);  // same owner re-lease ok
+  expect(await leaseTask(id, 'owner-1')).toBe(true); // same owner re-lease ok
   await releaseLease(id, 'owner-1');
 });
 

@@ -9,11 +9,14 @@ import {
   isAutoCompactEnabled,
 } from '../services/compact/autoCompact.js';
 import { useCompactWarningSuppression } from '../services/compact/compactWarningHook.js';
+import { estimateContextBreakdown, renderSegmentedBar } from '../utils/contextBar.js';
+import { formatTokens } from '../utils/format.js';
 import { getUpgradeMessage } from '../utils/model/contextWindowUpgradeCheck.js';
 
 type Props = {
   tokenUsage: number;
   model: string;
+  messages?: any[];
 };
 
 /**
@@ -66,7 +69,7 @@ function CollapseLabel({ upgradeMessage }: { upgradeMessage: string | null }): R
   );
 }
 
-export function TokenWarning({ tokenUsage, model }: Props): React.ReactNode {
+export function TokenWarning({ tokenUsage, model, messages }: Props): React.ReactNode {
   const { percentLeft, isAboveWarningThreshold, isAboveErrorThreshold } = calculateTokenWarningState(tokenUsage, model);
 
   // Use reactive hook to check if warning should be suppressed
@@ -123,19 +126,39 @@ export function TokenWarning({ tokenUsage, model }: Props): React.ReactNode {
     ? `${100 - displayPercentLeft}% context used`
     : `${displayPercentLeft}% until auto-compact`;
 
+  // Estimate categories and create Segmented HUD
+  const breakdown = estimateContextBreakdown(messages || [], tokenUsage);
+
+  const barSegments = breakdown.map(item => ({
+    tokens: item.tokens,
+    colorHex: item.colorHex,
+  }));
+
+  const bar = renderSegmentedBar(barSegments, 36);
+
   return (
-    <Box flexDirection="row">
-      {showAutoCompactWarning ? (
-        <Text dimColor wrap="truncate">
-          {upgradeMessage ? `${autocompactLabel} \u00b7 ${upgradeMessage}` : autocompactLabel}
+    <Box flexDirection="column" gap={0} marginTop={1}>
+      <Box flexDirection="row" gap={1} alignItems="center">
+        <Text>{bar}</Text>
+        <Text bold color={isAboveErrorThreshold ? 'red' : 'yellow'}>
+          {showAutoCompactWarning ? autocompactLabel : `Context low (${percentLeft}% left)`}
         </Text>
-      ) : (
-        <Text color={isAboveErrorThreshold ? 'error' : 'warning'} wrap="truncate">
-          {upgradeMessage
-            ? `Context low (${percentLeft}% remaining) \u00b7 ${upgradeMessage}`
-            : `Context low (${percentLeft}% remaining) \u00b7 Run /compact to compact & continue`}
-        </Text>
-      )}
+      </Box>
+      <Box flexDirection="row" gap={1} flexWrap="wrap" marginTop={0}>
+        {breakdown.map((item, idx) => (
+          <Box key={item.label} flexDirection="row" gap={0}>
+            {idx > 0 && <Text dimColor> · </Text>}
+            <Text color={item.colorHex}>■</Text>
+            <Text dimColor>{` ${item.label}:`}</Text>
+            <Text bold color={item.colorHex}>{` ${formatTokens(item.tokens)}`}</Text>
+          </Box>
+        ))}
+      </Box>
+      {upgradeMessage ? (
+        <Box marginTop={0}>
+          <Text dimColor>{upgradeMessage}</Text>
+        </Box>
+      ) : null}
     </Box>
   );
 }

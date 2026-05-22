@@ -505,8 +505,10 @@ export async function teleportResumeCodeSession(
             ? `${repoValidation.sessionHost}/${repoValidation.sessionRepo}`
             : repoValidation.sessionRepo;
         throw new TeleportOperationError(
-          `You must run ceph --teleport ${sessionId} from a checkout of ${notInRepoDisplay}.`,
-          chalk.red(`You must run ceph --teleport ${sessionId} from a checkout of ${chalk.bold(notInRepoDisplay)}.\n`),
+          `You must run claude --teleport ${sessionId} from a checkout of ${notInRepoDisplay}.`,
+          chalk.red(
+            `You must run claude --teleport ${sessionId} from a checkout of ${chalk.bold(notInRepoDisplay)}.\n`,
+          ),
         );
       }
       case 'mismatch': {
@@ -527,9 +529,9 @@ export async function teleportResumeCodeSession(
           ? `${repoValidation.currentHost}/${repoValidation.currentRepo}`
           : repoValidation.currentRepo;
         throw new TeleportOperationError(
-          `You must run ceph --teleport ${sessionId} from a checkout of ${sessionDisplay}.\nThis repo is ${currentDisplay}.`,
+          `You must run claude --teleport ${sessionId} from a checkout of ${sessionDisplay}.\nThis repo is ${currentDisplay}.`,
           chalk.red(
-            `You must run ceph --teleport ${sessionId} from a checkout of ${chalk.bold(sessionDisplay)}.\nThis repo is ${chalk.bold(currentDisplay)}.\n`,
+            `You must run claude --teleport ${sessionId} from a checkout of ${chalk.bold(sessionDisplay)}.\nThis repo is ${chalk.bold(currentDisplay)}.\n`,
           ),
         );
       }

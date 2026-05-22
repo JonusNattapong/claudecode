@@ -21,8 +21,8 @@ import { logError } from './log.js';
 import { gte, lt } from './semver.js';
 import { getInitialSettings } from './settings/settings.js';
 import { filterClaudeAliases, getShellConfigPaths, readFileLines, writeFileLines } from './shellConfig.js';
-import { jsonParse } from './slowOperations.js';
 import { sleep } from './sleep.js';
+import { jsonParse } from './slowOperations.js';
 
 const GCS_BUCKET_URL =
   'https://storage.googleapis.com/claude-code-dist-86c565f3-f756-42ad-8dfa-d59b1c096819/claude-code-releases';
@@ -47,13 +47,7 @@ export type MaxVersionConfig = {
 /**
  * Categories of update failures for structured error reporting.
  */
-export type UpdateErrorCategory =
-  | 'network'
-  | 'permissions'
-  | 'registry'
-  | 'lock_contention'
-  | 'platform'
-  | 'unknown';
+export type UpdateErrorCategory = 'network' | 'permissions' | 'registry' | 'lock_contention' | 'platform' | 'unknown';
 
 /**
  * Classifies an error into a category and extracts the OS error code if available.
@@ -445,7 +439,9 @@ export async function getLatestVersionFromGcs(channel: ReleaseChannel): Promise<
       return response.data.trim();
     } catch (error) {
       const { category, osCode } = classifyUpdateError(error);
-      logForDebugging(`Failed to fetch ${channel} from GCS (attempt ${attempt + 1}/${maxRetries + 1}): ${category}${osCode ? ` (${osCode})` : ''} - ${error}`);
+      logForDebugging(
+        `Failed to fetch ${channel} from GCS (attempt ${attempt + 1}/${maxRetries + 1}): ${category}${osCode ? ` (${osCode})` : ''} - ${error}`,
+      );
       if (category === 'permissions' || attempt >= maxRetries) {
         return null;
       }

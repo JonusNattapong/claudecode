@@ -107,7 +107,7 @@ export const call: LocalJSXCommandCall = async (onDone, _context, args) => {
     switch (subcommand) {
       case 'init': {
         await initMemoryWorkspace(cwd);
-        onDone('🟢 Ceph Memory workspace layout successfully initialized under `.ceph/`', { display: 'system' });
+        onDone('🟢 Claude Memory workspace layout successfully initialized under `.claude/`', { display: 'system' });
         return null;
       }
 
@@ -197,7 +197,7 @@ export const call: LocalJSXCommandCall = async (onDone, _context, args) => {
         const pendingId = argv[1];
         if (!pendingId) {
           onDone(
-            'Error: Please specify the pending-id to approve. Example: `/memory approve ceph:pending:2026-05-20:abcde`',
+            'Error: Please specify the pending-id to approve. Example: `/memory approve claude:pending:2026-05-20:abcde`',
             { display: 'system' },
           );
           return null;
@@ -262,7 +262,7 @@ export const call: LocalJSXCommandCall = async (onDone, _context, args) => {
 
         onDone(
           [
-            'Ceph Memory Diagnostics:',
+            'Claude Memory Diagnostics:',
             `  Enabled: ${status.initialized ? 'Yes 🟢' : 'No 🔴'}`,
             `  Workspace Memory Path: \`${status.memoryDir}\``,
             `  Wiki Directory: \`${status.wikiDir}\``,
@@ -292,7 +292,7 @@ export const call: LocalJSXCommandCall = async (onDone, _context, args) => {
             '  approve <id>         Approve candidate memory suggestion and append to memory',
             '  reject <id>          Reject candidate memory suggestion and delete suggestion',
             '  forget <id>          Permanently delete a memory record from disk and index',
-            '  doctor               Display Ceph Memory status, metrics, and health diagnostics',
+            '  doctor               Display Claude Memory status, metrics, and health diagnostics',
           ].join('\n'),
           { display: 'system' },
         );

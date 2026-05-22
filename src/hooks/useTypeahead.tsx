@@ -458,11 +458,50 @@ export function useTypeahead({
     };
   }, [input, cursorOffset, mode, commands, suppressSuggestions]);
 
+  // Synchronous ghost text for prompt mode command argument hints (e.g., "[condition]" after "/goal ").
+  // Shown when cursor is at end of a command that has trailing space + argHint/argNames defined.
+  const syncArgGhostText = useMemo((): InlineGhostText | undefined => {
+    if (mode !== 'prompt' || suppressSuggestions || !input) return undefined;
+    if (!isCommandInput(input)) return undefined;
+    // Only show when cursor is at end of input (after the space)
+    if (cursorOffset !== input.length) return undefined;
+    if (!input.endsWith(' ')) return undefined;
+
+    const spaceIndex = input.indexOf(' ');
+    if (spaceIndex === -1) return undefined;
+    const commandName = input.slice(1, spaceIndex);
+    const exactMatch = commands.find(cmd => getCommandName(cmd) === commandName);
+    if (!exactMatch) return undefined;
+
+    let hint: string | undefined;
+
+    // Priority 1: Static argumentHint (e.g., "<plugin-name>" for /plugin-details)
+    if (exactMatch.argumentHint) {
+      const hasExactlyOneTrailingSpace = input.length === spaceIndex + 1;
+      if (hasExactlyOneTrailingSpace) {
+        hint = exactMatch.argumentHint;
+      }
+    }
+    // Priority 2: Progressive hint from argNames (show next unfilled arg)
+    if (!hint && exactMatch.type === 'prompt' && exactMatch.argNames?.length) {
+      const argsText = input.slice(spaceIndex + 1);
+      const typedArgs = parseArguments(argsText);
+      hint = generateProgressiveArgumentHint(exactMatch.argNames, typedArgs);
+    }
+
+    if (!hint) return undefined;
+    return {
+      text: hint,
+      fullCommand: commandName,
+      insertPosition: cursorOffset,
+    };
+  }, [input, cursorOffset, mode, commands, suppressSuggestions]);
+
   // Merged ghost text: prompt mode uses synchronous useMemo, bash mode uses async useState
   const effectiveGhostText = suppressSuggestions
     ? undefined
     : mode === 'prompt'
-      ? syncPromptGhostText
+      ? (syncArgGhostText ?? syncPromptGhostText)
       : inlineGhostText;
 
   // Use a ref for cursorOffset to avoid re-triggering suggestions on cursor movement alone

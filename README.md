@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/ceph-logo-long.png" alt="Claude Code" width="480" />
+  <img src="assets/claude-logo-long.png" alt="Claude Code" width="480" />
 </p>
 
 <p align="center">
@@ -45,32 +45,32 @@ Highlights:
 
 ### Compatibility Namespace
 
-Claude Code's command is `ceph`, but parts of the runtime intentionally still read Claude-compatible project and user paths such as `.claude/settings.json`, `.claude/skills/`, and selected `CLAUDE_CODE_*` environment variables. This keeps existing Claude Code-style projects, plugins, skills, hooks, and settings reusable while the public CLI and docs use the Claude Code name.
+Claude Code's command is `claude`, but parts of the runtime intentionally still read Claude-compatible project and user paths such as `.claude/settings.json`, `.claude/skills/`, and selected `CLAUDE_CODE_*` environment variables. This keeps existing Claude Code-style projects, plugins, skills, hooks, and settings reusable while the public CLI and docs use the Claude Code name.
 
 ## Quick Start
 
 ### Install Globally
 
 ```bash
-npm install -g cephcode
+npm install -g claudecode
 ```
 
 or:
 
 ```bash
-bun install -g cephcode
+bun install -g claudecode
 ```
 
 Run it from any project directory:
 
 ```bash
-ceph
+claude
 ```
 
 ### Run From Source
 
 ```bash
-git clone https://github.com/CephCore/cephcode.git
+git clone https://github.com/ClaudeCore/claudecode.git
 cd claudecode
 bun install
 bun run build
@@ -109,14 +109,17 @@ See [docs/providers.html](docs/providers.html) for the provider overview.
 ## Common Commands
 
 ```text
-/model      Switch model or provider
-/status     Show session, provider, and context status
-/doctor     Run diagnostics
-/context    Inspect context usage
-/compact    Compress conversation context
-/mcp        Manage MCP servers
-/plugin     Manage plugins
-/bridge     Configure bridge mode
+/model          Switch model or provider
+/status         Show session, provider, and context status
+/doctor         Run diagnostics
+/context        Inspect context usage
+/compact        Compress conversation context
+/mcp            Manage MCP servers
+/plugin         Manage plugins
+/plugin-details Show plugin component inventory, hooks, MCP servers, and token cost
+/loop           Run a prompt on a recurring interval (e.g. /loop 5m /check-deploy)
+/autofix-pr     Fix CI errors and review comments on a PR via Claude Code on the web
+/bridge         Configure bridge mode
 /agent      Manage local agent workflows (run, status, trace, approvals, report)
 /daemon     Open the interactive 24/7 autonomous daemon control panel
 /task       Create scheduled tasks or manage the autonomous task queue

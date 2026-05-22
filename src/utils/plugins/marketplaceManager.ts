@@ -1757,7 +1757,7 @@ export async function removeMarketplaceSource(name: string): Promise<void> {
     throw new Error(
       `Marketplace '${name}' is registered from the read-only seed directory ` +
         `(${seedDir}) and will be re-registered on next startup. ` +
-        `To stop using its plugins: ceph plugin disable <plugin>@${name}`,
+        `To stop using its plugins: claude plugin disable <plugin>@${name}`,
     );
   }
 
@@ -2187,7 +2187,7 @@ export async function refreshMarketplace(
             `(${installLocation}) — expected a path inside ${cacheDir}. ` +
             `This can happen after cross-platform path writes or manual edits ` +
             `to known_marketplaces.json. ` +
-            `Run: ceph plugin marketplace remove "${name}" and re-add it.`,
+            `Run: claude plugin marketplace remove "${name}" and re-add it.`,
         );
       }
     }
@@ -2280,7 +2280,7 @@ export async function refreshMarketplace(
           `The marketplace.json file is no longer present in this repository.\n\n` +
             `${reason}\n` +
             `Source: ${sourceDisplay}\n\n` +
-            `You can remove this marketplace with: ceph plugin marketplace remove "${name}"`,
+            `You can remove this marketplace with: claude plugin marketplace remove "${name}"`,
         );
       }
     } else if (source.source === 'url') {

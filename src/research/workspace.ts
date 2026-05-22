@@ -5,14 +5,14 @@ import { getFsImplementation } from '../utils/fsOperations.js';
 export async function initWorkspace(cwd: string): Promise<void> {
   const fsImpl = getFsImplementation();
   const dirs = [
-    join(cwd, '.ceph'),
-    join(cwd, '.ceph', 'research'),
-    join(cwd, '.ceph', 'research', 'runs'),
-    join(cwd, '.ceph', 'wiki'),
-    join(cwd, '.ceph', 'wiki', 'Research'),
-    join(cwd, '.ceph', 'memory'),
-    join(cwd, '.ceph', 'memory', 'pending'),
-    join(cwd, '.ceph', 'index'),
+    join(cwd, '.claude'),
+    join(cwd, '.claude', 'research'),
+    join(cwd, '.claude', 'research', 'runs'),
+    join(cwd, '.claude', 'wiki'),
+    join(cwd, '.claude', 'wiki', 'Research'),
+    join(cwd, '.claude', 'memory'),
+    join(cwd, '.claude', 'memory', 'pending'),
+    join(cwd, '.claude', 'index'),
   ];
 
   for (const dir of dirs) {
@@ -31,11 +31,11 @@ export async function getResearchWorkspaceStatus(cwd: string): Promise<{
   indexDir: string;
 }> {
   const fsImpl = getFsImplementation();
-  const researchDir = join(cwd, '.ceph', 'research');
-  const runsDir = join(cwd, '.ceph', 'research', 'runs');
-  const wikiResearchDir = join(cwd, '.ceph', 'wiki', 'Research');
-  const pendingMemoryDir = join(cwd, '.ceph', 'memory', 'pending');
-  const indexDir = join(cwd, '.ceph', 'index');
+  const researchDir = join(cwd, '.claude', 'research');
+  const runsDir = join(cwd, '.claude', 'research', 'runs');
+  const wikiResearchDir = join(cwd, '.claude', 'wiki', 'Research');
+  const pendingMemoryDir = join(cwd, '.claude', 'memory', 'pending');
+  const indexDir = join(cwd, '.claude', 'index');
 
   const initialized =
     fsImpl.existsSync(researchDir) &&

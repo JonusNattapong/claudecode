@@ -9,7 +9,7 @@ export type ResearchSourceType =
   | 'local_wiki'
   | 'local_memory';
 
-export type CephResearchConfig = {
+export type ClaudeResearchConfig = {
   enabled: boolean;
   researchDir: string;
   defaultMode: ResearchMode;

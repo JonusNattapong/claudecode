@@ -1,6 +1,12 @@
 import chalk from 'chalk';
 import { logEvent } from 'src/services/analytics/index.js';
-import { getLatestVersion, type InstallStatus, installGlobalPackage, classifyUpdateError, type UpdateErrorCategory } from 'src/utils/autoUpdater.js';
+import {
+  classifyUpdateError,
+  getLatestVersion,
+  type InstallStatus,
+  installGlobalPackage,
+  type UpdateErrorCategory,
+} from 'src/utils/autoUpdater.js';
 import { regenerateCompletionCache } from 'src/utils/completionCache.js';
 import { getGlobalConfig, type InstallMethod, saveGlobalConfig } from 'src/utils/config.js';
 import { logForDebugging } from 'src/utils/debug.js';

@@ -10,7 +10,7 @@ export async function savePendingMemory(
   claims: ResearchClaim[],
 ): Promise<string> {
   const fsImpl = getFsImplementation();
-  const pendingDir = join(cwd, '.ceph', 'memory', 'pending');
+  const pendingDir = join(cwd, '.claude', 'memory', 'pending');
 
   if (!fsImpl.existsSync(pendingDir)) {
     await mkdir(pendingDir, { recursive: true });
@@ -48,7 +48,7 @@ export async function savePendingMemory(
     '',
     '## Evidence',
     '',
-    `- \`.ceph/research/runs/${runId}/report.md\``,
+    `- \`.claude/research/runs/${runId}/report.md\``,
   ].join('\n');
 
   await writeFile(pendingFilePath, content, 'utf-8');

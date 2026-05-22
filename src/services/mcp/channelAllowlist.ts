@@ -62,4 +62,3 @@ export function isChannelAllowlisted(pluginSource: string | undefined): boolean 
   if (!marketplace) return false;
   return getChannelAllowlist().some(e => e.plugin === name && e.marketplace === marketplace);
 }
-

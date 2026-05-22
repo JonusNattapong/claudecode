@@ -358,6 +358,13 @@ export function useTextInput({
       case key.meta:
         return handleMeta;
       case key.tab:
+        if (inlineGhostText && inlineGhostText.insertPosition === offset) {
+          return () => {
+            const newValue = originalValue + inlineGhostText.text;
+            onChange(newValue);
+            setOffset(newValue.length);
+          };
+        }
         return () => cursor;
       case key.upArrow && !key.shift:
         return upOrHistoryUp;
@@ -366,6 +373,13 @@ export function useTextInput({
       case key.leftArrow:
         return () => cursor.left();
       case key.rightArrow:
+        if (inlineGhostText && inlineGhostText.insertPosition === offset) {
+          return () => {
+            const newValue = originalValue + inlineGhostText.text;
+            onChange(newValue);
+            setOffset(newValue.length);
+          };
+        }
         return () => cursor.right();
       default: {
         return (input: string) => {

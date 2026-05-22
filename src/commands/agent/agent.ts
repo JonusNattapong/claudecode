@@ -475,10 +475,10 @@ async function executeAgentCommand(onDone: LocalJSXCommandOnDone, workspaceRoot:
         let doctorStr = `**Claude Code Agent Runtime Diagnostics**\n\n`;
 
         const dirs = [
-          path.join(workspaceRoot, '.ceph'),
-          path.join(workspaceRoot, '.ceph', 'runs'),
-          path.join(workspaceRoot, '.ceph', 'agents'),
-          path.join(workspaceRoot, '.ceph', 'workflows'),
+          path.join(workspaceRoot, '.claude'),
+          path.join(workspaceRoot, '.claude', 'runs'),
+          path.join(workspaceRoot, '.claude', 'agents'),
+          path.join(workspaceRoot, '.claude', 'workflows'),
         ];
 
         for (const dir of dirs) {

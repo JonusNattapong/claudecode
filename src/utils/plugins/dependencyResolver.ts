@@ -287,12 +287,12 @@ export function formatReverseDependentsSuffix(rdeps: string[] | undefined): stri
  * Example output:
  *   Cannot disable "plugin-a" — required by: plugin-b, plugin-c
  *   Disable dependents first and retry, or use:
- *     ceph plugin disable plugin-b && ceph plugin disable plugin-c && ceph plugin disable plugin-a
+ *     claude plugin disable plugin-b && claude plugin disable plugin-c && claude plugin disable plugin-a
  *
  * Returns empty string when no reverse dependents.
  */
 export function formatDisableChainHint(rdeps: string[] | undefined): string {
   if (!rdeps || rdeps.length === 0) return '';
-  const chain = [...rdeps, '<target>'].join(' && ceph plugin disable ');
-  return `Cannot disable — required by: ${rdeps.join(', ')}. Disable dependents first and retry, or use:\n  ceph plugin disable ${chain}`;
+  const chain = [...rdeps, '<target>'].join(' && claude plugin disable ');
+  return `Cannot disable — required by: ${rdeps.join(', ')}. Disable dependents first and retry, or use:\n  claude plugin disable ${chain}`;
 }

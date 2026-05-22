@@ -291,7 +291,7 @@ export function MCPListPanel({
           <Box flexDirection="column">
             {hasFailedClients && (
               <Text dimColor>
-                {debugMode ? '※ Error logs shown inline with --debug' : '※ Run ceph --debug to see error logs'}
+                {debugMode ? '※ Error logs shown inline with --debug' : '※ Run claude --debug to see error logs'}
               </Text>
             )}
             <Text dimColor>

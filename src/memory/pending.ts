@@ -21,14 +21,14 @@ export async function proposeMemory(
   target: 'user' | 'project' | 'feedback' | 'agent' = 'project',
 ): Promise<string> {
   const fsImpl = getFsImplementation();
-  const pendingDir = join(cwd, '.ceph', 'memory', 'pending');
+  const pendingDir = join(cwd, '.claude', 'memory', 'pending');
 
   const date = new Date().toISOString().slice(0, 10);
   const randomSlug = Math.random().toString(36).substring(2, 7);
   const pendingFileName = `${date}-${randomSlug}.md`;
   const pendingFilePath = join(pendingDir, pendingFileName);
 
-  const pendingId = `ceph:pending:${date}:${randomSlug}`;
+  const pendingId = `claude:pending:${date}:${randomSlug}`;
 
   const metadata: MemoryMetadata = {
     id: pendingId,
@@ -58,7 +58,7 @@ export async function proposeMemory(
 
 export async function listPending(cwd: string): Promise<PendingSuggestion[]> {
   const fsImpl = getFsImplementation();
-  const pendingDir = join(cwd, '.ceph', 'memory', 'pending');
+  const pendingDir = join(cwd, '.claude', 'memory', 'pending');
   if (!fsImpl.existsSync(pendingDir)) return [];
 
   const files = fsImpl.readdirSync(pendingDir);
@@ -71,7 +71,7 @@ export async function listPending(cwd: string): Promise<PendingSuggestion[]> {
     const filePath = join(pendingDir, filename);
     try {
       const content = await readFile(filePath, 'utf-8');
-      const parsed = parseFrontmatter(content, `ceph:pending:${filename}`, 'pending');
+      const parsed = parseFrontmatter(content, `claude:pending:${filename}`, 'pending');
 
       const facts: string[] = [];
       const lines = parsed.content.split('\n');
@@ -115,10 +115,10 @@ export async function approveMemory(cwd: string, pendingId: string): Promise<str
     throw new Error(`Pending memory suggestion with ID "${pendingId}" not found.`);
   }
 
-  const targetPath = join(cwd, '.ceph', 'memory', matched.suggestedTarget);
+  const targetPath = join(cwd, '.claude', 'memory', matched.suggestedTarget);
 
   let targetMetadata: MemoryMetadata = {
-    id: `ceph:memory:${matched.suggestedTarget.replace(/\//g, ':').replace(/\.md$/, '')}`,
+    id: `claude:memory:${matched.suggestedTarget.replace(/\//g, ':').replace(/\.md$/, '')}`,
     type: matched.suggestedTarget.split('/')[0] as MemoryType,
     created: new Date().toISOString(),
     updated: new Date().toISOString(),

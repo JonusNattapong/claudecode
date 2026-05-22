@@ -57,7 +57,7 @@ export async function scanDirectory(
     } else if (stats.isFile() && entry.endsWith('.md')) {
       const content = await readFile(fullPath, 'utf-8');
       const fileName = basename(entry, '.md');
-      const defaultId = `ceph:memory:${defaultType}:${fileName.toLowerCase()}`;
+      const defaultId = `claude:memory:${defaultType}:${fileName.toLowerCase()}`;
 
       // Inferred type based on path
       let type = defaultType;

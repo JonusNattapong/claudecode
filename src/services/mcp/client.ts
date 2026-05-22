@@ -2184,10 +2184,7 @@ export const fetchCommandsForClient = memoizeWithLRU(
         if (cursor) {
           params.params = { cursor };
         }
-        const result = (await client.client.request(
-          params,
-          ListPromptsResultSchema,
-        )) as ListPromptsResult;
+        const result = (await client.client.request(params, ListPromptsResultSchema)) as ListPromptsResult;
         if (!result.prompts) break;
         allPrompts.push(...result.prompts);
         cursor = result.nextCursor;

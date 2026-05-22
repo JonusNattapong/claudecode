@@ -74,7 +74,7 @@ export const call: LocalJSXCommandCall = async (onDone, _context, args) => {
     case 'init': {
       try {
         await initializeEvalWorkspace(cwd);
-        onDone('🟢 Ceph Verification Harness workspace successfully initialized under `.ceph/evals/`', {
+        onDone('🟢 Claude Verification Harness workspace successfully initialized under `.claude/evals/`', {
           display: 'system',
         });
       } catch (err: any) {
@@ -94,7 +94,7 @@ export const call: LocalJSXCommandCall = async (onDone, _context, args) => {
         const graders = await loadGraders(config);
 
         if (tasks.length === 0) {
-          onDone('🔴 No tasks found. Run "cephcode eval init" to create default tasks and graders.', {
+          onDone('🔴 No tasks found. Run "claudecode eval init" to create default tasks and graders.', {
             display: 'system',
           });
           return null;
@@ -194,7 +194,7 @@ export const call: LocalJSXCommandCall = async (onDone, _context, args) => {
 
         const baseline = await loadBaseline(config, baselineId);
         if (!baseline) {
-          onDone(`🔴 Baseline "${baselineId}" not found in .ceph/evals/baselines/`, { display: 'system' });
+          onDone(`🔴 Baseline "${baselineId}" not found in .claude/evals/baselines/`, { display: 'system' });
           return null;
         }
 

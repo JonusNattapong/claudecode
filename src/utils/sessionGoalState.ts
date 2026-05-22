@@ -1,9 +1,9 @@
 import { mkdir, readFile, unlink, writeFile } from 'fs/promises';
 import { join } from 'path';
 import { getSessionId } from '../bootstrap/state.js';
+import type { PermissionMode } from '../types/permissions.js';
 import { getCwd } from './cwd.js';
 import { pathExists } from './file.js';
-import type { PermissionMode } from '../types/permissions.js';
 
 /**
  * Persistent session goal state.

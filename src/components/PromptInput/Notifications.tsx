@@ -163,6 +163,7 @@ export function Notifications({
           isShowingCompactMessage={isShowingCompactMessage}
           onAutoUpdaterResult={onAutoUpdaterResult}
           onChangeIsUpdating={onChangeIsUpdating}
+          messages={messages}
         />
       </Box>
     </SentryErrorBoundary>
@@ -186,6 +187,7 @@ function NotificationContent({
   isShowingCompactMessage,
   onAutoUpdaterResult,
   onChangeIsUpdating,
+  messages,
 }: {
   ideSelection: IDESelection | undefined;
   mcpClients?: MCPServerConnection[];
@@ -206,6 +208,7 @@ function NotificationContent({
   isShowingCompactMessage: boolean;
   onAutoUpdaterResult: (result: AutoUpdaterResult) => void;
   onChangeIsUpdating: (isUpdating: boolean) => void;
+  messages: Message[];
 }): ReactNode {
   // Poll apiKeyHelper inflight state to show slow-helper notice.
   // Gated on configuration — most users never set apiKeyHelper, so the
@@ -301,7 +304,7 @@ function NotificationContent({
           </Text>
         </Box>
       )}
-      {!isBriefOnly && <TokenWarning tokenUsage={tokenUsage} model={mainLoopModel} />}
+      {!isBriefOnly && <TokenWarning tokenUsage={tokenUsage} model={mainLoopModel} messages={messages} />}
       {shouldShowAutoUpdater && (
         <AutoUpdaterWrapper
           verbose={verbose}

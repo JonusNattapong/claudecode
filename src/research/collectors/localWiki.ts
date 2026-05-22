@@ -5,7 +5,7 @@ import type { ResearchSource } from '../types.js';
 
 export async function collectLocalWiki(cwd: string, query: string): Promise<ResearchSource[]> {
   const fsImpl = getFsImplementation();
-  const wikiDir = join(cwd, '.ceph', 'wiki');
+  const wikiDir = join(cwd, '.claude', 'wiki');
   if (!fsImpl.existsSync(wikiDir)) {
     return [];
   }

@@ -29,7 +29,7 @@ export function buildResearchReport(
               `**Claim:** ${claim.claim} ${sourceCites ? `(${sourceCites})` : ''}`,
               `**Type:** ${claim.type}  `,
               `**Confidence:** ${claim.confidence}  `,
-              `**Implication for Ceph:** Essential design pattern reference.`,
+              `**Implication for Claude:** Essential design pattern reference.`,
               '',
             ].join('\n');
           })
@@ -41,7 +41,7 @@ export function buildResearchReport(
     .join('\n');
 
   const comparisonMatrix = [
-    '| Option / Feature | Strength | Weakness | Fit for Ceph |',
+    '| Option / Feature | Strength | Weakness | Fit for Claude |',
     '|---|---|---|---|',
     comparisonRows || '| Base Architecture | Multi-provider support | Complex routing | Highly Compatible |',
   ].join('\n');

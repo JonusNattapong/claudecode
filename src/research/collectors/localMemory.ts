@@ -5,7 +5,7 @@ import type { ResearchSource } from '../types.js';
 
 export async function collectLocalMemory(cwd: string, query: string): Promise<ResearchSource[]> {
   const fsImpl = getFsImplementation();
-  const memoryDir = join(cwd, '.ceph', 'memory');
+  const memoryDir = join(cwd, '.claude', 'memory');
   if (!fsImpl.existsSync(memoryDir)) {
     return [];
   }

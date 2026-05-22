@@ -25,6 +25,7 @@ import { writeFile } from 'fs/promises';
 import { Box, Text, useStdin, useTheme, useTerminalFocus, useTerminalTitle, useTabStatus } from '../ink.js';
 import type { TabStatusKind } from '../ink/hooks/use-tab-status.js';
 import { CostThresholdDialog } from '../components/CostThresholdDialog.js';
+import { AutonomousExecutionAccordion } from '../components/AutonomousExecutionAccordion.js';
 import { IdleReturnDialog } from '../components/IdleReturnDialog.js';
 import * as React from 'react';
 import {
@@ -842,6 +843,9 @@ export function REPL({
   const ultraplanPendingChoice = useAppState(s => s.ultraplanPendingChoice);
   const ultraplanLaunchPending = useAppState(s => s.ultraplanLaunchPending);
   const viewingAgentTaskId = useAppState(s => s.viewingAgentTaskId);
+  const sessionGoal = useAppState(s => s.sessionGoal);
+  const sessionGoalStartTime = useAppState(s => s.sessionGoalStartTime);
+  const sessionGoalTurnCount = useAppState(s => s.sessionGoalTurnCount);
   const setAppState = useSetAppState();
 
   // Bootstrap: retained local_agent that hasn't loaded disk yet → read
@@ -2276,7 +2280,7 @@ export function REPL({
 
         const formattedExchanges = recentExchanges
           .map(msg => {
-            const speaker = msg.type === 'user' ? 'User' : (log.agentName || 'Claude');
+            const speaker = msg.type === 'user' ? 'User' : log.agentName || 'Claude';
             const rawText = msg.message?.content ? getContentText(msg.message.content) : null;
             if (!rawText) return null;
             const singleLineText = rawText.replace(/\s+/g, ' ').trim();
@@ -5519,6 +5523,7 @@ export function REPL({
                 isLoading={isLoading}
                 streamingText={isLoading && !viewedAgentTask ? visibleStreamingText : null}
                 isBriefOnly={viewedAgentTask ? false : isBriefOnly}
+                autonomousCompact={Boolean(sessionGoal) && !viewedAgentTask}
                 unseenDivider={viewedAgentTask ? undefined : unseenDivider}
                 scrollRef={isFullscreenEnvEnabled() ? scrollRef : undefined}
                 trackStickyPrompt={isFullscreenEnvEnabled() ? true : undefined}
@@ -5539,6 +5544,14 @@ export function REPL({
                 <Box flexDirection="column" width="100%">
                   {toolJSX.jsx}
                 </Box>
+              )}
+              {!viewedAgentTask && sessionGoal && (
+                <AutonomousExecutionAccordion
+                  goal={sessionGoal}
+                  goalStartedAt={sessionGoalStartTime}
+                  goalTurns={sessionGoalTurnCount}
+                  isLoading={isLoading}
+                />
               )}
               {'external' === 'ant' && <TungstenLiveMonitor />}
               {feature('WEB_BROWSER_TOOL') ? WebBrowserPanelModule && <WebBrowserPanelModule.WebBrowserPanel /> : null}

@@ -486,7 +486,7 @@ export async function* runPreToolUseHooks(
                 decisionReason: {
                   type: 'deferred',
                   reason: result.hookPermissionDecisionReason || 'Deferred by hook',
-                  resumeCommand: `ceph -p --resume ${result.deferredMarker || ''}`,
+                  resumeCommand: `claude -p --resume ${result.deferredMarker || ''}`,
                 },
               },
             };
