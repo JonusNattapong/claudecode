@@ -87,4 +87,5 @@ temp/
 scratch/
 .plan/
 .docs/
+.claude/
 .ceph/
