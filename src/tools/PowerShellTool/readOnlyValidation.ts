@@ -852,7 +852,7 @@ export function resolveToCanonical(name: string): string {
  * Checks if a command name (after alias resolution) alters the path-resolution
  * namespace for subsequent statements in the same compound command.
  *
- * Covers TWO classes:
+ * Covers THREE classes:
  * 1. Cwd-changing cmdlets: Set-Location, Push-Location, Pop-Location (and
  *    aliases cd, sl, chdir, pushd, popd). Subsequent relative paths resolve
  *    from the new cwd.
@@ -860,6 +860,12 @@ export function resolveToCanonical(name: string): string {
  *    Subsequent drive-prefixed paths (p:/foo) resolve via the new drive root,
  *    not via the filesystem. Finding #21: `New-PSDrive -Name p -Root /etc;
  *    Remove-Item p:/passwd` — the validator cannot know p: maps to /etc.
+ * 3. Parser-level shortcuts: `cd..`, `cd\`, `cd~`, and bare drive letters
+ *    (`D:`, `d:`) are PowerShell parser constructs that bypass the normal
+ *    alias resolution. They aren't cmdlets — they change cwd immediately at
+ *    the parser/lexer level. Without detection here, compounds like
+ *    `cd..; Get-Content ./id_rsa` bypass the cd+read compound guard.
+ *    (finding: PowerShell cd built-in bypass)
  *
  * Any compound containing one of these cannot have its later statements'
  * relative/drive-prefixed paths validated against the stale validator cwd.
@@ -869,7 +875,9 @@ export function resolveToCanonical(name: string): string {
  */
 export function isCwdChangingCmdlet(name: string): boolean {
   const canonical = resolveToCanonical(name);
-  return (
+
+  // Standard cmdlet/alias resolution
+  if (
     canonical === 'set-location' ||
     canonical === 'push-location' ||
     canonical === 'pop-location' ||
@@ -881,7 +889,27 @@ export function isCwdChangingCmdlet(name: string): boolean {
     // 'mount' is the native mount(8) command; treating it as PSDrive-creating
     // would false-positive. (bug #15 / review nit)
     (getPlatform() === 'windows' && (canonical === 'ndr' || canonical === 'mount'))
-  );
+  ) {
+    return true;
+  }
+
+  // Parser-level built-in cd shortcuts that bypass alias resolution:
+  //   cd..  — go up one directory (Set-Location ..)
+  //   cd\   — go to drive root (Set-Location \)
+  //   cd~   — go to home directory (Set-Location ~)
+  //   D:    — bare drive letter changes to that drive (Set-Location D:\)
+  // The parser gives us the raw name string (e.g., "cd..", "d:") without
+  // cmdlet resolution since these aren't real cmdlets.
+  const lower = name.toLowerCase();
+  if (lower === 'cd..' || lower === 'cd\\' || lower === 'cd~') {
+    return true;
+  }
+  // Bare drive letter (single letter + colon), e.g. "d:", "C:"
+  if (/^[a-z]:$/i.test(lower)) {
+    return true;
+  }
+
+  return false;
 }
 
 /**

@@ -21,7 +21,6 @@ import diff from './commands/diff/index.js';
 import ctx_viz from './commands/ctx_viz/index.js';
 import doctor from './commands/doctor/index.js';
 import memory, { memorySearch } from './commands/memory/index.js';
-import evalCmd from './commands/eval/index.js';
 import explorer from './commands/explorer/index.js';
 import help from './commands/help/index.js';
 import ide from './commands/ide/index.js';
@@ -79,10 +78,7 @@ const bridge = _hasFeature('BRIDGE_MODE')
   ? (require('./commands/bridge/index.ts') as typeof import('./commands/bridge/index.ts')).default
   : null;
 const remoteControlServerCommand = null;
-const voiceCommand =
-  feature('VOICE_MODE') || _hasFeature('VOICE_MODE')
-    ? (require('./commands/voice/index.ts') as typeof import('./commands/voice/index.ts')).default
-    : null;
+const voiceCommand = (require('./commands/voice/index.ts') as typeof import('./commands/voice/index.ts')).default;
 const forceSnip = null;
 const webCmd = null;
 const clearSkillIndexCache = null;
@@ -109,6 +105,7 @@ import agents from './commands/agents/index.js';
 import plugin from './commands/plugin/index.js';
 import reloadPlugins from './commands/reload-plugins/index.js';
 import rewind from './commands/rewind/index.js';
+import recap from './commands/recap/index.js';
 import heapDump from './commands/heapdump/index.js';
 import mockLimits from './commands/mock-limits/index.js';
 import bridgeKick from './commands/bridge-kick.js';
@@ -266,7 +263,6 @@ const COMMANDS = memoize((): Command[] => [
   mcp,
   memory,
   memorySearch,
-  evalCmd,
   mobile,
   model,
   outputStyle,
@@ -278,6 +274,7 @@ const COMMANDS = memoize((): Command[] => [
   plugin,
   pluginDetails,
   pr_comments,
+  recap,
   releaseNotes,
   reloadPlugins,
   rename,

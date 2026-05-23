@@ -24,6 +24,15 @@ export type Utilization = {
   seven_day_opus?: RateLimit | null;
   seven_day_sonnet?: RateLimit | null;
   extra_usage?: ExtraUsage | null;
+  /** Breakdown of what's contributing to usage limits (upstream API) */
+  contributing_factors?: ContributingFactor[] | null;
+};
+
+/** A single contributing factor to usage limits */
+export type ContributingFactor = {
+  reason: string;
+  percentage?: number;
+  weight?: number;
 };
 
 export async function fetchUtilization(): Promise<Utilization | null> {

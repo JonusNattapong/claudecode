@@ -178,6 +178,12 @@ export function formatToken(
           ? textToken.tokens.map(_ => formatToken(_, theme, listDepth, orderedListNumber, token, highlight)).join('')
           : linkifyIssueReferences(decodeHtmlEntities(textToken.text));
         const reset = innerContent.includes('\x1b') && !innerContent.endsWith('\x1b[0m') ? '\x1b[0m' : '';
+        // GFM task list item: render checkbox instead of bullet/number
+        const listItem = parent as Tokens.ListItem;
+        if (listItem.task) {
+          const checkbox = listItem.checked ? chalk.green('☑') : chalk.dim('☐');
+          return `${checkbox} ${innerContent}${reset}${EOL}`;
+        }
         return `${orderedListNumber === null ? '-' : getListNumber(listDepth, orderedListNumber) + '.'} ${innerContent}${reset}${EOL}`;
       }
       return linkifyIssueReferences(decodeHtmlEntities(token.text));

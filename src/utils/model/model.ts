@@ -527,6 +527,14 @@ export function renderModelName(model: ModelName, providerOverride?: string, sty
       if (model === provider || model === registryEntry.label.toLowerCase()) {
         return registryEntry.label;
       }
+      // If the model name already starts with the provider ID or label,
+      // return it as is to avoid redundant prefixes like "DeepSeek: deepseek-v4-flash".
+      if (
+        model.toLowerCase().startsWith(provider.toLowerCase()) ||
+        model.toLowerCase().startsWith(registryEntry.label.toLowerCase())
+      ) {
+        return model;
+      }
       // If the model name is unknown, show only the provider label
       if (model === 'unknown') {
         return registryEntry.label;

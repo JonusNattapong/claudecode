@@ -476,6 +476,23 @@ function collectCommands(
     const result = walkCommand(node, [], commands, varScope);
     if (result.kind !== 'simple') return result;
     commands.push(...result.commands);
+
+    // Invalidate PWD/OLDPWD/DIRSTACK after cd/pushd/popd so that
+    // stale variable-tracking values for these shell-managed vars are
+    // not trusted across a cwd change. After cd, $PWD in a subsequent
+    // statement reflects the NEW cwd, not the tracked value.
+    // `PWD=/tmp && cd /other && echo $PWD` — without this invalidation,
+    // $PWD resolves to the tracked '/tmp' instead of the runtime '/other'.
+    const lastCmd = result.commands[result.commands.length - 1];
+    if (lastCmd && lastCmd.argv.length > 0) {
+      const cmdName = lastCmd.argv[0]?.toLowerCase() ?? '';
+      if (cmdName === 'cd' || cmdName === 'pushd' || cmdName === 'popd') {
+        varScope.delete('PWD');
+        varScope.delete('OLDPWD');
+        varScope.delete('DIRSTACK');
+      }
+    }
+
     return null;
   }
 

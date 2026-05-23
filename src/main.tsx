@@ -5650,11 +5650,14 @@ async function run(): Promise<CommanderCommand> {
       await setupTokenHandler(root);
     });
 
-  // Agents command - list configured agents
+  // Agents command - open agent view
   program
     .command('agents')
-    .description('List configured agents and dispatch background sessions')
+    .description('Open agent view')
     .option('--json', 'Print live agent sessions as machine-readable JSON')
+    .option('--config', 'List configured agent definitions instead of opening agent view')
+    .option('--manage', 'List configured agent definitions instead of opening agent view')
+    .option('--cwd <path>', 'Scope agent view to a working directory')
     .option('--setting-sources <sources>', 'Comma-separated list of setting sources to load (user, project, local).')
     .option('--add-dir <dirs...>', 'Additional working directories for dispatched sessions')
     .option('--settings <path>', 'Path to settings file for dispatched sessions')
@@ -5671,6 +5674,8 @@ async function run(): Promise<CommanderCommand> {
       const { agentsHandler } = await import('./cli/handlers/agents.js');
       if (opts.json === true) {
         await agentsHandler({ json: true });
+      } else if (opts.config === true || opts.manage === true) {
+        await agentsHandler();
       } else {
         const { getAgentViewDisabledReason } = await import('./commands/agents/index.js');
         const reason = getAgentViewDisabledReason();
@@ -5678,7 +5683,15 @@ async function run(): Promise<CommanderCommand> {
           console.log(`Agent view is ${reason}.`);
           process.exit(0);
         }
-        await agentsHandler();
+        const { launchAgentViewCli } = await import('./cli/agentView.js');
+        await launchAgentViewCli({
+          root,
+          initialState,
+          getFpsMetrics,
+          stats,
+          renderAndRun,
+          cwd: typeof opts.cwd === 'string' ? opts.cwd : undefined,
+        });
       }
       process.exit(0);
     });
@@ -6078,6 +6091,10 @@ Examples:
         const { agentsHandler } = await import('./cli/handlers/agents.js');
         if (process.argv.includes('--json')) {
           await agentsHandler({ json: true });
+        } else if (bgArg === 'list') {
+          await bg.psHandler(process.argv.slice(4));
+        } else if (bgArg === 'config' || bgArg === 'manage' || process.argv.includes('--config')) {
+          await agentsHandler();
         } else {
           const { getAgentViewDisabledReason } = await import('./commands/agents/index.js');
           const reason = getAgentViewDisabledReason();
@@ -6085,7 +6102,17 @@ Examples:
             console.log(`Agent view is ${reason}.`);
             process.exit(0);
           }
-          await agentsHandler();
+          const cwdFlagIndex = process.argv.indexOf('--cwd');
+          const cwd = cwdFlagIndex >= 0 ? process.argv[cwdFlagIndex + 1] : undefined;
+          const { launchAgentViewCli } = await import('./cli/agentView.js');
+          await launchAgentViewCli({
+            root,
+            initialState,
+            getFpsMetrics,
+            stats,
+            renderAndRun,
+            cwd,
+          });
         }
         break;
       }

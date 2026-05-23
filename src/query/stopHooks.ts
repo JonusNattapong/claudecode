@@ -19,6 +19,7 @@ import type {
 import { createAttachmentMessage } from '../utils/attachments.js';
 import { logForDebugging } from '../utils/debug.js';
 import { errorMessage } from '../utils/errors.js';
+import { formatDuration } from '../utils/format.js';
 import type { REPLHookContext } from '../utils/hooks/postSamplingHooks.js';
 import {
   executeStopHooks,
@@ -446,23 +447,42 @@ export async function* handleStopHooks(
             // Goal achieved — record and let session end naturally
             updateGoalState({ achieved: true, endedAt: Date.now() });
             logForDebugging(`[goal] achieved: ${result.reason}`);
-            yield createSystemMessage(`◎ Goal achieved: ${result.reason}`, 'info');
+            const elapsed = formatDuration(Date.now() - startTime, {
+              hideTrailingZeros: true,
+              mostSignificantOnly: true,
+            });
+            const tokens = (goalState.evalTokens ?? 0) + result.inputTokens + result.outputTokens;
+            const tokenText = tokens > 0 ? ` · ${tokens.toLocaleString()} tokens` : '';
+            yield createSystemMessage(`✓ Goal achieved (${elapsed} · ${turnCount} turns${tokenText})`, 'info');
+            if (result.reason) {
+              yield createSystemMessage(result.reason, 'info');
+            }
 
             const restoredMode = goalState.preGoalMode;
+            toolUseContext.setAppState(prev => ({
+              ...prev,
+              sessionGoal: undefined,
+              sessionGoalStartTime: undefined,
+              sessionGoalTurnCount: undefined,
+              toolPermissionContext: restoredMode
+                ? {
+                    ...prev.toolPermissionContext,
+                    mode: restoredMode,
+                  }
+                : prev.toolPermissionContext,
+            }));
             if (restoredMode) {
-              toolUseContext.setAppState(prev => ({
-                ...prev,
-                toolPermissionContext: {
-                  ...prev.toolPermissionContext,
-                  mode: restoredMode,
-                },
-              }));
               yield createSystemMessage(`◎ Restored permission mode to '${restoredMode}'`, 'info');
             }
           } else {
             // Goal not met — inject nudge to continue working
             logForDebugging(`[goal] not met: ${result.reason}`);
-            yield createSystemMessage(`◎ /goal active · ${result.reason}`, 'info');
+            yield createSystemMessage(
+              result.reason
+                ? `○ Goal not yet met... continuing · ${result.reason}`
+                : '○ Goal not yet met... continuing',
+              'info',
+            );
           }
         } catch (error) {
           logForDebugging(`[goal] evaluator error: ${errorMessage(error)}`, { level: 'error' });

@@ -19,11 +19,12 @@ export async function call(
   args: string,
 ): Promise<null> {
   const trimmed = args?.trim() ?? '';
+  const clearAliases = ['clear', 'stop', 'off', 'reset', 'none', 'cancel'];
 
   // Check if hooks are disabled — goal turn tracking depends on hooks for
   // counting, and a missing hook can cause the indicator to hang instead of
   // resolving. Show a clear message rather than silently stalling.
-  if (trimmed && trimmed.toLowerCase() !== 'clear') {
+  if (trimmed && !clearAliases.includes(trimmed.toLowerCase())) {
     const settings = getSettings_DEPRECATED();
     if (settings.disableAllHooks || settings.allowManagedHooksOnly) {
       onDone(
@@ -61,7 +62,7 @@ export async function call(
   }
 
   // Clear goal
-  if (trimmed.toLowerCase() === 'clear') {
+  if (clearAliases.includes(trimmed.toLowerCase())) {
     const goalState = getFullGoalState();
     const restoredMode = goalState?.preGoalMode;
     context.setAppState(prev => ({
@@ -76,7 +77,7 @@ export async function call(
     setFullGoalState(null);
 
     const restoreMsg = restoredMode ? ` and restored permission mode to '${restoredMode}'` : '';
-    onDone(`Session goal cleared${restoreMsg}.`, { display: 'system' });
+    onDone(`◎ Goal cleared${restoreMsg}.`, { display: 'system' });
     return null;
   }
 
@@ -114,7 +115,7 @@ export async function call(
   if (maxTurns) bounds.push(`stop after ${maxTurns} turns`);
   if (maxMinutes) bounds.push(`stop after ${maxMinutes} min`);
   const boundsStr = bounds.length > 0 ? ` (${bounds.join(', ')})` : '';
-  onDone(`Goal set: ${trimmed}${boundsStr}. Autonomous agent mode started.`, {
+  onDone(`◎ Goal set: ${trimmed}${boundsStr}`, {
     display: 'system',
     shouldQuery: true,
     metaMessages: [

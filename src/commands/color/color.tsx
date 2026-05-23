@@ -2,11 +2,11 @@ import type { UUID } from 'crypto';
 import type * as React from 'react';
 import { useState } from 'react';
 import { getSessionId } from '../../bootstrap/state.js';
-import { Clawd } from '../../components/LogoV2/Clawd.js';
 import { Select } from '../../components/CustomSelect/index.js';
 import { Dialog } from '../../components/design-system/Dialog.js';
 import { Divider } from '../../components/design-system/Divider.js';
 import { Tab, Tabs } from '../../components/design-system/Tabs.js';
+import { Clawd } from '../../components/LogoV2/Clawd.js';
 import { Box, Text, useInput } from '../../ink.js';
 import { useSetAppState } from '../../state/AppState.js';
 import type { ToolUseContext } from '../../Tool.js';
@@ -159,13 +159,7 @@ function ColorPanel({
       onCancel={handleCancel}
       hideInputGuide
     >
-      <Tabs
-        selectedTab={selectedTab}
-        onTabChange={setSelectedTab}
-        defaultTab="prompt"
-        useFullWidth
-        navFromContent
-      >
+      <Tabs selectedTab={selectedTab} onTabChange={setSelectedTab} defaultTab="prompt" useFullWidth navFromContent>
         <Tab title="Prompt Bar" id="prompt">
           <Box flexDirection="column" gap={1} marginTop={1}>
             <Select
@@ -228,7 +222,8 @@ function ColorPanel({
                     bold={idx === focusedBodyIdx && mascotPane === 'body'}
                     color={idx === focusedBodyIdx && mascotPane === 'body' ? 'suggestion' : undefined}
                   >
-                    {idx === focusedBodyIdx ? '> ' : '  '}{c.label}
+                    {idx === focusedBodyIdx ? '> ' : '  '}
+                    {c.label}
                     {idx === focusedBodyIdx && bodyColor === c.value ? '  ◄' : ''}
                   </Text>
                 </Box>
@@ -248,7 +243,8 @@ function ColorPanel({
                     bold={idx === focusedEyeIdx && mascotPane === 'eyes'}
                     color={idx === focusedEyeIdx && mascotPane === 'eyes' ? 'suggestion' : undefined}
                   >
-                    {idx === focusedEyeIdx ? '> ' : '  '}{c.label}
+                    {idx === focusedEyeIdx ? '> ' : '  '}
+                    {c.label}
                     {idx === focusedEyeIdx && eyeColor === c.value ? '  ◄' : ''}
                   </Text>
                 </Box>
@@ -261,7 +257,12 @@ function ColorPanel({
       {/* Footer */}
       <Box marginTop={1} justifyContent="center">
         <Text dimColor>
-          Tab switch tabs · {selectedTab === 'prompt' ? '↑↓ select · Enter confirm' : mascotPane === 'body' ? '↑↓ body · Tab eyes' : '↑↓ eyes · Tab body'}
+          Tab switch tabs ·{' '}
+          {selectedTab === 'prompt'
+            ? '↑↓ select · Enter confirm'
+            : mascotPane === 'body'
+              ? '↑↓ body · Tab eyes'
+              : '↑↓ eyes · Tab body'}
           {' · '}Enter save · Esc close
         </Text>
       </Box>
