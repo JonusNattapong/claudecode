@@ -16,6 +16,18 @@ This project follows a practical changelog format based on:
 - **GFM Task List Checkboxes** — Markdown output now renders `- [ ] todo` / `- [x] done` as `☐` / `☑` checkboxes instead of plain bullets. Checked items use green; unchecked use dim.
 - **Diff keyboard scrolling** — `/diff detail` view now supports PgUp/PgDn (page through files), Home/End (jump to first/last file), and vim-style j/k navigation in addition to arrow keys. Space also pages down.
 - **`/usage` contributing factors** — Added "What's contributing to your limits usage?" breakdown section that renders when the API provides `contributing_factors` data.
+- **`/recap` command** — New command for session recap functionality.
+- **Agent view CLI** — `/agents` now opens an interactive agent view with `--cwd`, `--config`/`--manage` options. Supports `--json` for machine-readable output.
+- **Ultrareview launch dialog** — New `UltrareviewLaunchDialog` component for streamlined ultrareview workflow.
+
+### Changed
+
+- **LogoV2 rebranding** — Updated all logo components (AnimatedClawd, Clawd, CondensedLogo, Feed, FeedColumn, LogoV2, VoiceModeNotice, WelcomeV2) with refined visuals.
+- **Agent dashboard redesign** — Refactored AgentViewDashboard, AgentViewRow, and Dashboard command to use design system components (Dialog, Tabs, ProgressBar, StatusIcon, Divider).
+- **Ultrareview improvements** — Updated ultrareview command and remote review flow.
+- **Voice module un-gated** — Removed feature flag gate from `/voice`; voice mode is now always accessible. VoiceStreamSTT and voice mode enabled cleaned up.
+- **PromptInput, StatusLine, Settings UI updates** — Various UI refinements to notifications, footer, voice indicator, status line, and settings pages.
+- **Permission mode updates** — Refined permission mode logic and type definitions for clearer mode selection.
 
 ### Fixed
 
@@ -27,6 +39,7 @@ This project follows a practical changelog format based on:
 ### Removed
 
 - **`/eval` command** — Removed the verification harness (`/eval init/run/compare/report/trace/doctor`) and its entire `src/eval/` framework. Not needed in this fork.
+- **`/profile` command** — Removed profile module (profile command + profileManager utility). Not needed in this fork.
 
 ## [2.1.157] - 2026-05-22
 
