@@ -144,6 +144,32 @@ export function DiffDialog({ messages, onDone }: Props): React.ReactNode {
           setSelectedIndex(prev => Math.min(diffData.files.length - 1, prev + 1));
         }
       },
+      'diff:firstFile': () => {
+        if (viewMode === 'list') {
+          setSelectedIndex(0);
+        }
+      },
+      'diff:lastFile': () => {
+        if (viewMode === 'list') {
+          setSelectedIndex(diffData.files.length - 1);
+        }
+      },
+      'diff:pageUp': () => {
+        if (viewMode === 'list') {
+          setSelectedIndex(prev => {
+            const pageSize = 5;
+            return Math.max(0, prev - pageSize);
+          });
+        }
+      },
+      'diff:pageDown': () => {
+        if (viewMode === 'list') {
+          setSelectedIndex(prev => {
+            const pageSize = 5;
+            return Math.min(diffData.files.length - 1, prev + pageSize);
+          });
+        }
+      },
     },
     { context: 'DiffDialog' },
   );
@@ -229,6 +255,8 @@ export function DiffDialog({ messages, onDone }: Props): React.ReactNode {
             {sources.length > 1 && <Text>←/→ source</Text>}
             <Text>↑/↓ select</Text>
             <Text>Enter view</Text>
+            <Text>PgUp/PgDn page</Text>
+            <Text>Home/End jump</Text>
             <Text>{dismissShortcut} close</Text>
           </Byline>
         ) : (

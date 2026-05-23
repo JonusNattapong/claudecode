@@ -133,79 +133,75 @@ type Props = {
   prCount?: number;
   prStatus?: PRStatus | null;
   prUrl?: string | null;
+  width?: number;
 };
 
-export function AgentViewRow({ task, index, isSelected, prCount, prStatus, prUrl }: Props) {
+function truncateToWidth(text: string, width: number): string {
+  if (width <= 0) return '';
+  if (text.length <= width) return text.padEnd(width);
+  if (width === 1) return '…';
+  return `${text.slice(0, width - 1)}…`;
+}
+
+function formatRowLine({
+  task,
+  previewText,
+  width,
+}: {
+  task: LocalAgentTaskState;
+  previewText: string;
+  width: number;
+}): string {
+  const nameWidth = width >= 96 ? 24 : width >= 72 ? 20 : 16;
+  const timeWidth = 5;
+  const iconWidth = 2;
+  const gapWidth = 2;
+  const minPreviewWidth = 10;
+  const previewWidth = Math.max(minPreviewWidth, width - iconWidth - nameWidth - gapWidth - timeWidth);
+  const name = (task as any).customName ?? task.agentType ?? 'Agent';
+  const time = task.startTime ? formatTimeAgo(task.startTime) : '';
+  return `${truncateToWidth(name, nameWidth)}${truncateToWidth(previewText, previewWidth)}${time.padStart(timeWidth)}`;
+}
+
+export function AgentViewRow({ task, isSelected, prCount, prStatus, width = 96 }: Props) {
   const cat = getTaskCategory(task);
   const statusStyle = getStatusIcon(task);
   const previewText = getActivityPreview(task);
 
-  // Selected row gets suggestion color
-  const highlightColor = isSelected
-    ? 'suggestion'
-    : cat === 'needs-input'
-      ? 'yellow'
-      : cat === 'failed'
-        ? 'red'
-        : cat === 'stopped'
-          ? 'grey'
-          : 'dim';
-
   // PR status dot
   const prDot = prStatus ? getPRStatusIcon(prStatus) : null;
   const showPRCount = prCount && prCount > 1;
+  const rowLine = formatRowLine({ task, previewText, width: Math.max(40, width - 3) });
+  const backgroundColor = isSelected ? '#3a3a3a' : undefined;
+  const textColor = isSelected ? 'text' : undefined;
 
   return (
-    <Box
-      key={task.id}
-      flexDirection="row"
-      paddingX={1}
-      gap={0}
-      borderStyle={isSelected ? 'bold' : 'single'}
-      borderColor={highlightColor}
-      height={1}
-    >
-      {/* Icon column (2 chars wide) */}
-      <Box width={3} flexShrink={0}>
-        <Text color={statusStyle.color as any}>{statusStyle.isAnimated ? figures.circleDotted : statusStyle.icon}</Text>
-      </Box>
-
-      {/* Session name / agent type (20 chars) */}
-      <Box width={18} flexShrink={0}>
-        <Text bold={isSelected} wrap="truncate-end">
-          {(task as any).customName ?? task.agentType ?? 'Agent'}
+    <Box key={task.id} flexDirection="row" height={1} width={width}>
+      <Text color={isSelected ? textColor : (statusStyle.color as any)} backgroundColor={backgroundColor}>
+        {statusStyle.isAnimated ? figures.circleDotted : statusStyle.icon}
+      </Text>
+      <Text backgroundColor={backgroundColor}> </Text>
+      <Text
+        bold={isSelected}
+        dimColor={!isSelected && cat !== 'needs-input' && cat !== 'completed'}
+        color={textColor as any}
+        backgroundColor={backgroundColor}
+        wrap="truncate"
+      >
+        {rowLine}
+      </Text>
+      {prDot && showPRCount && (
+        <Text dimColor backgroundColor={backgroundColor}>
+          {prCount}
         </Text>
-      </Box>
-
-      {/* Activity preview (flexible) */}
-      <Box flexGrow={1}>
-        <Text wrap="truncate-end" dimColor={!isSelected}>
-          {previewText}
-        </Text>
-      </Box>
-
-      {/* PR status */}
-      {prDot && (
-        <Box width={showPRCount ? 4 : 2} flexShrink={0}>
-          {showPRCount && <Text dimColor>{prCount}</Text>}
-          <Text color={prDot.color as any}>{prDot.char}</Text>
-        </Box>
       )}
-
-      {/* Time ago (8 chars) */}
-      <Box width={8} flexShrink={0}>
-        <Text dimColor>{task.startTime ? formatTimeAgo(task.startTime) : ''}</Text>
-      </Box>
     </Box>
   );
 }
 
 export function AgentViewGroupHeader({
   label,
-  count,
   color,
-  isCollapsed,
-  onToggle,
   isSelected,
 }: {
   label: string;
@@ -216,18 +212,10 @@ export function AgentViewGroupHeader({
   isSelected: boolean;
 }) {
   return (
-    <Box
-      flexDirection="row"
-      paddingX={1}
-      gap={1}
-      borderStyle={isSelected ? 'bold' : 'single'}
-      borderColor={isSelected ? 'suggestion' : 'dim'}
-      height={1}
-    >
-      <Text color={color as any} bold>
-        {isCollapsed ? figures.arrowRight : figures.arrowDown} {label} ({count})
+    <Box flexDirection="row" height={1} marginTop={1}>
+      <Text color={isSelected ? 'text' : (color as any)} bold={isSelected} dimColor={!isSelected}>
+        {label}
       </Text>
-      <Text dimColor>{figures.ellipsis}</Text>
     </Box>
   );
 }

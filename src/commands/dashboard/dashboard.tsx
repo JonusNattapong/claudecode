@@ -1,12 +1,12 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import { Orchestrator } from '../../agentRuntime/orchestrator.js';
+import { RunStore } from '../../agentRuntime/runStore.js';
+import type { AgentRun, AgentState } from '../../agentRuntime/types.js';
 import { Dialog } from '../../components/design-system/Dialog.js';
 import { Divider } from '../../components/design-system/Divider.js';
 import { ProgressBar } from '../../components/design-system/ProgressBar.js';
 import { StatusIcon } from '../../components/design-system/StatusIcon.js';
 import { Tab, Tabs } from '../../components/design-system/Tabs.js';
-import { Orchestrator } from '../../agentRuntime/orchestrator.js';
-import { RunStore } from '../../agentRuntime/runStore.js';
-import type { AgentRun, AgentState } from '../../agentRuntime/types.js';
 import { Box, Text, useInput } from '../../ink.js';
 import {
   getAutonomousStatus,
@@ -133,9 +133,7 @@ export function DashboardComponent({ onDone }: DashboardProps): React.ReactNode 
   }, [tasks.length, selectedTaskIdx]);
 
   // Active runs counter
-  const activeRuns = runs.filter(
-    r => r.status !== 'completed' && r.status !== 'failed' && r.status !== 'cancelled',
-  );
+  const activeRuns = runs.filter(r => r.status !== 'completed' && r.status !== 'failed' && r.status !== 'cancelled');
 
   // --- Overview tab content ---
   const renderOverview = () => {
@@ -161,14 +159,8 @@ export function DashboardComponent({ onDone }: DashboardProps): React.ReactNode 
                 {goalState?.maxTurns && (
                   <Box flexDirection="row" gap={0}>
                     <Text dimColor>[</Text>
-                    <ProgressBar
-                      ratio={sessionGoalTurnCount / goalState.maxTurns}
-                      width={20}
-                      fillColor="warning"
-                    />
-                    <Text dimColor>
-                      ] {Math.round((sessionGoalTurnCount / goalState.maxTurns) * 100)}%
-                    </Text>
+                    <ProgressBar ratio={sessionGoalTurnCount / goalState.maxTurns} width={20} fillColor="warning" />
+                    <Text dimColor>] {Math.round((sessionGoalTurnCount / goalState.maxTurns) * 100)}%</Text>
                   </Box>
                 )}
               </Box>
@@ -201,16 +193,12 @@ export function DashboardComponent({ onDone }: DashboardProps): React.ReactNode 
               </Text>
               {daemonAgent?.running && (
                 <Text dimColor>
-                  PID {daemonAgent.workerPid ?? 'N/A'} · uptime {daemonUptime}s · processed{' '}
-                  {daemonAgent.tasksProcessed} · failed {daemonAgent.tasksFailed}
+                  PID {daemonAgent.workerPid ?? 'N/A'} · uptime {daemonUptime}s · processed {daemonAgent.tasksProcessed}{' '}
+                  · failed {daemonAgent.tasksFailed}
                 </Text>
               )}
-              {daemonAgent?.currentTaskTitle && (
-                <Text color="suggestion">Current: {daemonAgent.currentTaskTitle}</Text>
-              )}
-              {daemonAgent?.lastErrorMessage && (
-                <Text color="error">Error: {daemonAgent.lastErrorMessage}</Text>
-              )}
+              {daemonAgent?.currentTaskTitle && <Text color="suggestion">Current: {daemonAgent.currentTaskTitle}</Text>}
+              {daemonAgent?.lastErrorMessage && <Text color="error">Error: {daemonAgent.lastErrorMessage}</Text>}
             </Box>
           ) : (
             <Text dimColor marginLeft={3}>
@@ -231,7 +219,10 @@ export function DashboardComponent({ onDone }: DashboardProps): React.ReactNode 
             </Text>
           </Box>
           <Box flexDirection="row" gap={1}>
-            <StatusIcon status={tasks.filter(t => t.status === 'in_progress').length > 0 ? 'loading' : 'pending'} withSpace />
+            <StatusIcon
+              status={tasks.filter(t => t.status === 'in_progress').length > 0 ? 'loading' : 'pending'}
+              withSpace
+            />
             <Text>
               <Text bold>{tasks.length}</Text>
               <Text dimColor> queued tasks</Text>
@@ -266,18 +257,15 @@ export function DashboardComponent({ onDone }: DashboardProps): React.ReactNode 
           return (
             <Box key={run.id} flexDirection="column" marginTop={idx > 0 ? 0 : 0}>
               <Box flexDirection="row" gap={0}>
-                <Text color={isSelected ? 'suggestion' : undefined}>
-                  {isSelected ? '> ' : '  '}
-                </Text>
+                <Text color={isSelected ? 'suggestion' : undefined}>{isSelected ? '> ' : '  '}</Text>
                 <StatusIcon status={status} withSpace />
                 <Text bold={isSelected} color={isSelected ? 'suggestion' : undefined}>
                   {run.activeAgent || 'Coordinator'}
                 </Text>
-                <Text dimColor>
-                  {' '}({run.id.slice(-8)})
-                </Text>
+                <Text dimColor> ({run.id.slice(-8)})</Text>
                 <Text bold color={color}>
-                  {' '}[{run.status.toUpperCase()}]
+                  {' '}
+                  [{run.status.toUpperCase()}]
                 </Text>
               </Box>
               {stateObj && (
@@ -329,7 +317,9 @@ export function DashboardComponent({ onDone }: DashboardProps): React.ReactNode 
               </Text>
               {daemonAgent && (
                 <>
-                  <Text dimColor>PID: {daemonAgent.workerPid ?? 'N/A'} · uptime: {daemonUptime}s</Text>
+                  <Text dimColor>
+                    PID: {daemonAgent.workerPid ?? 'N/A'} · uptime: {daemonUptime}s
+                  </Text>
                   <Text dimColor>
                     Processed: {daemonAgent.tasksProcessed} · Failed: {daemonAgent.tasksFailed} · Dead-letter:{' '}
                     {daemonAgent.tasksDeadLettered ?? 0}
@@ -339,9 +329,7 @@ export function DashboardComponent({ onDone }: DashboardProps): React.ReactNode 
               {daemonAgent?.currentTaskTitle && (
                 <Text color="suggestion">Current task: {daemonAgent.currentTaskTitle}</Text>
               )}
-              {daemonAgent?.lastErrorMessage && (
-                <Text color="error">Last error: {daemonAgent.lastErrorMessage}</Text>
-              )}
+              {daemonAgent?.lastErrorMessage && <Text color="error">Last error: {daemonAgent.lastErrorMessage}</Text>}
             </Box>
           ) : (
             <Text dimColor marginLeft={3}>
@@ -383,9 +371,7 @@ export function DashboardComponent({ onDone }: DashboardProps): React.ReactNode 
 
         <Divider />
 
-        <Text dimColor>
-          r restart daemon · s start/stop · {daemonStatus?.running ? 'Running' : 'Stopped'}
-        </Text>
+        <Text dimColor>r restart daemon · s start/stop · {daemonStatus?.running ? 'Running' : 'Stopped'}</Text>
       </Box>
     );
   };
@@ -457,18 +443,15 @@ export function DashboardComponent({ onDone }: DashboardProps): React.ReactNode 
               return (
                 <Box key={task.id} flexDirection="column">
                   <Box flexDirection="row" gap={0}>
-                    <Text color={isSelected ? 'suggestion' : undefined}>
-                      {isSelected ? '> ' : '  '}
-                    </Text>
+                    <Text color={isSelected ? 'suggestion' : undefined}>{isSelected ? '> ' : '  '}</Text>
                     <StatusIcon status={status} withSpace />
                     <Text bold={isSelected} color={isSelected ? 'suggestion' : undefined}>
                       {task.title}
                     </Text>
-                    <Text dimColor>
-                      {' '}· {meta}
-                    </Text>
+                    <Text dimColor> · {meta}</Text>
                     <Text color={statusColor} dimColor={task.status === 'pending'}>
-                      {' '}[{task.status.toUpperCase()}]
+                      {' '}
+                      [{task.status.toUpperCase()}]
                     </Text>
                   </Box>
                   {(task.status === 'failed' || task.status === 'dead_letter') && (task.lastError || task.error) && (
@@ -604,13 +587,7 @@ export function DashboardComponent({ onDone }: DashboardProps): React.ReactNode 
       onCancel={() => onDone('Dashboard closed.', { display: 'system' })}
       hideInputGuide
     >
-      <Tabs
-        defaultTab="overview"
-        selectedTab={selectedTab}
-        onTabChange={setSelectedTab}
-        useFullWidth
-        navFromContent
-      >
+      <Tabs defaultTab="overview" selectedTab={selectedTab} onTabChange={setSelectedTab} useFullWidth navFromContent>
         <Tab title="Overview" id="overview">
           {renderOverview()}
         </Tab>

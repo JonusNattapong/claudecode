@@ -11,13 +11,15 @@
  * - Peek panel with reply, attach/detach lifecycle
  */
 
-import figures from 'figures';
 import * as React from 'react';
 import { useAgentViewSummaries } from '../../hooks/useAgentViewSummaries.js';
+import { useTerminalSize } from '../../hooks/useTerminalSize.js';
 import { Box, Text, useInput } from '../../ink.js';
 import { touchSessionAttach } from '../../services/SessionLifecycle/sessionLifecycle.js';
+import { listSessions, pingDaemon } from '../../services/Supervisor/ipcClient.js';
 import { useAppState, useSetAppState } from '../../state/AppState.js';
 import { enterTeammateView } from '../../state/teammateViewHelpers.js';
+import { createTaskStateBase } from '../../Task.js';
 import type { ToolUseConfirm } from '../../Tool.js';
 import {
   appendMessageToLocalAgent,
@@ -30,14 +32,12 @@ import {
 import type { TaskState } from '../../tasks/types.js';
 import { GENERAL_PURPOSE_AGENT } from '../../tools/AgentTool/built-in/generalPurposeAgent.js';
 import { createUserMessage } from '../../utils/messages.js';
-import { Dialog } from '../design-system/Dialog.js';
-import { Divider } from '../design-system/Divider.js';
-import { AgentViewDispatchInput, parseDispatchSyntax } from './AgentViewDispatchInput.js';
+import TextInput from '../TextInput.js';
+import { parseDispatchSyntax } from './AgentViewDispatchInput.js';
 import { AgentViewPeekPanel } from './AgentViewPeekPanel.js';
 import {
   AgentViewGroupHeader,
   AgentViewRow,
-  formatTimeAgo,
   getTaskCategory,
   type PRStatus,
   type TaskCategory,
@@ -56,17 +56,86 @@ type Props = {
 const CATEGORY_ORDER: TaskCategory[] = ['needs-input', 'working', 'failed', 'stopped', 'completed'];
 
 const CATEGORY_LABELS: Record<TaskCategory, { label: string; color: string }> = {
-  'needs-input': { label: 'Needs Input', color: 'yellow' },
+  'needs-input': { label: 'Needs input', color: 'yellow' },
   working: { label: 'Working', color: 'blue' },
   completed: { label: 'Completed', color: 'green' },
   failed: { label: 'Failed', color: 'red' },
   stopped: { label: 'Stopped', color: 'grey' },
 };
 
-const FILTER_SYNTAX_HINT =
-  'a:<name> agent · s:<state> state · s:blocked waiting · #<N> PR lookup · @<agent> dispatch with agent';
+type SupervisorSession = {
+  id?: string;
+  sessionId?: string;
+  agentId?: string;
+  shortId?: string;
+  cwd?: string;
+  startedAt?: number;
+  updatedAt?: number;
+  status?: string;
+  name?: string;
+  customName?: string;
+  agentType?: string;
+  prompt?: string;
+  awaitingInput?: boolean;
+  awaiting_input?: boolean;
+};
+
+function supervisorSessionToTask(session: SupervisorSession): LocalAgentTaskState | null {
+  const id = String(session.id ?? session.sessionId ?? session.agentId ?? '');
+  if (!id) return null;
+
+  const isAwaitingInput =
+    session.status === 'awaiting_input' || session.awaitingInput === true || session.awaiting_input === true;
+  const status =
+    session.status === 'failed'
+      ? 'failed'
+      : session.status === 'stopped'
+        ? 'killed'
+        : session.status === 'completed'
+          ? 'completed'
+          : 'running';
+  const description = session.name ?? session.prompt ?? session.shortId ?? id.slice(0, 8);
+
+  return {
+    ...createTaskStateBase(id, 'local_agent', description),
+    id,
+    type: 'local_agent',
+    status,
+    agentId: String(session.agentId ?? id),
+    prompt: session.prompt ?? description,
+    agentType: session.agentType ?? 'agent',
+    retrieved: false,
+    lastReportedToolCount: 0,
+    lastReportedTokenCount: 0,
+    isBackgrounded: true,
+    pendingMessages: [],
+    retain: false,
+    diskLoaded: false,
+    startTime: session.startedAt ?? Date.now(),
+    endTime: status === 'running' ? undefined : (session.updatedAt ?? Date.now()),
+    progress: isAwaitingInput
+      ? {
+          toolUseCount: 0,
+          tokenCount: 0,
+          lastActivity: {
+            toolName: 'AskUserQuestionTool',
+            input: {},
+            activityDescription: 'Waiting for your input',
+          },
+        }
+      : undefined,
+    processRunning: status === 'running',
+    cwd: session.cwd,
+    agentCwd: session.cwd,
+    customName: session.customName ?? session.name,
+    rowSummary: session.prompt,
+    fromSupervisorRoster: true,
+    sessionId: id,
+  } as LocalAgentTaskState;
+}
 
 export function AgentViewDashboard({ onBack, onDispatch, cwd }: Props) {
+  const { columns } = useTerminalSize();
   const tasks = useAppState((s: any) => s.tasks) as Record<string, TaskState>;
   const toolUseConfirmQueue = useAppState((s: any) => s.toolUseConfirmQueue) as ToolUseConfirm[];
   const agentDefinitions = useAppState((s: any) => s.agentDefinitions) as { activeAgents: any[]; allAgents: any[] };
@@ -91,6 +160,7 @@ export function AgentViewDashboard({ onBack, onDispatch, cwd }: Props) {
 
   // Resolve agents
   const agents = agentDefinitions?.activeAgents ?? [];
+  const contentWidth = Math.max(56, Math.min(columns - 4, 118));
 
   // Auto-hide stop confirmation after 2 seconds
   React.useEffect(() => {
@@ -108,6 +178,51 @@ export function AgentViewDashboard({ onBack, onDispatch, cwd }: Props) {
 
   // Start summary & lifecycle polling
   useAgentViewSummaries({ tasks, setAppState });
+
+  // Mirror daemon/supervisor background sessions into the dashboard so
+  // `claude agents` shows sessions that are not part of this React process.
+  React.useEffect(() => {
+    let cancelled = false;
+
+    const refreshSupervisorSessions = async () => {
+      if (!(await pingDaemon())) return;
+      const result = await listSessions();
+      if (cancelled || !result.ok) return;
+
+      const sessions = ((result.data as { sessions?: SupervisorSession[] } | undefined)?.sessions ?? [])
+        .map(supervisorSessionToTask)
+        .filter((task): task is LocalAgentTaskState => task !== null);
+
+      setAppState(prev => {
+        let changed = false;
+        const nextTasks = { ...prev.tasks };
+        const liveSupervisorIds = new Set(sessions.map(session => session.id));
+
+        for (const sessionTask of sessions) {
+          const existing = nextTasks[sessionTask.id] as any;
+          if (existing && !existing.fromSupervisorRoster) continue;
+          nextTasks[sessionTask.id] = existing ? { ...existing, ...sessionTask } : sessionTask;
+          changed = true;
+        }
+
+        for (const [taskId, task] of Object.entries(nextTasks)) {
+          if ((task as any).fromSupervisorRoster && !liveSupervisorIds.has(taskId)) {
+            delete nextTasks[taskId];
+            changed = true;
+          }
+        }
+
+        return changed ? { ...prev, tasks: nextTasks } : prev;
+      });
+    };
+
+    void refreshSupervisorSessions();
+    const interval = setInterval(() => void refreshSupervisorSessions(), 3000);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [setAppState]);
 
   // Collect background tasks
   const backgroundTasks = React.useMemo(() => {
@@ -205,14 +320,10 @@ export function AgentViewDashboard({ onBack, onDispatch, cwd }: Props) {
 
   // Flatten for navigation (accounting for collapsed groups)
   const flatList = React.useMemo(() => {
-    const result: Array<
-      | { type: 'group'; group: (typeof groupedTasks)[0]; index: number }
-      | { type: 'task'; task: LocalAgentTaskState; groupIndex: number }
-    > = [];
+    const result: Array<{ type: 'task'; task: LocalAgentTaskState; groupIndex: number }> = [];
 
     for (let gi = 0; gi < groupedTasks.length; gi++) {
       const group = groupedTasks[gi]!;
-      result.push({ type: 'group', group, index: gi });
       if (!group.isCollapsed) {
         for (const task of group.tasks) {
           result.push({ type: 'task', task: task as LocalAgentTaskState, groupIndex: gi });
@@ -232,7 +343,6 @@ export function AgentViewDashboard({ onBack, onDispatch, cwd }: Props) {
     // Advanced filter: a:<name>
     if (parsedFilter.isFilter) {
       return flatList.filter(item => {
-        if (item.type !== 'task') return true;
         const lt = item.task as LocalAgentTaskState;
 
         if (parsedFilter.filterAgent) {
@@ -261,7 +371,6 @@ export function AgentViewDashboard({ onBack, onDispatch, cwd }: Props) {
     }
 
     return flatList.filter(item => {
-      if (item.type !== 'task') return true;
       const lt = item.task as LocalAgentTaskState;
       if (lt.prompt?.toLowerCase().includes(lower)) return true;
       if (lt.agentType?.toLowerCase().includes(lower)) return true;
@@ -272,8 +381,7 @@ export function AgentViewDashboard({ onBack, onDispatch, cwd }: Props) {
     });
   }, [flatList, filterText, parsedFilter, toolUseConfirmQueue]);
 
-  const selectedItem = filteredList[selectedIndex] as (typeof flatList)[0] | undefined;
-  const selectedTask = selectedItem?.type === 'task' ? selectedItem.task : undefined;
+  const selectedTask = filteredList[selectedIndex]?.task;
 
   // Clamp selectedIndex when list changes
   React.useEffect(() => {
@@ -315,13 +423,11 @@ export function AgentViewDashboard({ onBack, onDispatch, cwd }: Props) {
     if (parsed.isPRLookup && parsed.prNumber) {
       for (let i = 0; i < flatList.length; i++) {
         const item = flatList[i];
-        if (item?.type === 'task') {
-          const prInfo = (item.task as any)._prInfo;
-          if (prInfo?.number === parsed.prNumber) {
-            setFilterText('');
-            setSelectedIndex(i);
-            return;
-          }
+        const prInfo = (item?.task as any)?._prInfo;
+        if (prInfo?.number === parsed.prNumber) {
+          setFilterText('');
+          setSelectedIndex(i);
+          return;
         }
       }
       return;
@@ -492,7 +598,7 @@ export function AgentViewDashboard({ onBack, onDispatch, cwd }: Props) {
       // Ink's useInput doesn't reliably report Alt; we handle this in keybindings instead
     }
 
-    if (mode === 'dispatch' && dispatchText !== '') {
+    if ((mode === 'dispatch' || dispatchText !== '') && dispatchText !== '') {
       if (key.escape) {
         setDispatchText('');
         setMode('browse');
@@ -537,11 +643,11 @@ export function AgentViewDashboard({ onBack, onDispatch, cwd }: Props) {
 
     // Enter: attach or expand group
     if (key.return) {
-      if (selectedItem?.type === 'group') {
-        handleGroupToggle(selectedItem.group.key);
-        return;
-      }
       if (selectedTask) {
+        if ((selectedTask as any).fromSupervisorRoster) {
+          setPeekOpen(true);
+          return;
+        }
         if (isWaitingForInput(selectedTask)) {
           // Do nothing — Space to peek first
         } else {
@@ -565,6 +671,10 @@ export function AgentViewDashboard({ onBack, onDispatch, cwd }: Props) {
 
     // → : attach
     if (key.rightArrow && selectedTask) {
+      if ((selectedTask as any).fromSupervisorRoster) {
+        setPeekOpen(true);
+        return;
+      }
       handleAttach();
       return;
     }
@@ -662,40 +772,31 @@ export function AgentViewDashboard({ onBack, onDispatch, cwd }: Props) {
     }
   });
 
-  // Empty state
-  if (backgroundTasks.length === 0 && mode === 'browse') {
-    return (
-      <Dialog title="Agent View" subtitle="Research Preview" onCancel={onBack}>
-        <Box flexDirection="column" padding={1} gap={1}>
-          <Text dimColor>No background agents are currently running.</Text>
-          <Text dimColor>Type a prompt below and press Enter to dispatch a new agent.</Text>
-        </Box>
-        <Divider />
-        <AgentViewDispatchInput
-          mode="dispatch"
-          value={dispatchText}
-          onChange={setDispatchText}
-          onSubmit={handleDispatch}
-          cursorOffset={dispatchCursor}
-          onCursorOffsetChange={setDispatchCursor}
-        />
-        <Box marginTop={1} justifyContent="center">
-          <Text dimColor>Type prompt + Enter to Dispatch · Esc to Back</Text>
-        </Box>
-      </Dialog>
-    );
-  }
+  const counts = {
+    awaiting: backgroundTasks.filter(task => getTaskCategory(task) === 'needs-input').length,
+    working: backgroundTasks.filter(task => getTaskCategory(task) === 'working').length,
+    completed: backgroundTasks.filter(task => getTaskCategory(task) === 'completed').length,
+  };
+  const cwdLabel = cwd ? (cwd.split(/[\\/]/).filter(Boolean).at(-1) ?? cwd) : process.cwd().split(/[\\/]/).at(-1);
+  const divider = '─'.repeat(contentWidth);
+  const inputPlaceholder = filterText ? 'filter sessions' : 'describe a task for a new session';
 
   return (
-    <Dialog
-      title="Agent View"
-      subtitle={`Research Preview · ${backgroundTasks.length} session${backgroundTasks.length !== 1 ? 's' : ''}${groupMode === 'directory' ? ' · Grouped by directory' : ''}`}
-      onCancel={onBack}
-      hideInputGuide
-    >
-      <Box flexDirection="column" gap={0}>
-        {/* Group/Category headers */}
-        {groupedTasks.map((group, gi) => {
+    <Box flexDirection="column" width={contentWidth} paddingX={1}>
+      <Box flexDirection="column" marginBottom={2}>
+        <Text bold>Claude Code</Text>
+        <Text dimColor>Opus (1M context) · ~/{cwdLabel ?? 'workspace'}</Text>
+        <Text dimColor>
+          {counts.awaiting} awaiting input · {counts.working} working · {counts.completed} completed
+        </Text>
+      </Box>
+
+      {backgroundTasks.length === 0 ? (
+        <Box flexDirection="column" marginBottom={1}>
+          <Text dimColor>No background agents are currently running.</Text>
+        </Box>
+      ) : (
+        groupedTasks.map(group => {
           const info = CATEGORY_LABELS[group.key as TaskCategory] ?? { label: group.label, color: 'dim' };
           return (
             <React.Fragment key={group.key}>
@@ -705,20 +806,14 @@ export function AgentViewDashboard({ onBack, onDispatch, cwd }: Props) {
                 color={info.color}
                 isCollapsed={group.isCollapsed}
                 onToggle={() => handleGroupToggle(group.key)}
-                isSelected={
-                  flatList[selectedIndex]?.type === 'group' &&
-                  (flatList[selectedIndex] as any)?.group?.key === group.key
-                }
+                isSelected={false}
               />
               {!group.isCollapsed &&
-                group.tasks.map((task, ti) => {
+                group.tasks.map(task => {
                   const lt = task as LocalAgentTaskState;
-                  const flatIdx = flatList.findIndex(item => item.type === 'task' && (item as any).task?.id === lt.id);
+                  const flatIdx = flatList.findIndex(item => item.task?.id === lt.id);
                   const isSelected = flatIdx === selectedIndex;
-
-                  // PR status
                   const prInfo = (lt as any)._prInfo;
-                  const prCount = prInfo ? 1 : 0; // Track multiple PRs if needed
 
                   return (
                     <AgentViewRow
@@ -726,30 +821,31 @@ export function AgentViewDashboard({ onBack, onDispatch, cwd }: Props) {
                       task={lt}
                       index={flatIdx}
                       isSelected={isSelected}
-                      prCount={prCount}
+                      prCount={prInfo ? 1 : 0}
                       prStatus={prInfo?.status as PRStatus | null}
                       prUrl={prInfo?.url as string | null}
+                      width={contentWidth}
                     />
                   );
                 })}
             </React.Fragment>
           );
-        })}
+        })
+      )}
 
-        {/* Delete confirmation banner */}
-        {stopConfirmIndex !== null && selectedTask && (
-          <Box flexDirection="row" gap={1} padding={1} borderStyle="double" borderColor="red">
-            <Text color="red">
-              Press Ctrl+X again within 2s to DELETE session:{' '}
-              {(selectedTask as any).customName ?? selectedTask.agentType ?? selectedTask.id.slice(0, 8)}
-            </Text>
-          </Box>
-        )}
+      <Box flexGrow={1} minHeight={2} />
 
-        <Divider />
+      {stopConfirmIndex !== null && selectedTask && (
+        <Box marginBottom={1}>
+          <Text color="error">
+            press ctrl+x again to delete {(selectedTask as any).customName ?? selectedTask.agentType ?? selectedTask.id}
+          </Text>
+        </Box>
+      )}
 
-        {/* Peek Panel */}
-        {peekOpen && selectedTask && (
+      {peekOpen && selectedTask && (
+        <Box flexDirection="column" marginBottom={1}>
+          <Text dimColor>{divider}</Text>
           <AgentViewPeekPanel
             task={selectedTask}
             pendingPermissions={pendingPermissions as ToolUseConfirm[]}
@@ -759,79 +855,45 @@ export function AgentViewDashboard({ onBack, onDispatch, cwd }: Props) {
             cursorOffset={cursorOffset}
             onCursorOffsetChange={setCursorOffset}
           />
-        )}
-
-        {/* Rename input */}
-        {renameSessionId !== null && (
-          <Box>
-            <Divider />
-            <Box flexDirection="row" gap={1} marginTop={1}>
-              <Text color="suggestion">Rename:</Text>
-              <Text dimColor={!renameText}>{renameText || '(empty)'}</Text>
-              <Text dimColor>Enter to confirm · Esc to cancel</Text>
-            </Box>
-          </Box>
-        )}
-
-        {/* Filter / Dispatch bar */}
-        {mode === 'dispatch' || filterText ? (
-          <AgentViewDispatchInput
-            mode={filterText ? 'filter' : 'dispatch'}
-            value={filterText || dispatchText}
-            onChange={text => {
-              if (filterText) {
-                setFilterText(text);
-                if (!text) setMode('browse');
-              } else {
-                setDispatchText(text);
-              }
-            }}
-            onSubmit={text => {
-              if (filterText) return; // Filtering doesn't dispatch
-              handleDispatch(text);
-            }}
-            cursorOffset={dispatchCursor}
-            onCursorOffsetChange={setDispatchCursor}
-            filterSyntax={FILTER_SYNTAX_HINT}
-          />
-        ) : (
-          <Box flexDirection="row" gap={1} minHeight={1}>
-            <Text dimColor>/</Text>
-            <Text dimColor>Type to dispatch or filter... [{filteredList.length} sessions]</Text>
-          </Box>
-        )}
-
-        {/* Footer */}
-        <Box marginTop={1} justifyContent="center" flexDirection="row" gap={1} flexWrap="wrap">
-          {filteredList.length > 0 ? (
-            <>
-              <Text dimColor>
-                {figures.arrowUp}
-                {figures.arrowDown} Navigate
-              </Text>
-              <Text dimColor>·</Text>
-              <Text dimColor>Space Peek</Text>
-              <Text dimColor>·</Text>
-              <Text dimColor>Enter Attach</Text>
-              <Text dimColor>·</Text>
-              <Text dimColor>Ctrl+T Pin</Text>
-              <Text dimColor>·</Text>
-              <Text dimColor>Ctrl+S {groupMode === 'state' ? 'Dirs' : 'State'}</Text>
-              <Text dimColor>·</Text>
-              <Text dimColor>Ctrl+X Stop</Text>
-              <Text dimColor>·</Text>
-              <Text dimColor>? Help</Text>
-              <Text dimColor>·</Text>
-              <Text dimColor>Esc Back</Text>
-            </>
-          ) : (
-            <Text dimColor>/ Dispatch · ? Help · Esc Back</Text>
-          )}
         </Box>
+      )}
 
-        {/* Shortcuts Help Overlay */}
-        {shortcutsHelpOpen && <AgentViewShortcutsHelp onClose={() => setShortcutsHelpOpen(false)} />}
+      {renameSessionId !== null && (
+        <Box flexDirection="row" gap={1} marginBottom={1}>
+          <Text color="suggestion">rename</Text>
+          <Text dimColor={!renameText}>{renameText || '(empty)'}</Text>
+          <Text dimColor>enter to confirm · esc to cancel</Text>
+        </Box>
+      )}
+
+      <Text dimColor>{divider}</Text>
+      <Box flexDirection="row" height={1}>
+        <Text bold>› </Text>
+        <TextInput
+          value={filterText || dispatchText}
+          onChange={text => {
+            if (filterText) {
+              setFilterText(text);
+              if (!text) setMode('browse');
+            } else {
+              setDispatchText(text);
+              if (text) setMode('dispatch');
+            }
+          }}
+          onSubmit={text => {
+            if (filterText) return;
+            handleDispatch(text);
+          }}
+          columns={Math.max(10, contentWidth - 2)}
+          cursorOffset={dispatchCursor}
+          onChangeCursorOffset={setDispatchCursor}
+          placeholder={inputPlaceholder}
+        />
       </Box>
-    </Dialog>
+      <Text dimColor>{divider}</Text>
+      <Text dimColor>enter to open · space to reply · ctrl+x to delete</Text>
+
+      {shortcutsHelpOpen && <AgentViewShortcutsHelp onClose={() => setShortcutsHelpOpen(false)} />}
+    </Box>
   );
 }

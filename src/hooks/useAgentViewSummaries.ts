@@ -41,6 +41,8 @@ export function useAgentViewSummaries({ tasks, setAppState }: UseAgentViewSummar
           if (!isLocalAgentTask(task)) continue;
 
           const lt = task as any;
+          if (lt.fromSupervisorRoster) continue;
+
           const newSummary = lt.progress?.summary ?? null;
           const currentSummary = lt.rowSummary ?? null;
 
@@ -72,6 +74,8 @@ export function useAgentViewSummaries({ tasks, setAppState }: UseAgentViewSummar
           if (!isLocalAgentTask(task)) continue;
 
           const lt = task as any;
+          if (lt.fromSupervisorRoster) continue;
+
           if (lt._prInfo) {
             const updated = refreshPRStatus(task as any);
             if (updated && updated.status !== lt._prInfo.status) {
