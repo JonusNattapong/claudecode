@@ -11,9 +11,7 @@ import { shouldShowOpus1mMergeNotice } from './Opus1mMergeNotice.js';
 const MAX_SHOW_COUNT = 3;
 
 export function VoiceModeNotice(): React.ReactNode {
-  // Positive ternary pattern — see docs/feature-gating.md.
-  // All strings must be inside the guarded branch for dead-code elimination.
-  return feature('VOICE_MODE') ? <VoiceModeNoticeInner /> : null;
+  return <VoiceModeNoticeInner />;
 }
 
 function VoiceModeNoticeInner(): React.ReactNode {

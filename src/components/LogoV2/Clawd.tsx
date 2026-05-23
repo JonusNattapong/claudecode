@@ -1,8 +1,10 @@
-import * as React from 'react';
+import type * as React from 'react';
 import { Box, Text } from '../../ink.js';
 import { env } from '../../utils/env.js';
 
-export type ClawdPose = 'default' | 'arms-up' // both arms raised (used during jump)
+export type ClawdPose =
+  | 'default'
+  | 'arms-up' // both arms raised (used during jump)
   | 'look-left' // both pupils shifted left
   | 'look-right'; // both pupils shifted right
 
@@ -36,29 +38,29 @@ const POSES: Record<ClawdPose, Segments> = {
     r1E: '▛███▜',
     r1R: '▌',
     r2L: '▝▜',
-    r2R: '▛▘'
+    r2R: '▛▘',
   },
   'look-left': {
     r1L: ' ▐',
     r1E: '▟███▟',
     r1R: '▌',
     r2L: '▝▜',
-    r2R: '▛▘'
+    r2R: '▛▘',
   },
   'look-right': {
     r1L: ' ▐',
     r1E: '▙███▙',
     r1R: '▌',
     r2L: '▝▜',
-    r2R: '▛▘'
+    r2R: '▛▘',
   },
   'arms-up': {
     r1L: '▗▟',
     r1E: '▛███▜',
     r1R: '▙▖',
     r2L: ' ▜',
-    r2R: '▛ '
-  }
+    r2R: '▛ ',
+  },
 };
 
 // Apple Terminal uses a bg-fill trick (see below), so only eye poses make
@@ -67,11 +69,11 @@ const APPLE_EYES: Record<ClawdPose, string> = {
   default: ' ▗   ▖ ',
   'look-left': ' ▘   ▘ ',
   'look-right': ' ▝   ▝ ',
-  'arms-up': ' ▗   ▖ '
+  'arms-up': ' ▗   ▖ ',
 };
 
 export function Clawd({ pose = 'default', bodyColor, eyeColor }: Props = {}): React.ReactNode {
-  if (env.terminal === "Apple_Terminal") {
+  if (env.terminal === 'Apple_Terminal') {
     return <AppleTerminalClawd pose={pose} bodyColor={bodyColor} eyeColor={eyeColor} />;
   }
 
@@ -79,22 +81,30 @@ export function Clawd({ pose = 'default', bodyColor, eyeColor }: Props = {}): Re
   const bc = bodyColor ?? 'clawd_body';
   const ec = eyeColor ?? 'clawd_eye';
   const bgc = bodyColor ?? 'clawd_body';
-  const tHorn = <Text color={bc}>{"  ▗   ▖  "}</Text>;
+  const tHorn = <Text color={bc}>{'  ▗   ▖  '}</Text>;
   const t6 = (
     <Text>
       <Text color={bc}>{p.r1L}</Text>
-      <Text color={bc} backgroundColor={ec}>{p.r1E}</Text>
+      <Text color={bc} backgroundColor={ec}>
+        {p.r1E}
+      </Text>
       <Text color={bc}>{p.r1R}</Text>
     </Text>
   );
   const t10 = (
     <Text>
       <Text color={bc}>{p.r2L}</Text>
-      <Text color={bc} backgroundColor={bodyColor ?? 'clawd_background'}>█████</Text>
+      <Text color={bc} backgroundColor={bodyColor ?? 'clawd_background'}>
+        █████
+      </Text>
       <Text color={bc}>{p.r2R}</Text>
     </Text>
   );
-  const t11 = <Text color={bc}>{"  "}▘▘ ▝▝{"  "}</Text>;
+  const t11 = (
+    <Text color={bc}>
+      {'  '}▘▘ ▝▝{'  '}
+    </Text>
+  );
 
   return (
     <Box flexDirection="column">
@@ -109,9 +119,13 @@ export function Clawd({ pose = 'default', bodyColor, eyeColor }: Props = {}): Re
 function AppleTerminalClawd({ pose, bodyColor, eyeColor }: Props): React.ReactNode {
   const bc = bodyColor ?? 'clawd_body';
   const ec = eyeColor ?? 'clawd_eye';
-  const tHorn = <Text color={bc}>{"  ▗   ▖  "}</Text>;
+  const tHorn = <Text color={bc}>{'  ▗   ▖  '}</Text>;
   const t2 = APPLE_EYES[pose];
-  const t3 = <Text color={ec} backgroundColor={bc}>{t2}</Text>;
+  const t3 = (
+    <Text color={ec} backgroundColor={bc}>
+      {t2}
+    </Text>
+  );
   const t5 = (
     <Text>
       <Text color={bc}>▗</Text>
@@ -119,7 +133,7 @@ function AppleTerminalClawd({ pose, bodyColor, eyeColor }: Props): React.ReactNo
       <Text color={bc}>▖</Text>
     </Text>
   );
-  const t6 = <Text backgroundColor={bc}>{" ".repeat(7)}</Text>;
+  const t6 = <Text backgroundColor={bc}>{' '.repeat(7)}</Text>;
   const t7 = <Text color={bc}>▘▘ ▝▝</Text>;
 
   return (

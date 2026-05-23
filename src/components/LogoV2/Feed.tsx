@@ -1,6 +1,8 @@
 import type * as React from 'react';
 import { stringWidth } from '../../ink/stringWidth.js';
 import { Box, Text } from '../../ink.js';
+import { useAppState } from '../../state/AppState.js';
+import { AGENT_COLOR_TO_THEME_COLOR, AGENT_COLORS } from '../../tools/AgentTool/agentColorManager.js';
 import { truncate } from '../../utils/format.js';
 
 export type FeedLine = {
@@ -54,9 +56,16 @@ export function Feed({ config, actualWidth }: FeedProps): React.ReactNode {
   const gap = '  ';
   const maxTimestampWidth = Math.max(0, ...lines.map(line => (line.timestamp ? stringWidth(line.timestamp) : 0)));
 
+  const standaloneAgentContext = useAppState(s => s.standaloneAgentContext);
+  const standaloneColor = standaloneAgentContext?.color;
+  const activeColor =
+    standaloneColor && AGENT_COLORS.includes(standaloneColor)
+      ? AGENT_COLOR_TO_THEME_COLOR[standaloneColor]
+      : 'autoAccept';
+
   return (
     <Box flexDirection="column" width={actualWidth}>
-      <Text bold color="claude">
+      <Text bold color={activeColor}>
         {title}
       </Text>
       {customContent ? (
