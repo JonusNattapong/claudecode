@@ -1,7 +1,11 @@
 #!/usr/bin/env node
-const { spawn } = require('child_process');
+const { execSync } = require('child_process');
 const path = require('path');
-const p = spawn('bun', [path.join(__dirname, '..', 'dist', 'main.js'), ...process.argv.slice(2)], {
-  stdio: 'inherit',
-});
-p.on('exit', code => process.exit(code || 0));
+const mainJs = path.join(__dirname, '..', 'dist', 'main.js');
+const userArgs = process.argv.slice(2).join(' ');
+
+try {
+  execSync(`bun "${mainJs}" ${userArgs}`, { stdio: 'inherit' });
+} catch (e) {
+  process.exit(e.status ?? 1);
+}
