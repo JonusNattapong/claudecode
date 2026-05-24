@@ -1,5 +1,6 @@
 import type * as React from 'react';
 import { useEffect, useMemo, useState } from 'react';
+import { useInterval } from 'usehooks-ts';
 import { Box, Text } from '../ink.js';
 import { getAutonomousStatus } from '../services/autonomous/supervisorIntegration.js';
 import {
@@ -9,6 +10,7 @@ import {
   type TaskQueueEntry,
   watchQueue,
 } from '../services/autonomous/taskQueue.js';
+import { SpinnerGlyph } from './Spinner/SpinnerGlyph.js';
 import { formatDuration, truncateToWidth } from '../utils/format.js';
 import { OffscreenFreeze } from './OffscreenFreeze.js';
 
@@ -140,6 +142,9 @@ function TaskRow({ task }: { task: TaskQueueEntry }) {
 export function AutonomousExecutionAccordion({ goal, goalStartedAt, goalTurns, isLoading }: Props): React.ReactNode {
   const [tasks, setTasks] = useState<TaskQueueEntry[]>([]);
   const [daemon, setDaemon] = useState<DaemonSnapshot | null>(null);
+  const [frame, setFrame] = useState(0);
+
+  useInterval(() => setFrame(f => f + 1), isLoading ? 80 : null);
 
   const refresh = async () => {
     await loadQueue();
@@ -206,13 +211,16 @@ export function AutonomousExecutionAccordion({ goal, goalStartedAt, goalTurns, i
           </Box>
         ) : null}
         {goal ? (
-          <Text dimColor>
-            {isLoading ? <Text color="warning">✣</Text> : <Text>○</Text>}{' '}
-            {isLoading ? 'Claude is working toward the goal...' : 'Goal not yet met... continuing'}
-            {elapsed ? ` (${elapsed}` : ''}
-            {goalTurns !== undefined ? ` · ${goalTurns} turns` : ''}
-            {elapsed ? ' · esc to interrupt)' : ''}
-          </Text>
+          <Box>
+            {isLoading ? <SpinnerGlyph frame={frame} messageColor="warning" /> : <Text>○</Text>}
+            <Text dimColor>
+              {' '}
+              {isLoading ? 'Claude is working toward the goal...' : 'Goal not yet met... continuing'}
+              {elapsed ? ` (${elapsed}` : ''}
+              {goalTurns !== undefined ? ` · ${goalTurns} turns` : ''}
+              {elapsed ? ' · esc to interrupt)' : ''}
+            </Text>
+          </Box>
         ) : visibleTasks.length === 0 ? (
           <Text dimColor>✓ No queued daemon tasks</Text>
         ) : null}

@@ -55,6 +55,19 @@ const SESSION_COLORS = [
   { label: 'Cyan', value: 'cyan' as const },
 ];
 
+const SPINNER_COLORS = [
+  { label: 'Default (autoAccept)', value: 'default' as const },
+  { label: 'Purple', value: 'autoAccept' as const },
+  { label: 'Red', value: 'red' as const },
+  { label: 'Blue', value: 'blue' as const },
+  { label: 'Green', value: 'green' as const },
+  { label: 'Yellow', value: 'yellow' as const },
+  { label: 'Cyan', value: 'cyan' as const },
+  { label: 'Pink', value: 'pink' as const },
+  { label: 'Orange', value: 'orange' as const },
+  { label: 'White', value: 'white' as const },
+];
+
 // ─── Interactive Color Panel ─────────────────────────────────────────────────
 
 function ColorPanel({
@@ -71,6 +84,8 @@ function ColorPanel({
   // Clawd colors
   const [bodyColor, setBodyColor] = useState<string>((config as any).clawdBodyColor ?? 'clawd_body');
   const [eyeColor, setEyeColor] = useState<string>((config as any).clawdEyeColor ?? 'clawd_eye');
+  // Spinner color
+  const [spinnerColor, setSpinnerColor] = useState<string>((config as any).spinnerColor ?? 'default');
   // Focused pane within mascot tab: 'body' | 'eyes'
   const [mascotPane, setMascotPane] = useState<'body' | 'eyes'>('body');
   const [focusedBodyIdx, setFocusedBodyIdx] = useState(
@@ -155,7 +170,7 @@ function ColorPanel({
   return (
     <Dialog
       title="Color & Customization"
-      subtitle="Prompt bar color · Clawd mascot colors"
+      subtitle="Prompt bar · Spinner · Clawd mascot colors"
       onCancel={handleCancel}
       hideInputGuide
     >
@@ -195,6 +210,26 @@ function ColorPanel({
               visibleOptionCount={SESSION_COLORS.length}
               defaultValue={initialColorSetting}
               defaultFocusValue={initialColorSetting}
+            />
+          </Box>
+        </Tab>
+
+        <Tab title="Spinner" id="spinner">
+          <Box flexDirection="column" gap={1} marginTop={1}>
+            <Select
+              options={SPINNER_COLORS}
+              onFocus={setting => {
+                setSpinnerColor(setting);
+                saveGlobalConfig(prev => ({ ...prev, spinnerColor: setting === 'default' ? undefined : setting }));
+              }}
+              onChange={async (value: string) => {
+                saveGlobalConfig(prev => ({ ...prev, spinnerColor: value === 'default' ? undefined : value }));
+                onDone(value === 'default' ? 'Spinner color reset to default' : `Spinner color set to: ${value}`);
+              }}
+              onCancel={handleCancel}
+              visibleOptionCount={SPINNER_COLORS.length}
+              defaultValue={spinnerColor}
+              defaultFocusValue={spinnerColor}
             />
           </Box>
         </Tab>
@@ -260,9 +295,11 @@ function ColorPanel({
           Tab switch tabs ·{' '}
           {selectedTab === 'prompt'
             ? '↑↓ select · Enter confirm'
-            : mascotPane === 'body'
-              ? '↑↓ body · Tab eyes'
-              : '↑↓ eyes · Tab body'}
+            : selectedTab === 'spinner'
+              ? '↑↓ select · Enter confirm'
+              : mascotPane === 'body'
+                ? '↑↓ body · Tab eyes'
+                : '↑↓ eyes · Tab body'}
           {' · '}Enter save · Esc close
         </Text>
       </Box>

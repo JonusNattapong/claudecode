@@ -23,6 +23,7 @@ import { logError } from '../../utils/log.js';
 import { clearAllPlanSlugs } from '../../utils/plans.js';
 import { setCwd } from '../../utils/Shell.js';
 import { invalidateSessionEnvCache } from '../../utils/sessionEnvironment.js';
+import { setFullGoalState } from '../../utils/sessionGoalState.js';
 import { processSessionStartHooks } from '../../utils/sessionStart.js';
 import {
   cacheSessionTitle,
@@ -165,6 +166,9 @@ export async function clearConversation({
         ...prev,
         tasks: nextTasks,
         attribution: createEmptyAttributionState(),
+        sessionGoal: undefined,
+        sessionGoalStartTime: undefined,
+        sessionGoalTurnCount: undefined,
         // Preserve standalone agent context (name/color set by /rename, /color)
         // if it exists, so the new session inherits the custom identity.
         // E63: Preserve custom session name from /rename across /clear.
@@ -187,6 +191,9 @@ export async function clearConversation({
       };
     });
   }
+
+  // Clear persisted goal state (disk + in-memory singleton)
+  setFullGoalState(null);
 
   // Clear plan slug cache so a new plan file is used after /clear
   clearAllPlanSlugs();

@@ -322,6 +322,17 @@ class GoogleAdapter implements ProviderAdapter {
         for (const block of m.content) {
           if (block.type === 'text') {
             parts.push({ text: block.text });
+          } else if (block.type === 'image') {
+            // Convert Anthropic image block → Gemini inlineData part
+            const source = block.source as Record<string, unknown> | undefined;
+            if (source?.type === 'base64') {
+              parts.push({
+                inlineData: {
+                  mimeType: source.media_type ?? source.mimeType ?? 'image/png',
+                  data: source.data,
+                },
+              });
+            }
           } else if (block.type === 'tool_use') {
             parts.push({
               functionCall: {

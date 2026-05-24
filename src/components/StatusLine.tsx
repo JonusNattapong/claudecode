@@ -209,7 +209,7 @@ function claudePill(text: string): string {
 /** Render remaining context as six hearts. */
 function renderContextHearts(usedPercentage: number | null | undefined): string {
   if (usedPercentage === null || usedPercentage === undefined) {
-    return chalk.hex(CLAUDE_THEME.success)('♥'.repeat(CONTEXT_HEART_COUNT));
+    return chalk.hex(CLAUDE_THEME.success)('◈'.repeat(CONTEXT_HEART_COUNT));
   }
 
   const remainingFraction = Math.max(0, 1 - Math.min(100, Math.max(0, usedPercentage)) / 100);
@@ -217,8 +217,8 @@ function renderContextHearts(usedPercentage: number | null | undefined): string 
   const heartColor =
     filledHearts <= 1 ? CLAUDE_THEME.danger : filledHearts <= 2 ? CLAUDE_THEME.warning : CLAUDE_THEME.success;
   return (
-    chalk.hex(heartColor)('♥'.repeat(filledHearts)) +
-    chalk.hex(BAR_FREE_HEX)('♡'.repeat(CONTEXT_HEART_COUNT - filledHearts))
+    chalk.hex(heartColor)('◈'.repeat(filledHearts)) +
+    chalk.hex(BAR_FREE_HEX)('◇'.repeat(CONTEXT_HEART_COUNT - filledHearts))
   );
 }
 
@@ -315,27 +315,6 @@ function formatContextSize(tokens: number): string {
   if (tokens >= 1_000_000) return `${(tokens / 1_000_000).toFixed(1)}M`;
   if (tokens >= 1_000) return `${Math.round(tokens / 1_000)}K`;
   return String(tokens);
-}
-
-function countHooks(settings: ReadonlySettings): number {
-  const hooks = settings?.hooks;
-  if (!hooks) return 0;
-  return Object.values(hooks).reduce((total, matchers) => {
-    if (!Array.isArray(matchers)) return total;
-    return (
-      total +
-      matchers.reduce(
-        (sum, matcher) => sum + (Array.isArray((matcher as any).hooks) ? (matcher as any).hooks.length : 0),
-        0,
-      )
-    );
-  }, 0);
-}
-
-function countPermissionRules(settings: ReadonlySettings): number {
-  const permissions = settings?.permissions;
-  if (!permissions) return 0;
-  return (permissions.allow?.length ?? 0) + (permissions.deny?.length ?? 0) + (permissions.ask?.length ?? 0);
 }
 
 function _countClaudeFiles(cwd: string): number {
@@ -707,8 +686,6 @@ function StatusLineInner({
     const runningAgents = agents.filter(a => a.status === 'running');
     const completedAgents = agents.filter(a => a.status === 'completed');
 
-    const ruleCount = countPermissionRules(settings);
-    const hookCount = countHooks(settings);
     const percentText =
       usedPercentage > 85
         ? chalk.hex(CLAUDE_THEME.danger)(`${usedPercentage.toFixed(0)}%`)
@@ -730,12 +707,8 @@ function StatusLineInner({
         sessionGoalDisplay = claudePill(`◎ /goal active (${elapsedStr})`);
       }
     }
-    // Build stats parts (only show non-zero)
-    const statsParts: string[] = [];
-    if (ruleCount > 0) statsParts.push(`${ruleCount} rules`);
-    if (hookCount > 0) statsParts.push(`${hookCount} hooks`);
-    if (mcpCount > 0) statsParts.push(`${mcpCount} MCPs`);
-    const statsStr = statsParts.length > 0 ? CLAUDE_DOT + statsParts.map(claudeMuted).join(CLAUDE_DOT) : '';
+    // Only show MCPs count (rules/hooks/duration removed from statusline)
+    const mcpStats = mcpCount > 0 ? CLAUDE_DOT + claudeMuted(`${mcpCount} MCPs`) : '';
 
     const leftLine = [sessionGoalDisplay, filteredStatusLineText ? claudeSubtle(filteredStatusLineText) : '']
       .filter(Boolean)
@@ -747,10 +720,8 @@ function StatusLineInner({
       percentText +
       CLAUDE_DOT +
       claudeMuted(formatContextSize(contextWindowSize)) +
-      CLAUDE_DOT +
-      claudeMuted(`◷ ${formatCompactDuration(duration)}`) +
-      statsStr +
-      (rightText ? CLAUDE_DOT + chalk.hex(CLAUDE_THEME.warning)(rightText) : '');
+      mcpStats +
+      (rightText ? CLAUDE_DOT + chalk.hex('#FFD700')(rightText) : '');
 
     const agentLines: Array<{ key: string; node: React.ReactNode }> = [
       ...runningAgents.slice(-1).map(a => ({

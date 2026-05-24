@@ -57,7 +57,7 @@
   <h2>Key Subsystems</h2>
 
   <h3>MCP (Model Context Protocol)</h3>
-  <p><code>src/services/mcp/</code> — manages external MCP server connections, tool discovery, resource access, and paginated <code>tools/list</code> responses. Servers configured via <code>--mcp-config</code> or <code>/mcp</code> command.</p>
+  <p><code>src/services/mcp/</code> — manages external MCP server connections, tool discovery, resource access, and paginated <code>tools/list</code> responses. Servers configured via <code>--mcp-config</code> or <code>/mcp</code> command. See <a href="mcp.html">MCP</a> for detailed setup and configuration.</p>
 
   <h3>Plugins &amp; Hooks</h3>
   <p><code>src/services/plugins/</code> — plugin loading, installation, marketplace reconciliation, and hook dispatch. Hook points: <code>PreToolUse</code>, <code>PostToolUse</code>, <code>PreBash</code>, <code>PostPrompt</code>, <code>PreAcceptEdit</code>. Plugins can provide commands, agents, skills, MCP servers, and LSP integrations.</p>
@@ -73,6 +73,24 @@
 
   <h3>GrowthBook Feature Flags</h3>
   <p><code>src/services/analytics/growthbook.js</code> — A/B testing and feature flag platform. Initialized at startup, evaluates flags locally with caching.</p>
+
+  <h3>Agent Runtime</h3>
+  <p><code>src/agentRuntime/</code> — manages multi-agent orchestration. The <strong>orchestrator</strong> coordinates agent sessions, <strong>runStore</strong> persists agent run data, <strong>toolGateway</strong> routes tools between agents, and <strong>workflowRegistry</strong> / <strong>agentRegistry</strong> declare named workflows and agent configurations.</p>
+
+  <h3>Autonomous / Daemon</h3>
+  <p><code>src/services/autonomous/</code> — enables 24/7 background execution. The <strong>taskQueue</strong> is a file-backed queue with priorities, leases, and dead-letter handling. <strong>agentLoop</strong> runs the continuous dequeue → spawn worker → monitor → retry cycle. <strong>daemonMode</strong> provides the supervisor-managed background process entry point, and <strong>supervisorIntegration</strong> handles health checks and auto-respawn. See <a href="daemon.html">Daemon Mode</a> for detailed configuration and usage.</p>
+
+  <h3>Coordinator (Multi-Agent)</h3>
+  <p><code>src/coordinator/</code> — supports multi-agent collaboration. <strong>coordinatorMode</strong> delegates tasks to sub-agents, and <strong>workerAgent</strong> provides standalone workers for delegated subtasks.</p>
+
+  <h3>Research &amp; Memory</h3>
+  <p><code>src/research/</code> — built-in deep research capabilities: citation extraction, claim verification, dossier generation, truth checking, and source ranking. <code>src/memdir/</code> — semantic memory with text embedding search, memory age tracking, auto-memory capture, and cross-session recall. See <a href="research-memory.html">Research &amp; Memory</a> for detailed usage.</p>
+
+  <h3>Voice Mode</h3>
+  <p><code>src/voice/</code> — compile-time gated voice input support (<code>VOICE_MODE=1</code>). Provides speech-to-text and voice command processing for hands-free operation.</p>
+
+  <h3>State Management</h3>
+  <p>The app uses a lightweight observable store pattern (<code>createStore&lt;T&gt;</code> in <code>src/state/store.ts</code>). Stores are plain functions with <code>getState</code>, <code>setState</code>, and <code>subscribe</code>. React components subscribe via the <strong>AppState</strong> React context (<code>src/state/AppState.tsx</code>).</p>
 
   <h2>Important Source Paths</h2>
   <table>
@@ -90,15 +108,26 @@
     <tr><td><code>src/utils/permissions/permissions.ts</code></td><td>Permission evaluation logic</td></tr>
     <tr><td><code>src/services/mcp/</code></td><td>MCP server management</td></tr>
     <tr><td><code>src/services/plugins/</code></td><td>Plugin loader and hook dispatch</td></tr>
-    <tr><td><code>src/state/store.ts</code></td><td>Lightweight observable store</td></tr>
+    <tr><td><code>src/state/store.ts</code></td><td>Lightweight observable store (createStore&lt;T&gt;)</td></tr>
+    <tr><td><code>src/state/AppState.tsx</code></td><td>Root app state (React context)</td></tr>
+    <tr><td><code>src/state/AppStateStore.ts</code></td><td>App state store implementation</td></tr>
+    <tr><td><code>src/state/selectors.ts</code></td><td>State selectors</td></tr>
+    <tr><td><code>src/agentRuntime/</code></td><td>Agent orchestration, run store, tool gateway</td></tr>
+    <tr><td><code>src/services/autonomous/</code></td><td>Task queue, agent loop, daemon mode, supervisor</td></tr>
+    <tr><td><code>src/coordinator/</code></td><td>Multi-agent coordinator and worker agents</td></tr>
+    <tr><td><code>src/research/</code></td><td>Deep research, dossier generation, truth checking</td></tr>
+    <tr><td><code>src/memdir/</code></td><td>Semantic memory search and storage</td></tr>
+    <tr><td><code>src/voice/</code></td><td>Voice mode support (compile-time gated)</td></tr>
     <tr><td><code>src/entrypoints/init.ts</code></td><td>Startup initialization (Sentry, configs, telemetry)</td></tr>
+    <tr><td><code>src/entrypoints/cli.tsx</code></td><td>Alternative CLI entry point (Commander-based)</td></tr>
+    <tr><td><code>src/entrypoints/mcp.ts</code></td><td>MCP server entry point</td></tr>
   </table>
 
   <h2>Build System</h2>
   <p>Built with Bun bundler — <code>bun run build</code> outputs a single binary to <code>dist/</code>. TypeScript with strict mode and ESM/NodeNext module resolution. External dependencies include Electron, chromium-bidi, AWS SDK, Google Auth, and platform-specific native modules. Lint/format via Biome 2.4.</p>
 
   <footer class="footer">
-    <span>Claude Code v2.1.152 — Open Source (MIT)</span>
+    <span>Claude Code v2.1.158 — Open Source (MIT)</span>
     <div class="footer-links">
       <a href="https://github.com/ClaudeCore/claudecode">GitHub</a>
       <a href="https://github.com/ClaudeCore/claudecode/issues">Issues</a>

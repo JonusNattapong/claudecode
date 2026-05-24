@@ -450,7 +450,7 @@ export function renderModelSetting(setting: ModelName | ModelAlias, providerOver
   if (isModelAlias(setting)) {
     return capitalize(setting);
   }
-  return renderModelName(setting, providerOverride);
+  return renderModelName(setting, providerOverride).replace(/^[^:]+:\s*/, '');
 }
 
 // @[MODEL LAUNCH]: Add display name cases for the new model (base + [1m] variant if applicable).

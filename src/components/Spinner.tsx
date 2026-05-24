@@ -230,7 +230,9 @@ function SpinnerWithVerbInner({
   // progress updates to s.tasks trigger re-renders that keep this fresh.
   const leaderTokenCount = Math.round(responseLengthRef.current / 4);
 
-  const defaultColor: keyof Theme = 'autoAccept';
+  // Read spinner color from global config (set via /color command)
+  const spinnerConfigColor = getGlobalConfig().spinnerColor;
+  const defaultColor: keyof Theme = (spinnerConfigColor as keyof Theme) ?? 'autoAccept';
   const defaultShimmerColor: keyof Theme = 'autoAccept';
   const messageColor = overrideColor ?? defaultColor;
   const shimmerColor = overrideShimmerColor ?? defaultShimmerColor;

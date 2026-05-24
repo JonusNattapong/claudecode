@@ -360,6 +360,7 @@ export type GlobalConfig = {
   todoFeatureEnabled: boolean; // Whether the todo feature is enabled
   showExpandedTodos?: boolean; // Whether to show todos expanded, even when empty
   showSpinnerTree?: boolean; // Whether to show the teammate spinner tree instead of pills
+  spinnerColor?: string; // Spinner color set via /color command
 
   // First start time tracking
   firstStartTime?: string; // ISO timestamp when Claude Code was first started on this machine
