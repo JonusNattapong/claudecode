@@ -1,4 +1,4 @@
-// Claude Code Docs — Mobile Nav & Helpers
+// Claudevil Docs — Mobile Nav & Helpers
 (function () {
   'use strict';
 

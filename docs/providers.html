@@ -3,18 +3,18 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Providers — Claude Code</title>
-  <meta name="description" content="Complete AI provider reference for Claude Code — 27 supported providers with configuration and capabilities.">
+  <title>Providers — Claudevil</title>
+  <meta name="description" content="Complete AI provider reference for Claudevil — 27 supported providers with configuration and capabilities.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
-<header class="header"><div class="header-inner"><a href="index.html" class="logo"><span class="logo-mark">~</span><span>Claude Code</span></a><nav class="header-nav"><a href="index.html">Home</a><a href="index.html#features">Features</a><a href="index.html#commands">Commands</a><a href="quick-start.html" class="active">Docs</a><a href="https://github.com/JonusNattapong/claudecode" target="_blank">GitHub</a></nav><button class="menu-btn" id="menuToggle" aria-label="Toggle navigation"><span></span><span></span><span></span></button></div></header>
+<header class="header"><div class="header-inner"><a href="index.html" class="logo"><span class="logo-mark">~</span><span>Claudevil</span></a><nav class="header-nav"><a href="index.html">Home</a><a href="index.html#features">Features</a><a href="index.html#commands">Commands</a><a href="quick-start.html" class="active">Docs</a><a href="https://github.com/JonusNattapong/claudecode" target="_blank">GitHub</a></nav><button class="menu-btn" id="menuToggle" aria-label="Toggle navigation"><span></span><span></span><span></span></button></div></header>
 <div class="app"><aside class="sidebar" id="sidebar"></aside><div class="sidebar-overlay" id="sidebarOverlay"></div><main class="content">
   <h1>Providers</h1>
-  <p class="section-subtitle">Claude Code supports <strong>27 AI providers</strong> with a unified adapter layer. Set your API keys as environment variables and switch between providers at runtime with <code>/model</code>.</p>
+  <p class="section-subtitle">Claudevil supports <strong>27 AI providers</strong> with a unified adapter layer. Set your API keys as environment variables and switch between providers at runtime with <code>/model</code>.</p>
 
   <p>Provider configuration is declared in <code>src/services/ai/providers.json</code>. The <strong>ProviderManager</strong> resolves API keys, selects models, and manages provider config. Non-Anthropic providers are normalized via the <strong>AnthropicAdapter</strong> or <strong>GoogleAdapter</strong>.</p>
 
@@ -92,14 +92,14 @@
   <pre><code># Ollama — fully offline
 export OLLAMA_API_KEY=ollama  # (any non-empty value)
 export OLLAMA_HOST=http://localhost:11434
-claude
+claudevil
 > /model ollama/llama4:70b
 
 # Debug specific provider
-DEBUG=provider:anthropic claude</code></pre>
+DEBUG=provider:anthropic claudevil</code></pre>
 
   <footer class="footer">
-    <span>Claude Code v2.1.158 — Open Source (MIT)</span>
+    <span>Claudevil v2.1.165 — Open Source (MIT)</span>
     <div class="footer-links">
       <a href="https://github.com/JonusNattapong/claudecode">GitHub</a>
       <a href="https://github.com/JonusNattapong/claudecode/issues">Issues</a>

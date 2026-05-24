@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Quick Start — Claude Code</title>
-  <meta name="description" content="Get started with Claude Code in minutes — install, configure a provider, and run your first session.">
+  <title>Quick Start — Claudevil</title>
+  <meta name="description" content="Get started with Claudevil in minutes — install, configure a provider, and run your first session.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -13,7 +13,7 @@
 <body>
 <header class="header">
   <div class="header-inner">
-    <a href="index.html" class="logo"><span class="logo-mark">~</span><span>Claude Code</span></a>
+    <a href="index.html" class="logo"><span class="logo-mark">~</span><span>Claudevil</span></a>
     <nav class="header-nav">
       <a href="index.html">Home</a><a href="index.html#features">Features</a><a href="index.html#commands">Commands</a><a href="quick-start.html" class="active">Docs</a><a href="https://github.com/JonusNattapong/claudecode" target="_blank">GitHub</a>
     </nav>
@@ -28,8 +28,8 @@
     <p class="section-subtitle">From zero to AI-assisted coding in under a minute.</p>
 
     <h2>1. Install</h2>
-    <pre><code>npm install -g claudecode
-claude --version</code></pre>
+    <pre><code>npm install -g @jonusnattapong/claudecode
+claudevil --version</code></pre>
 
     <h2>2. Set a Provider Key</h2>
     <p>Set at least one API key as an environment variable. See <a href="providers.html">Providers</a> for all 27 options.</p>
@@ -72,16 +72,16 @@ claude</code></pre>
 
     <h2>6. Sessions</h2>
     <pre><code># Continue last conversation
-claude -c
+claudevil -c
 
 # Resume a specific session
-claude -r
+claudevil -r
 
 # Print mode (non-interactive, pipe-friendly)
-claude -p "find all unused exports"
+claudevil -p "find all unused exports"
 
 # With structured output
-claude -p --output-format json "list all dependencies"</code></pre>
+claudevil -p --output-format json "list all dependencies"</code></pre>
 
     <div class="callout callout-info">
       <strong>Tips</strong>

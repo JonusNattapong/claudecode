@@ -3,18 +3,18 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Tools — Claude Code</title>
-  <meta name="description" content="Complete reference for built-in tools in Claude Code — file operations, shell, search, agents, MCP, and automation.">
+  <title>Tools — Claudevil</title>
+  <meta name="description" content="Complete reference for built-in tools in Claudevil — file operations, shell, search, agents, MCP, and automation.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
-<header class="header"><div class="header-inner"><a href="index.html" class="logo"><span class="logo-mark">~</span><span>Claude Code</span></a><nav class="header-nav"><a href="index.html">Home</a><a href="index.html#features">Features</a><a href="index.html#commands">Commands</a><a href="quick-start.html" class="active">Docs</a><a href="https://github.com/JonusNattapong/claudecode" target="_blank">GitHub</a></nav><button class="menu-btn" id="menuToggle" aria-label="Toggle navigation"><span></span><span></span><span></span></button></div></header>
+<header class="header"><div class="header-inner"><a href="index.html" class="logo"><span class="logo-mark">~</span><span>Claudevil</span></a><nav class="header-nav"><a href="index.html">Home</a><a href="index.html#features">Features</a><a href="index.html#commands">Commands</a><a href="quick-start.html" class="active">Docs</a><a href="https://github.com/JonusNattapong/claudecode" target="_blank">GitHub</a></nav><button class="menu-btn" id="menuToggle" aria-label="Toggle navigation"><span></span><span></span><span></span></button></div></header>
 <div class="app"><aside class="sidebar" id="sidebar"></aside><div class="sidebar-overlay" id="sidebarOverlay"></div><main class="content">
   <h1>Tools</h1>
-  <p class="section-subtitle">Claude Code provides 40+ built-in tools plus dynamically loaded MCP tools. Tools are invoked by the AI model via <code>tool_use</code> blocks and executed through the <strong>StreamingToolExecutor</strong> with permission gating.</p>
+  <p class="section-subtitle">Claudevil provides 40+ built-in tools plus dynamically loaded MCP tools. Tools are invoked by the AI model via <code>tool_use</code> blocks and executed through the <strong>StreamingToolExecutor</strong> with permission gating.</p>
 
   <h2>How Tools Work</h2>
   <p>Tools are defined with Zod schemas in <code>src/Tool.ts</code> via the <code>buildTool()</code> helper and registered in <code>src/tools.ts</code>. Each tool declares its input schema, output schema, concurrency safety, read-only status, and permission requirements.</p>
@@ -151,7 +151,7 @@ Storage: Durable</code></pre>
   </div>
 
   <footer class="footer">
-    <span>Claude Code v2.1.158 — Open Source (MIT)</span>
+    <span>Claudevil v2.1.165 — Open Source (MIT)</span>
     <div class="footer-links">
       <a href="https://github.com/JonusNattapong/claudecode">GitHub</a>
       <a href="https://github.com/JonusNattapong/claudecode/issues">Issues</a>

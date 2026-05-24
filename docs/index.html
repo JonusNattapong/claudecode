@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Claude Code — Multi-Provider AI Coding Assistant</title>
+  <title>Claudevil — Multi-Provider AI Coding Assistant</title>
   <meta name="description" content="Terminal-based AI coding assistant with 15+ AI providers, 80+ slash commands, extensible plugin system.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -17,7 +17,7 @@
   <div class="header-inner">
     <a href="index.html" class="logo">
       <span class="logo-mark">~</span>
-      <span>Claude Code</span>
+      <span>Claudevil</span>
     </a>
     <nav class="header-nav">
       <a href="index.html" class="active">Home</a>
@@ -45,7 +45,7 @@
     <section class="hero">
       <div class="hero-badge">
         <span class="dot"></span>
-        v2.1.158 — Multi-Provider AI CLI
+        v2.1.165 — Multi-Provider AI CLI
       </div>
       <h1>
         Code with<br>
@@ -57,8 +57,8 @@
         for professional development workflows.
       </p>
       <div class="hero-actions">
-        <a href="https://npmjs.com/package/claudecode" class="btn btn-primary">
-          npm install -g claudecode
+        <a href="https://npmjs.com/package/@jonusnattapong/claudecode" class="btn btn-primary">
+          npm install -g @jonusnattapong/claudecode
         </a>
         <a href="https://github.com/JonusNattapong/claudecode" class="btn btn-ghost" target="_blank">
           GitHub →
@@ -72,12 +72,12 @@
         <span class="terminal-dot"></span>
         <span class="terminal-dot"></span>
         <span class="terminal-dot"></span>
-        <span class="terminal-title">claude — ~/project</span>
+        <span class="terminal-title">claudevil — ~/project</span>
       </div>
       <div class="terminal-body">
-        <span class="line"><span class="prompt">$</span> <span class="cmd">claude</span></span>
+        <span class="line"><span class="prompt">$</span> <span class="cmd">claudevil</span></span>
         <span class="line"><span class="output">╭──────────────────────────────────────────╮</span></span>
-        <span class="line"><span class="output">│ <span class="highlight-amber">Claude Code</span> · model: <span class="highlight-cyan">deepseek-v4-flash</span>  │</span></span>
+        <span class="line"><span class="output">│ <span class="highlight-amber">Claudevil</span> · model: <span class="highlight-cyan">deepseek-v4-flash</span>  │</span></span>
         <span class="line"><span class="output">│ provider: <span class="highlight-cyan">DeepSeek</span> · context: <span class="highlight-amber">78%</span>  │</span></span>
         <span class="line"><span class="output">╰──────────────────────────────────────────╯</span></span>
         <span class="line"><span class="prompt">></span> <span class="cmd">"find all unused exports in src/"</span></span>
@@ -175,7 +175,7 @@
     <h2 class="section-title" id="usage">Quick Start</h2>
     <p class="section-subtitle">From zero to coding in under a minute.</p>
 
-    <pre><code><span style="color:var(--orange-500)">$</span> <span style="color:var(--text-primary)">npm install -g claudecode</span>
+    <pre><code><span style="color:var(--orange-500)">$</span> <span style="color:var(--text-primary)">npm install -g @jonusnattapong/claudecode</span>
 <span style="color:var(--orange-500)">$</span> <span style="color:var(--text-primary)">export ANTHROPIC_API_KEY=sk-ant-...</span>
 <span style="color:var(--orange-500)">$</span> <span style="color:var(--text-primary)">claude</span>
 
@@ -207,7 +207,7 @@
         <tr><td><span style="color:var(--orange-400)">Config</span></td><td><code>/permissions</code> <code>/plan</code> <code>/config</code> <code>/theme</code></td><td>Settings and preferences</td></tr>
         <tr><td><span style="color:var(--orange-400)">Extend</span></td><td><code>/plugin</code> <code>/skill</code> <code>/agent</code> <code>/agents</code> <code>/mcp</code></td><td>Plugins, skills, agents, MCP</td></tr>
         <tr><td><span style="color:var(--orange-400)">Daemon</span></td><td><code>/daemon</code> <code>/task</code> <code>/loop</code></td><td>24/7 autonomous agent, task queue, and recurring tasks</td></tr>
-        <tr><td><span style="color:var(--orange-400)">Automation</span></td><td><code>/autofix-pr</code></td><td>Fix CI errors and review comments on a PR via Claude Code on the web</td></tr>
+        <tr><td><span style="color:var(--orange-400)">Automation</span></td><td><code>/autofix-pr</code></td><td>Fix CI errors and review comments on a PR via Claudevil on the web</td></tr>
         <tr><td><span style="color:var(--orange-400)">System</span></td><td><code>/help</code> <code>/status</code> <code>/doctor</code> <code>/exit</code></td><td>Help, diagnostics, and exit</td></tr>
       </tbody>
     </table>
@@ -263,11 +263,11 @@
     </div>
 
     <!-- ─── Changelog ─── -->
-    <h2 class="section-title" id="updates">v2.1.158 Updates</h2>
+    <h2 class="section-title" id="updates">v2.1.165 Updates</h2>
     <ul>
       <li><strong>Remote Control enabled by default</strong> — All sessions are now remote-control-ready without needing <code>/rc</code> or <code>--remote-control</code>. Set <code>"remoteControlAtStartup": false</code> in settings to opt out.</li>
       <li><strong><code>/loop</code></strong> — Run a prompt on a recurring interval (<code>/loop 5m /check-deploy</code>). Previously gated behind a feature flag; now available to all users.</li>
-      <li><strong><code>/autofix-pr</code></strong> — Fix CI errors and address review comments on a PR via a remote Claude Code on the web session.</li>
+      <li><strong><code>/autofix-pr</code></strong> — Fix CI errors and address review comments on a PR via a remote Claudevil on the web session.</li>
       <li><strong><code>/plugin-details</code></strong> — Show component inventory (skills, commands, hooks, MCP servers) and estimated per-session token cost for any installed plugin.</li>
       <li><strong>Interactive Argument Ghost Text</strong> — Parameter hints now render as inline dim text after the cursor. Press <kbd>Tab</kbd> or <kbd>→</kbd> to accept and fill placeholders like <code>[condition]</code>.</li>
     </ul>
@@ -278,11 +278,11 @@
 
     <!-- ─── Footer ─── -->
     <footer class="footer">
-      <span>Claude Code v2.1.158 — Open Source (MIT)</span>
+      <span>Claudevil v2.1.165 — Open Source (MIT)</span>
       <div class="footer-links">
         <a href="https://github.com/JonusNattapong/claudecode">GitHub</a>
         <a href="https://github.com/JonusNattapong/claudecode/issues">Issues</a>
-        <a href="https://npmjs.com/package/claudecode">npm</a>
+        <a href="https://npmjs.com/package/@jonusnattapong/claudecode">npm</a>
       </div>
     </footer>
 
