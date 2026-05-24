@@ -49,13 +49,13 @@ Key Highlights:
 ### Global Installation
 
 ```bash
-npm install -g claudecode
+npm install -g @jonusnattapong/claudecode
 ```
 
 Or:
 
 ```bash
-bun install -g claudecode
+bun install -g @jonusnattapong/claudecode
 ```
 
 Run the assistant in any of your project directories:
