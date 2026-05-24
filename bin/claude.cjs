@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 const { execSync } = require('child_process');
 const path = require('path');
-const mainJs = path.join(__dirname, '..', 'src', 'main.tsx');
+const mainJs = path.join(__dirname, '..', 'dist', 'main.js');
 const userArgs = process.argv.slice(2).join(' ');
 
 try {
