@@ -97,7 +97,7 @@
     "bidi-js": "1.0.3",
     "chalk": "^5.4.1",
     "chokidar": "4.0.3",
-    "commander": "^13.1.0",
+    "commander": "^14.0.0",
     "conf": "^13.1.0",
     "diff": "^8.0.4",
     "dotenv": "^16.4.7",
