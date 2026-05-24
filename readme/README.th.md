@@ -59,7 +59,7 @@ bun install -g @jonusnattapong/claudecode
 รันจากไดเรกทอรีโปรเจ็กต์ใดก็ได้:
 
 ```bash
-claude
+claudevil
 ```
 
 ### รันจากซอร์ส

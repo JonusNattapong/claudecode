@@ -61,7 +61,7 @@ bun install -g @jonusnattapong/claudecode
 Run the assistant in any of your project directories:
 
 ```bash
-claude
+claudevil
 ```
 
 ### Running From Source
