@@ -6,6 +6,7 @@ declare module 'bun:bundle' {
 declare global {
   var MACRO: {
     VERSION: string;
+    PACKAGE_URL: string;
     FEEDBACK_CHANNEL: string;
     ISSUES_EXPLAINER: string;
   };

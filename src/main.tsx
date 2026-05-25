@@ -15,8 +15,11 @@ try {
 } catch (e) {}
 
 // Define MACRO for build (normally replaced by macro processor)
+import { readFileSync } from 'fs';
+const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')) as { version: string; name: string };
 const MACRO = {
-  VERSION: '2.1.152',
+  VERSION: pkg.version,
+  PACKAGE_URL: pkg.name,
 };
 globalThis.MACRO = MACRO;
 

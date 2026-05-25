@@ -124,6 +124,28 @@ export async function getCurrentInstallationType(): Promise<InstallationType> {
     return 'npm-global';
   }
 
+  // On Windows, check for global npm/bun installations
+  // Bun installs global packages at %USERPROFILE%\node_modules\<package>
+  // npm installs global packages at %APPDATA%\npm\node_modules\<package>
+  if (getPlatform() === 'windows') {
+    const userProfile = process.env.USERPROFILE;
+    if (userProfile) {
+      const normalizedUserPath = userProfile.split(win32.sep).join(posix.sep);
+      // Check for bun-style global install: C:/Users/<user>/node_modules/<package>
+      if (invokedPath.startsWith(normalizedUserPath + '/node_modules/')) {
+        return 'npm-global';
+      }
+    }
+    // Check for npm-style global install via APPDATA
+    const appData = process.env.APPDATA;
+    if (appData) {
+      const normalizedAppData = appData.split(win32.sep).join(posix.sep);
+      if (invokedPath.startsWith(normalizedAppData + '/npm/node_modules/')) {
+        return 'npm-global';
+      }
+    }
+  }
+
   const npmConfigResult = await execa('npm config get prefix', {
     shell: true,
     reject: false,
