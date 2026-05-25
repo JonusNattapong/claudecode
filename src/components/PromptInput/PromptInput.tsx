@@ -91,8 +91,7 @@ import { cyclePermissionMode, getNextPermissionMode } from '../../utils/permissi
 import { transitionPermissionMode } from '../../utils/permissions/permissionSetup.js';
 import { getPlatform } from '../../utils/platform.js';
 import type { ProcessUserInputContext } from '../../utils/processUserInput/processUserInput.js';
-import { getLastCacheSafeParams, runForkedAgent } from '../../utils/forkedAgent.js';
-import { createUserMessage } from '../../utils/messages.js';
+
 import { editPromptInEditor } from '../../utils/promptEditor.js';
 import { hasAutoModeOptIn } from '../../utils/settings/settings.js';
 import { findBtwTriggerPositions } from '../../utils/sideQuestion.js';
@@ -474,7 +473,7 @@ function PromptInput({
   }, [coordinatorTaskCount, coordinatorTaskIndex, minCoordinatorIndex]);
   const [isPasting, setIsPasting] = useState(false);
   const [isExternalEditorActive, setIsExternalEditorActive] = useState(false);
-  const [isImprovingPrompt, setIsImprovingPrompt] = useState(false);
+
   const [showModelPicker, setShowModelPicker] = useState(false);
   const [showQuickOpen, setShowQuickOpen] = useState(false);
   const [showGlobalSearch, setShowGlobalSearch] = useState(false);
@@ -1676,84 +1675,6 @@ function PromptInput({
     }
   }, [input, cursorOffset, pastedContents, pushToBuffer, trackAndSetInput, addNotification]);
 
-  // Handler for chat:improvePrompt - AI-powered prompt improvement
-  const handleImprovePrompt = useCallback(async () => {
-    const trimmed = input.trim();
-    if (!trimmed) return;
-
-    const cacheSafeParams = getLastCacheSafeParams();
-    if (!cacheSafeParams) {
-      addNotification({
-        key: 'improve-prompt-no-cache',
-        text: 'Send a message first before using prompt improvement',
-        color: 'warning',
-        priority: 'high',
-      });
-      return;
-    }
-
-    logEvent('tengu_improve_prompt_used' as any, {});
-    setIsImprovingPrompt(true);
-    try {
-      const improvementPrompt = `[IMPROVE MODE: Rewrite the following prompt to be clearer and more specific.]
-
-IMPROVEMENT RULES:
-- Make it more specific and actionable
-- Add relevant context if the intent is clear
-- Fix grammar, typos, and clarity issues
-- Keep the user's original voice and intent
-- Be concise — don't add unnecessary fluff
-- Preserve any commands (/foo), @mentions, and file paths exactly
-- Output ONLY the improved prompt — no explanations, no quotes, no "Here's..."
-
-ORIGINAL PROMPT:
-${input}`;
-
-      const result = await runForkedAgent({
-        promptMessages: [createUserMessage({ content: improvementPrompt })],
-        cacheSafeParams,
-        maxTurns: 1,
-        canUseTool: () =>
-          Promise.resolve({
-            behavior: 'deny' as const,
-            message: 'No tools needed for prompt improvement',
-            decisionReason: { type: 'other' as const, reason: 'prompt improvement only' },
-          }),
-        querySource: 'prompt_improvement' as any,
-        forkLabel: 'prompt_improvement',
-        skipTranscript: true,
-        skipCacheWrite: true,
-      });
-
-      // Extract improved text from assistant messages (same pattern as PromptSuggestion)
-      let improvedText: string | null = null;
-      for (const msg of result.messages) {
-        if (msg.type !== 'assistant') continue;
-        const textBlock = msg.message.content.find(b => b.type === 'text');
-        if (textBlock?.type === 'text') {
-          improvedText = textBlock.text.trim();
-          if (improvedText) break;
-        }
-      }
-
-      if (improvedText && improvedText !== input) {
-        pushToBuffer(input, cursorOffset, pastedContents);
-        trackAndSetInput(improvedText);
-        setCursorOffset(improvedText.length);
-      }
-    } catch (err) {
-      if (err instanceof Error && err.name !== 'AbortError') {
-        addNotification({
-          key: 'improve-prompt-error',
-          text: `Prompt improvement failed: ${errorMessage(err)}`,
-          color: 'warning',
-          priority: 'high',
-        });
-      }
-    } finally {
-      setIsImprovingPrompt(false);
-    }
-  }, [input, cursorOffset, pastedContents, pushToBuffer, trackAndSetInput, addNotification]);
 
   // Handler for chat:stash - stash/unstash prompt
   const handleStash = useCallback(() => {
@@ -2105,7 +2026,6 @@ ${input}`;
       'chat:undo': handleUndo,
       'chat:newline': handleNewline,
       'chat:externalEditor': handleExternalEditor,
-      'chat:improvePrompt': handleImprovePrompt,
       'chat:stash': handleStash,
       'chat:modelPicker': handleModelPicker,
       'chat:thinkingToggle': handleThinkingToggle,
@@ -2117,7 +2037,6 @@ ${input}`;
       handleUndo,
       handleNewline,
       handleExternalEditor,
-      handleImprovePrompt,
       handleStash,
       handleModelPicker,
       handleThinkingToggle,
@@ -2825,25 +2744,6 @@ ${input}`;
       >
         <Text dimColor italic>
           Save and close editor to continue...
-        </Text>
-      </Box>
-    );
-  }
-  if (isImprovingPrompt) {
-    return (
-      <Box
-        flexDirection="row"
-        alignItems="center"
-        justifyContent="center"
-        borderColor={getBorderColor()}
-        borderStyle="round"
-        borderLeft={false}
-        borderRight={false}
-        borderBottom
-        width="100%"
-      >
-        <Text dimColor italic>
-          Improving prompt...
         </Text>
       </Box>
     );

@@ -34,7 +34,6 @@ export function PromptInputHelpMenu(props: Props): React.ReactNode {
   const externalEditorShortcut = formatShortcut(useShortcutDisplay('chat:externalEditor', 'Chat', 'ctrl+g'));
   const terminalShortcut = formatShortcut(useShortcutDisplay('app:toggleTerminal', 'Global', 'meta+j'));
   const imagePasteShortcut = formatShortcut(useShortcutDisplay('chat:imagePaste', 'Chat', 'ctrl+v'));
-  const improvePromptShortcut = formatShortcut(useShortcutDisplay('chat:improvePrompt', 'Chat', 'ctrl+x ctrl+p'));
 
   // Compute terminal shortcut element outside JSX to satisfy feature() constraint
   const terminalShortcutElement = feature('TERMINAL_PANEL') ? (
@@ -109,9 +108,6 @@ export function PromptInputHelpMenu(props: Props): React.ReactNode {
         </Box>
         <Box>
           <Text dimColor={dimColor}>{externalEditorShortcut} to edit in $EDITOR</Text>
-        </Box>
-        <Box>
-          <Text dimColor={dimColor}>{improvePromptShortcut} to improve prompt</Text>
         </Box>
         {isKeybindingCustomizationEnabled() && (
           <Box>

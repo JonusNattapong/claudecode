@@ -3,9 +3,12 @@ import { useCallback, useRef, useState } from 'react';
 import { Select } from '../../components/CustomSelect/select.js';
 import { Dialog } from '../../components/design-system/Dialog.js';
 import { Box, Text } from '../../ink.js';
-import { StatsLine, type UltrareviewScope } from '../../context/ultrareviewStats.js';
 
-export type { UltrareviewScope };
+export type UltrareviewScope = {
+  target: string;
+  base?: string;
+  billingNote?: string;
+};
 
 type Props = {
   scope: UltrareviewScope;
@@ -13,6 +16,10 @@ type Props = {
   onChangeScope: () => void;
   onCancel: () => void;
 };
+
+function StatsLine({ scope: _scope }: { scope: UltrareviewScope }): React.ReactNode {
+  return null;
+}
 
 function ScopeLine({ scope }: { scope: UltrareviewScope }): React.ReactNode {
   if (scope.base) {

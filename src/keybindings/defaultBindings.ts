@@ -84,7 +84,6 @@ export const DEFAULT_BINDINGS: KeybindingBlock[] = [
       // ctrl+x ctrl+e is the readline-native edit-and-execute-command binding.
       'ctrl+x ctrl+e': 'chat:externalEditor',
       'ctrl+g': 'chat:externalEditor',
-      'ctrl+x ctrl+p': 'chat:improvePrompt',
       'ctrl+s': 'chat:stash',
       'meta+i': 'chat:stats',
       // Image paste shortcut (platform-specific key defined above)
