@@ -84,10 +84,11 @@ function ColorPanel({
   // Clawd colors
   const [bodyColor, setBodyColor] = useState<string>((config as any).clawdBodyColor ?? 'clawd_body');
   const [eyeColor, setEyeColor] = useState<string>((config as any).clawdEyeColor ?? 'clawd_eye');
+  const [showHorns, setShowHorns] = useState<boolean>((config as any).showClawdHorns ?? true);
   // Spinner color
   const [spinnerColor, setSpinnerColor] = useState<string>((config as any).spinnerColor ?? 'default');
-  // Focused pane within mascot tab: 'body' | 'eyes'
-  const [mascotPane, setMascotPane] = useState<'body' | 'eyes'>('body');
+  // Focused pane within mascot tab: 'body' | 'eyes' | 'horns'
+  const [mascotPane, setMascotPane] = useState<'body' | 'eyes' | 'horns'>('body');
   const [focusedBodyIdx, setFocusedBodyIdx] = useState(
     CLAWD_BODY_COLORS.findIndex(c => c.value === ((config as any).clawdBodyColor ?? 'clawd_body')),
   );
@@ -113,7 +114,11 @@ function ColorPanel({
       if (selectedTab !== 'mascot') return;
 
       if (key.tab) {
-        setMascotPane(p => (p === 'body' ? 'eyes' : 'body'));
+        setMascotPane(p => {
+          if (p === 'body') return 'eyes';
+          if (p === 'eyes') return 'horns';
+          return 'body';
+        });
         return;
       }
 
@@ -160,6 +165,17 @@ function ColorPanel({
         }
         if (key.return) {
           saveGlobalConfig(prev => ({ ...prev, clawdEyeColor: eyeColor }));
+          return;
+        }
+      }
+
+      if (mascotPane === 'horns') {
+        if (key.return || key.leftArrow || key.rightArrow || key.upArrow || key.downArrow || input === ' ') {
+          setShowHorns(h => {
+            const next = !h;
+            saveGlobalConfig(prev => ({ ...prev, showClawdHorns: next }));
+            return next;
+          });
           return;
         }
       }
@@ -238,7 +254,7 @@ function ColorPanel({
           <Box flexDirection="column" gap={1} marginTop={1}>
             {/* Clawd Preview */}
             <Box flexDirection="column" alignItems="center">
-              <Clawd bodyColor={bodyColor} eyeColor={eyeColor} />
+              <Clawd pose="default" showHorns={showHorns} bodyColor={bodyColor} eyeColor={eyeColor} />
               <Text dimColor italic marginTop={0}>
                 Live preview
               </Text>
@@ -285,6 +301,23 @@ function ColorPanel({
                 </Box>
               ))}
             </Box>
+
+            <Divider />
+
+            {/* Horns Toggle Selection */}
+            <Box flexDirection="column" gap={0}>
+              <Text bold color={mascotPane === 'horns' ? 'suggestion' : undefined}>
+                {mascotPane === 'horns' ? '▸ ' : '  '}Horns Visibility
+              </Text>
+              <Box marginLeft={2}>
+                <Text
+                  bold={mascotPane === 'horns'}
+                  color={mascotPane === 'horns' ? 'suggestion' : undefined}
+                >
+                  {showHorns ? '[x] Show Horns' : '[ ] Show Horns'}
+                </Text>
+              </Box>
+            </Box>
           </Box>
         </Tab>
       </Tabs>
@@ -299,7 +332,9 @@ function ColorPanel({
               ? '↑↓ select · Enter confirm'
               : mascotPane === 'body'
                 ? '↑↓ body · Tab eyes'
-                : '↑↓ eyes · Tab body'}
+                : mascotPane === 'eyes'
+                  ? '↑↓ eyes · Tab horns'
+                  : 'Space/Enter/Arrows toggle horns · Tab body'}
           {' · '}Enter save · Esc close
         </Text>
       </Box>

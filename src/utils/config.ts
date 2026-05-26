@@ -217,6 +217,7 @@ export type GlobalConfig = {
   datadogDisabled?: boolean;
   firstPartyDisabled?: boolean;
   verbose: boolean;
+  showClawdHorns?: boolean;
   customApiKeyResponses?: {
     approved?: string[];
     rejected?: string[];
@@ -624,6 +625,7 @@ function createDefaultGlobalConfig(): GlobalConfig {
     respectGitignore: true,
     copyFullResponse: false,
     explorerMode: 'none',
+    showClawdHorns: true,
   };
 }
 
@@ -673,6 +675,7 @@ export const GLOBAL_CONFIG_KEYS = [
   'remoteControlAtStartup',
   'remoteDialogSeen',
   'explorerMode',
+  'showClawdHorns',
 ] as const;
 
 export type GlobalConfigKey = (typeof GLOBAL_CONFIG_KEYS)[number];

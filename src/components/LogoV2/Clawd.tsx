@@ -1,6 +1,7 @@
 import type * as React from 'react';
 import { Box, Text } from '../../ink.js';
 import { env } from '../../utils/env.js';
+import { getGlobalConfig } from '../../utils/config.js';
 
 export type ClawdPose =
   | 'default'
@@ -10,6 +11,7 @@ export type ClawdPose =
 
 type Props = {
   pose?: ClawdPose;
+  showHorns?: boolean;
   /** Override body color (theme key or raw color string) */
   bodyColor?: string;
   /** Override eye color (theme key or raw color string) */
@@ -72,11 +74,11 @@ const APPLE_EYES: Record<ClawdPose, string> = {
   'arms-up': ' ▗   ▖ ',
 };
 
-function LegacyWindowsClawd({ pose, bodyColor, eyeColor }: Props): React.ReactNode {
+function LegacyWindowsClawd({ pose, showHorns, bodyColor, eyeColor }: Props): React.ReactNode {
   const bc = bodyColor ?? 'clawd_body';
   const ec = eyeColor ?? 'clawd_eye';
 
-  const tHorn = <Text color={bc}>{'  ^   ^  '}</Text>;
+  const tHorn = showHorns ? <Text color={bc}>{'  ^   ^  '}</Text> : null;
 
   let r1: React.ReactNode;
   if (pose === 'look-left') {
@@ -122,7 +124,6 @@ function LegacyWindowsClawd({ pose, bodyColor, eyeColor }: Props): React.ReactNo
   }
 
   const t10 = <Text color={bc}>{pose === 'arms-up' ? '  █████  ' : ' ███████ '}</Text>;
-
   const t11 = <Text color={bc}>{'  ^   ^  '}</Text>;
 
   return (
@@ -135,9 +136,14 @@ function LegacyWindowsClawd({ pose, bodyColor, eyeColor }: Props): React.ReactNo
   );
 }
 
-export function Clawd({ pose = 'default', bodyColor, eyeColor }: Props = {}): React.ReactNode {
+export function Clawd({ pose = 'default', showHorns, bodyColor, eyeColor }: Props = {}): React.ReactNode {
+  const config = getGlobalConfig();
+  const shouldShowHorns = showHorns ?? (config as any).showClawdHorns ?? true;
+  const bc = bodyColor ?? (config as any).clawdBodyColor ?? 'clawd_body';
+  const ec = eyeColor ?? (config as any).clawdEyeColor ?? 'clawd_eye';
+
   if (env.terminal === 'Apple_Terminal') {
-    return <AppleTerminalClawd pose={pose} bodyColor={bodyColor} eyeColor={eyeColor} />;
+    return <AppleTerminalClawd pose={pose} showHorns={shouldShowHorns} bodyColor={bc} eyeColor={ec} />;
   }
 
   const isLegacyWindows =
@@ -145,17 +151,15 @@ export function Clawd({ pose = 'default', bodyColor, eyeColor }: Props = {}): Re
     !['windows-terminal', 'vscode', 'cursor', 'windsurf', 'antigravity'].includes(env.terminal ?? '');
 
   if (isLegacyWindows) {
-    return <LegacyWindowsClawd pose={pose} bodyColor={bodyColor} eyeColor={eyeColor} />;
+    return <LegacyWindowsClawd pose={pose} showHorns={shouldShowHorns} bodyColor={bc} eyeColor={ec} />;
   }
 
   const p = POSES[pose];
-  const bc = bodyColor ?? 'clawd_body';
-  const ec = eyeColor ?? 'clawd_eye';
-  const tHorn = <Text color={bc}>{'  ▗   ▖  '}</Text>;
+  const tHorn = shouldShowHorns ? <Text color={bc}>{'  ▗   ▖  '}</Text> : null;
   const t6 = (
     <Text>
       <Text color={bc}>{p.r1L}</Text>
-      <Text color={bc} backgroundColor={ec}>
+      <Text color={bc} backgroundColor={(config as any).clawdEyeColor ? ec : 'clawd_background'}>
         {p.r1E}
       </Text>
       <Text color={bc}>{p.r1R}</Text>
@@ -164,7 +168,7 @@ export function Clawd({ pose = 'default', bodyColor, eyeColor }: Props = {}): Re
   const t10 = (
     <Text>
       <Text color={bc}>{p.r2L}</Text>
-      <Text color={bc} backgroundColor={bodyColor ?? 'clawd_background'}>
+      <Text color={bc} backgroundColor={(config as any).clawdBodyColor ? bc : 'clawd_background'}>
         █████
       </Text>
       <Text color={bc}>{p.r2R}</Text>
@@ -186,10 +190,10 @@ export function Clawd({ pose = 'default', bodyColor, eyeColor }: Props = {}): Re
   );
 }
 
-function AppleTerminalClawd({ pose, bodyColor, eyeColor }: Props): React.ReactNode {
+function AppleTerminalClawd({ pose, showHorns, bodyColor, eyeColor }: Props): React.ReactNode {
   const bc = bodyColor ?? 'clawd_body';
   const ec = eyeColor ?? 'clawd_eye';
-  const tHorn = <Text color={bc}>{'  ▗   ▖  '}</Text>;
+  const tHorn = showHorns ? <Text color={bc}>{'  ▗   ▖  '}</Text> : null;
   const t2 = APPLE_EYES[pose];
   const t3 = (
     <Text color={ec} backgroundColor={bc}>

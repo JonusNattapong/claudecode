@@ -1,9 +1,8 @@
-import type * as React from 'react';
+import * as React from 'react';
 import { useEffect, useMemo } from 'react';
 import { Box, Text } from 'src/ink.js';
 import { getDynamicConfig_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js';
 import { getGlobalConfig, saveGlobalConfig } from 'src/utils/config.js';
-
 const CONFIG_NAME = 'tengu-top-of-feed-tip';
 export function EmergencyTip(): React.ReactNode {
   const tip = useMemo(getTipOfFeed, []);
@@ -20,7 +19,7 @@ export function EmergencyTip(): React.ReactNode {
         if (current.lastShownEmergencyTip === tip.tip) return current;
         return {
           ...current,
-          lastShownEmergencyTip: tip.tip,
+          lastShownEmergencyTip: tip.tip
         };
       });
     }
@@ -28,25 +27,17 @@ export function EmergencyTip(): React.ReactNode {
   if (!shouldShow) {
     return null;
   }
-  return (
-    <Box paddingLeft={2} flexDirection="column">
-      <Text
-        {...(tip.color === 'warning'
-          ? {
-              color: 'warning',
-            }
-          : tip.color === 'error'
-            ? {
-                color: 'error',
-              }
-            : {
-                dimColor: true,
-              })}
-      >
+  return <Box paddingLeft={2} flexDirection="column">
+      <Text {...tip.color === 'warning' ? {
+      color: 'warning'
+    } : tip.color === 'error' ? {
+      color: 'error'
+    } : {
+      dimColor: true
+    }}>
         {tip.tip}
       </Text>
-    </Box>
-  );
+    </Box>;
 }
 type TipOfFeed = {
   tip: string;
@@ -54,7 +45,7 @@ type TipOfFeed = {
 };
 const DEFAULT_TIP: TipOfFeed = {
   tip: '',
-  color: 'dim',
+  color: 'dim'
 };
 
 /**
