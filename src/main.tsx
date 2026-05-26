@@ -35,7 +35,11 @@ try {
 
 // Define MACRO for build (normally replaced by macro processor)
 import { readFileSync } from 'fs';
-const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')) as { version: string; name: string };
+
+const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')) as {
+  version: string;
+  name: string;
+};
 const MACRO = {
   VERSION: pkg.version,
   PACKAGE_URL: pkg.name,
@@ -5802,17 +5806,8 @@ async function run(): Promise<CommanderCommand> {
     .option('-m, --models <provider>', 'Fetch models for a provider')
     .option('-u, --models-url', 'Show models URLs')
     .action(async (options: any) => {
-      const { spawn } = await import('child_process');
-      const args = ['src/commands/provider-select.js'];
-      if (options.list) args.push('--list');
-      if (options.set) args.push('--set');
-      if (options.get) args.push('--get');
-      if (options.reset) args.push('--reset');
-      if (options.models) args.push('--models', options.models);
-      if (options.modelsUrl) args.push('--models-url');
-
-      const child = spawn('bun', args, { stdio: 'inherit' });
-      child.on('exit', code => process.exit(code || 0));
+      const { runProviderSelectCli } = await import('./commands/provider-select-cli.js');
+      await runProviderSelectCli(options);
     });
 
   // Doctor command - check installation health
