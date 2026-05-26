@@ -1,6 +1,18 @@
 #!/usr/bin/env node
-const { spawnSync } = require('child_process');
+const { spawn, spawnSync } = require('child_process');
+const { existsSync } = require('fs');
 const path = require('path');
+
+function resolveWindowsBunShim(candidate) {
+  const candidateDir = path.dirname(candidate);
+  const npmBunExe = path.join(candidateDir, 'node_modules', 'bun', 'bin', 'bun.exe');
+
+  if (existsSync(npmBunExe)) {
+    return npmBunExe;
+  }
+
+  return null;
+}
 
 function resolveBunCommand() {
   const whichCommand = process.platform === 'win32' ? 'where' : 'which';
@@ -20,11 +32,19 @@ function resolveBunCommand() {
     .filter(Boolean);
 
   if (process.platform === 'win32') {
-    return (
-      candidates.find(candidate => candidate.toLowerCase().endsWith('.exe')) ||
-      candidates.find(candidate => candidate.toLowerCase().endsWith('.cmd')) ||
-      candidates[0]
-    );
+    const exeCandidate = candidates.find(candidate => candidate.toLowerCase().endsWith('.exe'));
+    if (exeCandidate) {
+      return exeCandidate;
+    }
+
+    for (const candidate of candidates) {
+      const shimTarget = resolveWindowsBunShim(candidate);
+      if (shimTarget) {
+        return shimTarget;
+      }
+    }
+
+    return candidates.find(candidate => candidate.toLowerCase().endsWith('.cmd')) || candidates[0];
   }
 
   return candidates[0];
@@ -52,16 +72,24 @@ if (!bunCommand) {
 }
 
 try {
-  const result = spawnSync(bunCommand, [mainJs, ...process.argv.slice(2)], {
+  const child = spawn(bunCommand, [mainJs, ...process.argv.slice(2)], {
     stdio: 'inherit',
-    shell: process.platform === 'win32',
+    shell: false,
   });
 
-  if (result.error) {
-    throw result.error;
-  }
+  child.on('error', e => {
+    console.error('Error executing Bun:', e.message || e);
+    process.exit(1);
+  });
 
-  process.exit(result.status ?? 0);
+  child.on('exit', (code, signal) => {
+    if (signal) {
+      process.kill(process.pid, signal);
+      return;
+    }
+
+    process.exit(code ?? 0);
+  });
 } catch (e) {
   console.error('Error executing Bun:', e.message || e);
   process.exit(e.status ?? 1);

@@ -1,12 +1,12 @@
 {
   "name": "@jonusnattapong/claudecode",
-  "version": "2.1.170",
+  "version": "2.1.172",
   "description": "Official Claude Code CLI — AI-powered coding assistant",
   "main": "./dist/main.js",
   "type": "module",
   "bin": {
-    "claudevil": "bin/claudevil.cjs",
-    "claudecode": "bin/claudevil.cjs"
+    "claudevil": "bin/claudevil",
+    "claudecode": "bin/claudevil"
   },
   "files": [
     "bin/",

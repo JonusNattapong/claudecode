@@ -9,11 +9,11 @@ This project follows a practical changelog format based on:
 - `Security` for permission, sandbox, auth, and trust-related hardening
 - `Internal` for tests, types, refactors, and developer-facing implementation work
 
-## [2.1.170] - 2026-05-26
+## [2.1.172] - 2026-05-26
 
 ### Fixed
 
-- **Windows npm launcher Bun resolution** — Resolve the actual Bun executable from `PATH` instead of hardcoding `bun.cmd`, fixing global installs where Bun is exposed through another npm shim.
+- **Windows npm launcher interactive startup** — Point npm bin shims directly at a Bun shebang entrypoint instead of spawning Bun from a Node wrapper, fixing global installs that returned to PowerShell immediately.
 
 ## [2.1.158] - 2026-05-23
 
