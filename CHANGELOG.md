@@ -9,11 +9,11 @@ This project follows a practical changelog format based on:
 - `Security` for permission, sandbox, auth, and trust-related hardening
 - `Internal` for tests, types, refactors, and developer-facing implementation work
 
-## [2.1.169] - 2026-05-26
+## [2.1.170] - 2026-05-26
 
 ### Fixed
 
-- **npm publish version collision** — Bumped package version so the next npm publish is accepted after `2.1.168` was already published.
+- **Windows npm launcher Bun resolution** — Resolve the actual Bun executable from `PATH` instead of hardcoding `bun.cmd`, fixing global installs where Bun is exposed through another npm shim.
 
 ## [2.1.158] - 2026-05-23
 
