@@ -86,10 +86,7 @@ export function isActiveProviderAnthropic(): boolean {
   try {
     const { ProviderManager } =
       require('../services/ai/ProviderManager.js') as typeof import('../services/ai/ProviderManager.js');
-    const config = ProviderManager.getInstance().getSelectedProviderConfig();
-    if (!config?.provider) return true; // Default: Anthropic
-    const anthropicProviders = ['anthropic', 'bedrock', 'vertex', 'foundry'];
-    return anthropicProviders.includes(config.provider);
+    return ProviderManager.getInstance().getActiveProviderName() === 'anthropic';
   } catch {
     return true; // If ProviderManager can't be loaded, assume Anthropic
   }

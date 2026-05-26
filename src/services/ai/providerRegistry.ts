@@ -97,7 +97,7 @@ export const PROVIDER_REGISTRY: Record<ProviderId, ProviderRegistryEntry> = Obje
 ) as any;
 
 export const PROVIDER_IDS = Object.keys(PROVIDER_REGISTRY) as ProviderId[];
-export const DEFAULT_PROVIDER: ProviderId = 'anthropic';
+export const DEFAULT_PROVIDER: ProviderId = 'openai';
 
 export function getProviderRegistryEntry(provider: ProviderId): ProviderRegistryEntry {
   return PROVIDER_REGISTRY[provider];
