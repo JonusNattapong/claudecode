@@ -52,6 +52,8 @@ Key Highlights:
 npm install -g @jonusnattapong/claudecode
 ```
 
+`npm install -g` installs the launcher, but `claudevil` still requires [Bun](https://bun.sh) to be installed on your machine at runtime.
+
 Or:
 
 ```bash
@@ -76,7 +78,7 @@ bun run start
 
 ## System Requirements
 
-- [Bun](https://bun.sh) 1.3 or higher for local development.
+- [Bun](https://bun.sh) 1.3 or higher for local development and for the globally installed `claudevil` launcher.
 - At least one API key, such as `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GOOGLE_API_KEY`, or other supported providers.
 - Windows, macOS, Linux, or WSL2.
 
