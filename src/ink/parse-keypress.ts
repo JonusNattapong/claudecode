@@ -207,12 +207,12 @@ function inputToString(input: Buffer | string): string {
     if (input.length === 1 && input[0]! > 127) {
       const byte = input[0]!;
       // Valid UTF-8 multi-byte lead: 0xC2-0xF4
-      if (byte >= 0xC2 && byte <= 0xF4) {
+      if (byte >= 0xc2 && byte <= 0xf4) {
         return String.fromCharCode(byte);
       }
       // Continuation bytes: 0x80-0xBF — could be Alt+control or UTF-8 tail.
       // Treat as-is to avoid Alt-key corruption.
-      if (byte >= 0x80 && byte <= 0xBF) {
+      if (byte >= 0x80 && byte <= 0xbf) {
         return String.fromCharCode(byte);
       }
       // 0xC0-0xC1 (overlong UTF-8 leads) and 0xF5-0xFF (beyond Unicode)

@@ -1,5 +1,6 @@
 import type React from 'react';
 import { Box, Text, useTheme } from 'src/ink.js';
+import { useTerminalSize } from '../../hooks/useTerminalSize.js';
 import { useAppState } from '../../state/AppState.js';
 import { AGENT_COLOR_TO_THEME_COLOR, AGENT_COLORS } from '../../tools/AgentTool/agentColorManager.js';
 import { env } from '../../utils/env.js';
@@ -14,6 +15,14 @@ export function WelcomeV2(): React.ReactNode {
     standaloneColor && AGENT_COLORS.includes(standaloneColor)
       ? AGENT_COLOR_TO_THEME_COLOR[standaloneColor]
       : 'autoAccept';
+
+  const isLegacyWindows =
+    env.platform === 'win32' &&
+    !['windows-terminal', 'vscode', 'cursor', 'windsurf', 'antigravity'].includes(env.terminal ?? '');
+
+  if (isLegacyWindows) {
+    return <LegacyWindowsWelcomeV2 theme={theme} welcomeMessage="Welcome to Claude Code" />;
+  }
 
   if (env.terminal === 'Apple_Terminal') {
     return <AppleTerminalWelcomeV2 theme={theme} welcomeMessage="Welcome to Claude Code" />;
@@ -414,6 +423,147 @@ function AppleTerminalWelcomeV2({ theme, welcomeMessage }: AppleTerminalWelcomeV
       {t16}
       {t17}
       {t18}
+    </Box>
+  );
+}
+
+function LegacyWindowsWelcomeV2({ theme, welcomeMessage }: AppleTerminalWelcomeV2Props): React.ReactNode {
+  const { columns } = useTerminalSize();
+  const isLightTheme = ['light', 'light-daltonized', 'light-ansi'].includes(theme);
+  const standaloneAgentContext = useAppState(s => s.standaloneAgentContext);
+  const standaloneColor = standaloneAgentContext?.color;
+  const activeColor =
+    standaloneColor && AGENT_COLORS.includes(standaloneColor)
+      ? AGENT_COLOR_TO_THEME_COLOR[standaloneColor]
+      : 'autoAccept';
+
+  // Max width we can print without wrapping (subtract 4 for safety padding)
+  const maxSafeWidth = columns ? Math.max(10, columns - 4) : WELCOME_V2_WIDTH;
+
+  // Helper to safely truncate/pad a string to prevent wrapping
+  const fitLine = (str: string) => {
+    let trimmed = str.trimEnd();
+    // Replace double-width/problematic characters to safe, highly-compatible standard ASCII characters
+    trimmed = trimmed.replaceAll('…', '.').replaceAll('░', '.').replaceAll('▒', '.').replaceAll('▓', '.');
+
+    if (trimmed.length > maxSafeWidth) {
+      return trimmed.slice(0, maxSafeWidth);
+    }
+    return trimmed;
+  };
+
+  // Welcome row
+  const t0 = (
+    <Text>
+      <Text color={activeColor}>{welcomeMessage} </Text>
+      <Text dimColor={true}>v{MACRO.VERSION} </Text>
+    </Text>
+  );
+
+  // Separator row
+  const t1 = <Text>{fitLine('.'.repeat(WELCOME_V2_WIDTH))}</Text>;
+
+  // Scene lines (clouds and stars)
+  let sceneLines: string[];
+  if (isLightTheme) {
+    sceneLines = [
+      '            ......',
+      '    ...   ..........',
+      '   ...................',
+      '                           ....',
+      '                     ██',
+      '                         ..........',
+      '               ██..██',
+      '                                            ..      ██   .',
+      '                                          ......      . ..',
+    ];
+  } else {
+    sceneLines = [
+      '     *                                       █████....',
+      '                                 *         ███..     ..',
+      '            ......                        ███..',
+      '    ...   ..........                      ███..',
+      '   ...................    *',
+      '                                             ..█████...',
+      ' *                                 ....',
+      '                                 ........',
+      '                               ..........',
+    ];
+  }
+
+  // Now let's draw the mascot
+  // Horns
+  const tHorn = <Text color="clawd_body">{'       ^ ^'}</Text>;
+
+  // Head top
+  const tHeadTop = (
+    <Text>
+      <Text color="clawd_body">{'      ███████'}</Text>
+      {isLightTheme ? (
+        <Text>{fitLine('                         ..........      . ..').slice(13)}</Text>
+      ) : (
+        <Text>{fitLine('                                       * ').slice(13)}</Text>
+      )}
+    </Text>
+  );
+
+  // Eyes row
+  const tEyes = (
+    <Text>
+      <Text color="clawd_body">{'      ██'}</Text>
+      <Text color="clawd_eye">{'█'}</Text>
+      <Text color="clawd_body">{'██'}</Text>
+      <Text color="clawd_eye">{'█'}</Text>
+      <Text color="clawd_body">{'██'}</Text>
+      {isLightTheme ? (
+        <Text>{fitLine('                           ..         .. ').slice(15)}</Text>
+      ) : (
+        <Text>{fitLine('                        *                ').slice(15)}</Text>
+      )}
+    </Text>
+  );
+
+  // Head bottom
+  const tHeadBottom = (
+    <Text>
+      <Text color="clawd_body">{'      ███████'}</Text>
+      {isLightTheme ? (
+        <Text>{fitLine('                          .          .     ').slice(13)}</Text>
+      ) : (
+        <Text>{fitLine('     *                                   ').slice(13)}</Text>
+      )}
+    </Text>
+  );
+
+  // Feet/Tentacles
+  const tFeet = (
+    <Text>
+      <Text>{'      '}</Text>
+      <Text color="clawd_body">{'^ ^   ^ ^'}</Text>
+      {isLightTheme ? (
+        <Text>
+          {fitLine('……………………………………░………………▒…………')
+            .slice(15)
+            .replaceAll('…', '.')
+            .replaceAll('░', '.')
+            .replaceAll('▒', '.')}
+        </Text>
+      ) : (
+        <Text>{fitLine('…………………………………………………………………………').slice(15).replaceAll('…', '.')}</Text>
+      )}
+    </Text>
+  );
+
+  return (
+    <Box flexDirection="column">
+      {t0}
+      {t1}
+      <Text>{sceneLines.map(fitLine).join('\n')}</Text>
+      {tHorn}
+      {tHeadTop}
+      {tEyes}
+      {tHeadBottom}
+      {tFeet}
     </Box>
   );
 }

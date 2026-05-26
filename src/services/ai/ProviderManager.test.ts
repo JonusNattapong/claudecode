@@ -1,7 +1,7 @@
+import { expect, test } from 'bun:test';
 import { mkdtempSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
-import { expect, test } from 'bun:test';
 
 test('defaults to OpenAI when no provider is configured', async () => {
   process.env.CLAUDE_CONFIG_DIR = mkdtempSync(join(tmpdir(), 'claude-provider-test-'));

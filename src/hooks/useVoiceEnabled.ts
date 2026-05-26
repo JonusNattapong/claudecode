@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { useAppState } from '../state/AppState.js';
-import { hasVoiceAuth, hasAlternativeSttKey, isVoiceGrowthBookEnabled } from '../voice/voiceModeEnabled.js';
+import { hasAlternativeSttKey, hasVoiceAuth, isVoiceGrowthBookEnabled } from '../voice/voiceModeEnabled.js';
 
 /**
  * Combines user intent (settings.voiceEnabled) with auth + GB kill-switch.

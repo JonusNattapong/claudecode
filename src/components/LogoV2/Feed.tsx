@@ -78,7 +78,9 @@ export function Feed({ config, actualWidth }: FeedProps): React.ReactNode {
           )}
         </>
       ) : lines.length === 0 && emptyMessage ? (
-        <Text dimColor color={activeColor}>{truncate(emptyMessage, actualWidth)}</Text>
+        <Text dimColor color={activeColor}>
+          {truncate(emptyMessage, actualWidth)}
+        </Text>
       ) : (
         <>
           {lines.map((line, index) => {

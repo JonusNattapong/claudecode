@@ -10,9 +10,9 @@ import {
   type TaskQueueEntry,
   watchQueue,
 } from '../services/autonomous/taskQueue.js';
-import { SpinnerGlyph } from './Spinner/SpinnerGlyph.js';
 import { formatDuration, truncateToWidth } from '../utils/format.js';
 import { OffscreenFreeze } from './OffscreenFreeze.js';
+import { SpinnerGlyph } from './Spinner/SpinnerGlyph.js';
 
 type Props = {
   goal?: string;

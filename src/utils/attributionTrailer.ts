@@ -10,10 +10,7 @@ import type { AttributionData, AttributionState } from './commitAttribution.js';
  * Extracted to its own module for tree-shaking — the COMMIT_ATTRIBUTION build
  * flag gates the entire feature, so this module is dead code in external builds.
  */
-export function buildPRTrailers(
-  attributionData: AttributionData,
-  attributionState: AttributionState,
-): string[] {
+export function buildPRTrailers(attributionData: AttributionData, attributionState: AttributionState): string[] {
   const trailers: string[] = [];
 
   // Surface trailers: which surfaces contributed

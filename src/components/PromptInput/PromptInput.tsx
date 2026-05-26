@@ -1675,7 +1675,6 @@ function PromptInput({
     }
   }, [input, cursorOffset, pastedContents, pushToBuffer, trackAndSetInput, addNotification]);
 
-
   // Handler for chat:stash - stash/unstash prompt
   const handleStash = useCallback(() => {
     if (input.trim() === '' && stashedPrompt !== undefined) {
