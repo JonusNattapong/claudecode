@@ -22,7 +22,7 @@
 | 14 | Plugin MCP dedup | `config.ts` |
 | 15 | Focus mode hidden count | `Messages.tsx` |
 | 16 | disallowed-tools frontmatter | `loadSkillsDir.ts`, `bundledSkills.ts`, `command.ts`, `builtinPlugins.ts` |
-| 17 | --fallback-model | Already in codebase |
+| 17 | --fallback-model | Already in codebase (QueryEngine.ts) |
 
 ## ✅ Already in Codebase
 - Markdown GFM checkboxes
