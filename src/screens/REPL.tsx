@@ -962,7 +962,10 @@ export function REPL({
     }
     return false;
   });
-  const [showEffortCallout, setShowEffortCallout] = useState(() => shouldShowEffortCallout(mainLoopModel));
+  const [showEffortCallout, setShowEffortCallout] = useState(() => {
+    const s = store.getState();
+    return shouldShowEffortCallout(mainLoopModel, s.effortValue, s.messages.length > 0);
+  });
   const showRemoteCallout = useAppState(s => s.showRemoteCallout);
   const [showDesktopUpsellStartup, setShowDesktopUpsellStartup] = useState(() => shouldShowDesktopUpsellStartup());
   // notifications
