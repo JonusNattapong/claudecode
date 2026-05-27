@@ -6,6 +6,7 @@ import { withDiagnosticsTiming } from './diagLogs.js';
 import { isBareMode } from './envUtils.js';
 import { updateWatchPaths } from './hooks/fileChangedWatcher.js';
 import { shouldAllowManagedHooksOnly } from './hooks/hooksConfigSnapshot.js';
+import { clearSkillCaches } from '../skills/loadSkillsDir.js';
 import { executeSessionStartHooks, executeSetupHooks } from './hooks.js';
 import { logError } from './log.js';
 import { loadPluginHooks } from './plugins/loadPluginHooks.js';
@@ -135,6 +136,23 @@ export async function processSessionStartHooks(
     }
     if (hookResult.watchPaths && hookResult.watchPaths.length > 0) {
       allWatchPaths.push(...hookResult.watchPaths);
+    }
+    if (hookResult.reloadSkills) {
+      clearSkillCaches();
+      logForDebugging('SessionStart hook requested skill cache reload');
+    }
+    if (hookResult.sessionTitle) {
+      try {
+        const { saveCustomTitle } = await import('./sessionStorage.js');
+        const { getSessionId } = await import('../bootstrap/state.js');
+        const sessionId = getSessionId();
+        if (sessionId) {
+          await saveCustomTitle(sessionId as any, hookResult.sessionTitle, undefined);
+          logForDebugging(`SessionStart hook set session title: ${hookResult.sessionTitle}`);
+        }
+      } catch {
+        logForDebugging('Failed to rename session via SessionStart hook');
+      }
     }
   }
 

@@ -28,6 +28,7 @@ export type PromptCommand = {
   contentLength: number; // Length of command content in characters (used for token estimation)
   argNames?: string[];
   allowedTools?: string[];
+  disallowedTools?: string[];
   model?: string;
   source: SettingSource | 'builtin' | 'mcp' | 'plugin' | 'bundled';
   pluginInfo?: {

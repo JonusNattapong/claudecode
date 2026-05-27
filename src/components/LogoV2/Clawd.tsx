@@ -1,6 +1,5 @@
 import type * as React from 'react';
 import { Box, Text } from '../../ink.js';
-import { env } from '../../utils/env.js';
 import { getGlobalConfig } from '../../utils/config.js';
 
 export type ClawdPose =
@@ -141,18 +140,6 @@ export function Clawd({ pose = 'default', showHorns, bodyColor, eyeColor }: Prop
   const shouldShowHorns = showHorns ?? (config as any).showClawdHorns ?? true;
   const bc = bodyColor ?? (config as any).clawdBodyColor ?? 'clawd_body';
   const ec = eyeColor ?? (config as any).clawdEyeColor ?? 'clawd_eye';
-
-  if (env.terminal === 'Apple_Terminal') {
-    return <AppleTerminalClawd pose={pose} showHorns={shouldShowHorns} bodyColor={bc} eyeColor={ec} />;
-  }
-
-  const isLegacyWindows =
-    env.platform === 'win32' &&
-    !['windows-terminal', 'vscode', 'cursor', 'windsurf', 'antigravity'].includes(env.terminal ?? '');
-
-  if (isLegacyWindows) {
-    return <LegacyWindowsClawd pose={pose} showHorns={shouldShowHorns} bodyColor={bc} eyeColor={ec} />;
-  }
 
   const p = POSES[pose];
   const tHorn = shouldShowHorns ? <Text color={bc}>{'  ▗   ▖  '}</Text> : null;

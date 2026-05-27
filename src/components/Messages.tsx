@@ -578,7 +578,7 @@ const MessagesImpl = ({
 
     const lookups = buildMessageLookups(normalizedMessages, messagesToShow);
 
-    const hiddenMessageCount = messagesToShowNotTruncated.length - MAX_MESSAGES_TO_SHOW_IN_TRANSCRIPT_MODE;
+    const hiddenMessageCount = shouldTruncate ? messagesToShowNotTruncated.length - MAX_MESSAGES_TO_SHOW_IN_TRANSCRIPT_MODE : 0;
 
     return {
       collapsed,

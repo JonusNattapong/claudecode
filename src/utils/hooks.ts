@@ -341,6 +341,8 @@ export type AggregatedHookResult = {
   elicitationResponse?: ElicitationResponse;
   elicitationResultResponse?: ElicitationResponse;
   retry?: boolean;
+  reloadSkills?: boolean;
+  sessionTitle?: string;
 };
 
 /**
@@ -629,6 +631,12 @@ function processHookJSONOutput({
         result.initialUserMessage = json.hookSpecificOutput.initialUserMessage;
         if ('watchPaths' in json.hookSpecificOutput && json.hookSpecificOutput.watchPaths) {
           result.watchPaths = json.hookSpecificOutput.watchPaths;
+        }
+        if (json.hookSpecificOutput.reloadSkills === true) {
+          result.reloadSkills = true;
+        }
+        if (json.hookSpecificOutput.sessionTitle) {
+          result.sessionTitle = json.hookSpecificOutput.sessionTitle;
         }
         break;
       case 'Setup':
