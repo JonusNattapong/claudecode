@@ -382,6 +382,11 @@ export function FullscreenLayout({
     const ink = instances.get(process.stdout);
     if (!ink) return;
     ink.onHyperlinkClick = url => {
+      // Mark hyperlink click so VirtualMessageList's onClickK suppresses
+      // item-toggle — clicking a link inside a tool result should open the
+      // link, not collapse the section.
+      const { markHyperlinkClicked } = require('./VirtualMessageList.js');
+      markHyperlinkClicked();
       // Most OSC 8 links emitted by Claude Code are file:// URLs from
       // FilePathLink (FileEdit/FileWrite/FileRead tool output). openBrowser
       // rejects non-http(s) protocols — route file: to openPath instead.
