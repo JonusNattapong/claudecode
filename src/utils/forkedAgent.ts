@@ -139,18 +139,47 @@ export function createGetAppStateWithAllowedTools(
   baseGetAppState: ToolUseContext['getAppState'],
   allowedTools: string[],
 ): ToolUseContext['getAppState'] {
-  if (allowedTools.length === 0) return baseGetAppState;
+  return createGetAppStateWithToolFilters(baseGetAppState, allowedTools, []);
+}
+
+/**
+ * Creates a modified getAppState that filters tools for forked command execution.
+ * allowedTools are added to always-allow rules.
+ * disallowedTools are added to deny rules to prevent the model from using them.
+ */
+export function createGetAppStateWithToolFilters(
+  baseGetAppState: ToolUseContext['getAppState'],
+  allowedTools: string[],
+  disallowedTools: string[],
+): ToolUseContext['getAppState'] {
+  if (allowedTools.length === 0 && disallowedTools.length === 0) return baseGetAppState;
   return () => {
     const appState = baseGetAppState();
+    let tpc = appState.toolPermissionContext;
+
+    if (allowedTools.length > 0) {
+      tpc = {
+        ...tpc,
+        alwaysAllowRules: {
+          ...tpc.alwaysAllowRules,
+          command: [...new Set([...(tpc.alwaysAllowRules.command || []), ...allowedTools])],
+        },
+      };
+    }
+
+    if (disallowedTools.length > 0) {
+      tpc = {
+        ...tpc,
+        alwaysDenyRules: {
+          ...tpc.alwaysDenyRules,
+          command: [...new Set([...(tpc.alwaysDenyRules.command || []), ...disallowedTools])],
+        },
+      };
+    }
+
     return {
       ...appState,
-      toolPermissionContext: {
-        ...appState.toolPermissionContext,
-        alwaysAllowRules: {
-          ...appState.toolPermissionContext.alwaysAllowRules,
-          command: [...new Set([...(appState.toolPermissionContext.alwaysAllowRules.command || []), ...allowedTools])],
-        },
-      },
+      toolPermissionContext: tpc,
     };
   };
 }
@@ -184,9 +213,14 @@ export async function prepareForkedCommandContext(
 
   // Parse and prepare allowed tools
   const allowedTools = parseToolListFromCLI(command.allowedTools ?? []);
+  const disallowedTools = parseToolListFromCLI(command.disallowedTools ?? []);
 
-  // Create modified context with allowed tools
-  const modifiedGetAppState = createGetAppStateWithAllowedTools(context.getAppState, allowedTools);
+  // Create modified context with allowed/disallowed tools
+  const modifiedGetAppState = createGetAppStateWithToolFilters(
+    context.getAppState,
+    allowedTools,
+    disallowedTools,
+  );
 
   // Use command.agent if specified, otherwise 'general-purpose'
   const agentTypeName = command.agent ?? 'general-purpose';

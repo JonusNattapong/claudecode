@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Voice Mode — Claudevil</title>
+  <meta name="description" content="Hands-free voice dictation with push-to-talk — /voice command setup and usage.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../css/styles.css">
+</head>
+<body>
+
+<header class="header">
+  <div class="header-inner">
+    <a href="../index.html" class="logo">
+      <span>Claudevil</span>
+    </a>
+    <nav class="header-nav">
+      <a href="../index.html">Home</a>
+      <a href="../index.html#features">Features</a>
+      <a href="../index.html#commands">Commands</a>
+      <a href="../quick-start.html" class="active">Docs</a>
+      <a href="https://github.com/JonusNattapong/claudecode" target="_blank">GitHub</a>
+    </nav>
+    <button class="menu-btn" id="menuToggle" aria-label="Toggle navigation">
+      <span></span><span></span><span></span>
+    </button>
+  </div>
+</header>
+
+<div class="app">
+  <aside class="sidebar" id="sidebar"></aside>
+
+  <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+  <main class="content">
+    <h1>Voice Mode</h1>
+    <p class="section-subtitle">Hands-free voice dictation with push-to-talk</p>
+
+    <div class="callout callout-tip">
+      <strong>TL;DR</strong>
+      Run <code>/voice</code> to toggle voice dictation on/off. Hold the configured shortcut key while speaking (default: <kbd>Space</kbd>). Requires a microphone and audio recording tools.
+    </div>
+
+    <h2>Overview</h2>
+    <p>
+      Voice mode converts speech-to-text in real time using a speech recognition backend. It is designed for hands-free
+      prompt entry — hold the push-to-talk key, speak naturally, and release to submit the transcribed text as your prompt.
+      Audio recording stops when you release the key, so there is no manual trimming or editing step.
+    </p>
+
+    <h2>Requirements</h2>
+    <div class="scroll-wrap">
+    <table>
+      <thead>
+        <tr><th>Requirement</th><th>Details</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Audio recording tool</td><td><strong>SoX</strong> (cross-platform) or <strong>arecord</strong> (Linux ALSA). Install SoX via your package manager (<code>brew install sox</code>, <code>apt install sox</code>, or <a href="https://sourceforge.net/projects/sox/" target="_blank">sourceforge.net</a>).</td></tr>
+        <tr><td>Microphone</td><td>System default input device. Grant microphone permission when prompted by your OS.</td></tr>
+        <tr><td>Speech-to-text backend</td><td><strong>Claude.ai OAuth</strong> (recommended, via <code>/login</code>) or a compatible API key (<code>OPENAI_API_KEY</code>, <code>GROQ_API_KEY</code>, or a self-hosted Whisper endpoint).</td></tr>
+      </tbody>
+    </table>
+    </div>
+
+    <h2>Quick Start</h2>
+
+    <h3>1. Install audio tools</h3>
+    <pre><code><span style="color:var(--text-tertiary)"># macOS</span>
+brew install sox
+
+<span style="color:var(--text-tertiary)"># Linux (Debian/Ubuntu)</span>
+sudo apt install sox
+
+<span style="color:var(--text-tertiary)"># Windows</span>
+<span style="color:var(--text-tertiary)">Download installer from https://sourceforge.net/projects/sox/</span></code></pre>
+
+    <h3>2. Authenticate</h3>
+    <pre><code><span style="color:var(--text-tertiary)"># Log in with your Claude.ai account (required for the default backend)</span>
+<span style="color:var(--orange-500)">claude</span> /login</code></pre>
+
+    <div class="callout callout-info">
+      <strong>Alternative backends</strong>
+      Voice mode also works with Whisper-compatible APIs. Set <code>OPENAI_API_KEY</code>, <code>GROQ_API_KEY</code>, or <code>WHISPER_API_KEY</code> + <code>WHISPER_API_URL</code> to use an alternative STT backend without OAuth.
+    </div>
+
+    <h3>3. Enable voice</h3>
+    <pre><code><span style="color:var(--orange-500)">claude</span> /voice
+
+<span style="color:var(--text-tertiary)"># Output</span>
+Voice mode enabled. Hold Space to record.</code></pre>
+
+    <p>
+      Toggle off at any time by running <code>/voice</code> again. Use <code>/config</code> to change the dictation language
+      or adjust the push-to-talk keybinding.
+    </p>
+
+    <h2>Command Reference</h2>
+    <div class="scroll-wrap">
+    <table>
+      <thead>
+        <tr><th>Command</th><th>Description</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>/voice</code></td><td>Toggle voice dictation on or off. Runs pre-flight checks (microphone, backend, dependencies) before enabling.</td></tr>
+        <tr><td><code>/login</code></td><td>Sign in with Claude.ai to enable the default OAuth-based voice backend.</td></tr>
+        <tr><td><code>/config</code></td><td>Change dictation language and other voice-related settings.</td></tr>
+      </tbody>
+    </table>
+    </div>
+
+    <h2>Keybinding</h2>
+    <p>
+      The default push-to-talk key is <kbd>Space</kbd> (hold to record, release to submit). You can rebind it in your
+      settings via the <code>voice:pushToTalk</code> keybinding:
+    </p>
+    <pre><code>{
+  <span style="color:var(--teal-400)">"keybindings"</span>: {
+    <span style="color:var(--teal-400)">"voice:pushToTalk"</span>: {
+      <span style="color:var(--teal-400)">"key"</span>: <span style="color:var(--orange-500)">"v"</span>,
+      <span style="color:var(--teal-400)">"mod"</span>: <span style="color:var(--orange-500)">"mod"</span>
+    }
+  }
+}</code></pre>
+
+    <h2>Architecture</h2>
+    <pre><code>Microphone → SoX/arecord → PCM audio → STT backend → transcribed text → PromptInput
+
+Backends:
+  ├─ Claude.ai voice_stream (OAuth, default)
+  ├─ OpenAI Whisper API (OPENAI_API_KEY)
+  ├─ Groq Whisper API (GROQ_API_KEY)
+  └─ Custom Whisper endpoint (WHISPER_API_KEY + WHISPER_API_URL)
+
+Guard:
+  isVoiceModeEnabled() = (hasVoiceAuth() || hasAlternativeSttKey()) && isVoiceGrowthBookEnabled()</code></pre>
+
+    <h2>Files</h2>
+    <div class="scroll-wrap">
+    <table>
+      <thead>
+        <tr><th>File</th><th>Purpose</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>src/commands/voice/voice.ts</code></td><td><code>/voice</code> command handler — toggle, pre-flight checks, language hints</td></tr>
+        <tr><td><code>src/voice/voiceModeEnabled.ts</code></td><td>Kill-switch and auth checks for voice availability</td></tr>
+        <tr><td><code>src/services/voiceStreamSTT.ts</code></td><td>OAuth-based voice stream client</td></tr>
+        <tr><td><code>src/services/voice.ts</code></td><td>Recording, mic permission, dependency checking</td></tr>
+        <tr><td><code>src/hooks/useVoice.ts</code></td><td>React hook for voice state and STT language normalization</td></tr>
+      </tbody>
+    </table>
+    </div>
+
+    <h2>Troubleshooting</h2>
+    <h3>No audio recording tool found</h3>
+    <p>Install SoX (see Quick Start above). On Linux, <code>arecord</code> from the <code>alsa-utils</code> package is also supported.</p>
+
+    <h3>Microphone access denied</h3>
+    <p>Grant mic permission in your OS settings then run <code>/voice</code> again:</p>
+    <ul>
+      <li><strong>macOS:</strong> System Settings → Privacy & Security → Microphone</li>
+      <li><strong>Windows:</strong> Settings → Privacy → Microphone</li>
+      <li><strong>Linux:</strong> Your system's audio settings (PulseAudio/PipeWire)</li>
+    </ul>
+
+    <h3>Voice mode is not available</h3>
+    <p>You need either a valid Claude.ai OAuth session (<code>/login</code>) or an alternative STT API key set in your environment.</p>
+
+    <footer class="footer">
+      <span>Claudevil v2.1.178</span>
+      <div class="footer-links">
+        <a href="https://github.com/JonusNattapong/claudecode">GitHub</a>
+        <a href="https://github.com/JonusNattapong/claudecode/issues">Issues</a>
+      </div>
+    </footer>
+  </main>
+</div>
+
+<script src="../js/main.js"></script>
+</body>
+</html>

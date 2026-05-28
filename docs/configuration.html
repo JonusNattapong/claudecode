@@ -3,18 +3,18 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Configuration — Claudevil</title>
-  <meta name="description" content="Comprehensive configuration guide for Claudevil — CLI flags, environment variables, settings file, and in-session commands.">
+  <title>Configuration — Clew</title>
+  <meta name="description" content="Comprehensive configuration guide for Clew — CLI flags, environment variables, settings file, and in-session commands.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
-<header class="header"><div class="header-inner"><a href="index.html" class="logo"><span>Claudevil</span></a><nav class="header-nav"><a href="index.html">Home</a><a href="index.html#features">Features</a><a href="index.html#commands">Commands</a><a href="quick-start.html" class="active">Docs</a><a href="https://github.com/JonusNattapong/claudecode" target="_blank">GitHub</a></nav><button class="menu-btn" id="menuToggle" aria-label="Toggle navigation"><span></span><span></span><span></span></button></div></header>
+<header class="header"><div class="header-inner"><a href="index.html" class="logo"><span>Clew</span></a><nav class="header-nav"><a href="index.html">Home</a><a href="index.html#features">Features</a><a href="index.html#commands">Commands</a><a href="quick-start.html" class="active">Docs</a><a href="https://github.com/JonusNattapong/claudecode" target="_blank">GitHub</a></nav><button class="menu-btn" id="menuToggle" aria-label="Toggle navigation"><span></span><span></span><span></span></button></div></header>
 <div class="app"><aside class="sidebar" id="sidebar"></aside><div class="sidebar-overlay" id="sidebarOverlay"></div><main class="content">
   <h1>Configuration</h1>
-  <p class="section-subtitle">Claudevil is configured through CLI flags (Commander.js), environment variables, a JSON settings file (<code>~/.clawdbot/moltbot.json</code> validated with TypeBox), and in-session slash commands.</p>
+  <p class="section-subtitle">Clew is configured through CLI flags (Commander.js), environment variables, a JSON settings file (<code>~/.clawdbot/moltbot.json</code> validated with TypeBox), and in-session slash commands.</p>
 
   <h2>CLI Flags</h2>
   <p>Defined in <code>src/main.tsx</code> with Commander.js <code>.option()</code> and <code>.addOption()</code>:</p>
@@ -89,6 +89,8 @@
     <tr><td><code>BRAVE_API_KEY</code></td><td>Brave web search</td></tr>
     <tr><td><code>SERPER_API_KEY</code></td><td>Serper web search</td></tr>
     <tr><td><code>SEARXNG_INSTANCE_URL</code></td><td>Self-hosted SearXNG URL</td></tr>
+    <tr><td><code>COLUMNS</code> / <code>LINES</code></td><td>Status line commands receive terminal dimensions as env vars for adaptive output</td></tr>
+    <tr><td><code>RELEASE_CHANNEL</code></td><td>Override the release channel (<code>stable</code>, <code>beta</code>, <code>dev</code>)</td></tr>
   </table>
 
   <h2>Settings File</h2>
@@ -114,11 +116,13 @@
   </table>
 
   <h2>In-Session Configuration</h2>
-  <pre><code>/config      # Open config panel (aliases: settings)
-/theme       # Change the theme
-/color       # Set prompt bar color
-/keybindings # Edit keybindings
-/permissions # Manage permission rules</code></pre>
+  <pre><code>/config         # Open config panel (aliases: settings)
+/theme          # Change the theme
+/color          # Set prompt bar color, mascot body color, and mascot horns toggle
+/keybindings    # Edit keybindings
+/permissions    # Manage permission rules
+/reload-plugins # Reload plugin configuration without restarting
+/reload-skills  # Re-scan and reload all skills</code></pre>
 
   <h2>Build Configuration</h2>
   <p>Build via <code>bun run build</code> with compile-time feature defines:</p>
@@ -128,7 +132,7 @@
 --define.VOICE_MODE=true             # Enables voice input support</code></pre>
 
   <footer class="footer">
-    <span>Claudevil v2.1.165 — Open Source (MIT)</span>
+    <span>Clew v2.1.178 — Open Source (MIT)</span>
     <div class="footer-links">
       <a href="https://github.com/JonusNattapong/claudecode">GitHub</a>
       <a href="https://github.com/JonusNattapong/claudecode/issues">Issues</a>

@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Checkpointing — Claudevil</title>
+  <meta name="description" content="Automatic file change tracking and rewind — undo file changes or restore previous states.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../css/styles.css">
+</head>
+<body>
+
+<header class="header">
+  <div class="header-inner">
+    <a href="../index.html" class="logo">
+      <span>Claudevil</span>
+    </a>
+    <nav class="header-nav">
+      <a href="../index.html">Home</a>
+      <a href="../index.html#features">Features</a>
+      <a href="../index.html#commands">Commands</a>
+      <a href="../quick-start.html" class="active">Docs</a>
+      <a href="https://github.com/JonusNattapong/claudecode" target="_blank">GitHub</a>
+    </nav>
+    <button class="menu-btn" id="menuToggle" aria-label="Toggle navigation">
+      <span></span><span></span><span></span>
+    </button>
+  </div>
+</header>
+
+<div class="app">
+  <aside class="sidebar" id="sidebar"></aside>
+
+  <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+  <main class="content">
+    <h1>Checkpointing</h1>
+    <p class="section-subtitle">Automatic file snapshots and conversation rewind</p>
+
+    <div class="callout callout-tip">
+      <strong>TL;DR</strong>
+      Claudevil automatically snapshots files after every assistant turn. Use <code>/rewind</code> (alias: <code>/checkpoint</code>, <code>/undo</code>) to open a visual timeline and restore files or the conversation to any prior state.
+    </div>
+
+    <h2>Overview</h2>
+    <p>
+      Checkpointing tracks every file change made during your session. After each assistant message, a snapshot is taken of all
+      files modified up to that point. The <code>/rewind</code> command opens a state selector that lets you browse these snapshots,
+      preview the diff between states, and restore either the file contents, the conversation history, or both to an earlier point.
+    </p>
+
+    <h2>How It Works</h2>
+    <ol>
+      <li><strong>Capture</strong> — After each assistant turn, <code>fileHistoryMakeSnapshot</code> records the current state of every modified file into a compressed snapshot.</li>
+      <li><strong>Diff</strong> — When you open the rewind UI, <code>fileHistoryGetDiffStats</code> computes the per-file diff between the current state and the target snapshot.</li>
+      <li><strong>Restore</strong> — Confirming a rewind replays the inverse of each edit, restoring files to their state at that point. The conversation is also trimmed to match.</li>
+    </ol>
+
+    <h2>Command Reference</h2>
+    <div class="scroll-wrap">
+    <table>
+      <thead>
+        <tr><th>Command</th><th>Description</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>/rewind</code></td><td>Open the interactive rewind timeline. Select a prior message to preview and restore file changes and/or conversation state.</td></tr>
+        <tr><td><code>/checkpoint</code></td><td>Alias for <code>/rewind</code>.</td></tr>
+        <tr><td><code>/undo</code></td><td>Alias for <code>/rewind</code>.</td></tr>
+      </tbody>
+    </table>
+    </div>
+
+    <h2>Using /rewind</h2>
+    <p>
+      When you run <code>/rewind</code>, a message selector opens showing your conversation history with
+      snapshot indicators. Navigate with the keyboard, select a message, and the UI displays:
+    </p>
+    <ul>
+      <li><strong>Changed files</strong> — which files differ from the current state</li>
+      <li><strong>Diff preview</strong> — per-file unified diff showing what would be restored</li>
+      <li><strong>Scope toggle</strong> — restore files only, conversation only, or both</li>
+    </ul>
+
+    <h2>Architecture</h2>
+    <pre><code>Assistant turn completes
+  → fileHistoryMakeSnapshot()
+     → reads current file contents
+     → compresses into snapshot blob
+     → stores in session log (fileHistorySnapshots)
+
+User runs /rewind
+  → fileHistoryGetDiffStats(state, messageId)
+     → decompresses target snapshot
+     → diffs against current files
+     → shows preview in selector
+
+User confirms
+  → fileHistoryRewind(state, messageId)
+     → for each changed file:
+        restore from snapshot content
+     → truncates conversation log
+     → updates UI state</code></pre>
+
+    <h2>Files</h2>
+    <div class="scroll-wrap">
+    <table>
+      <thead>
+        <tr><th>File</th><th>Purpose</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>src/utils/fileHistory.ts</code></td><td>Core snapshot, diff, and rewind logic</td></tr>
+        <tr><td><code>src/commands/rewind/rewind.ts</code></td><td><code>/rewind</code> command handler — opens message selector</td></tr>
+        <tr><td><code>src/commands/rewind/index.ts</code></td><td>Command registration with aliases</td></tr>
+        <tr><td><code>src/utils/sessionStorage.ts</code></td><td>Session persistence for snapshots</td></tr>
+      </tbody>
+    </table>
+    </div>
+
+    <footer class="footer">
+      <span>Claudevil v2.1.178</span>
+      <div class="footer-links">
+        <a href="https://github.com/JonusNattapong/claudecode">GitHub</a>
+        <a href="https://github.com/JonusNattapong/claudecode/issues">Issues</a>
+      </div>
+    </footer>
+  </main>
+</div>
+
+<script src="../js/main.js"></script>
+</body>
+</html>

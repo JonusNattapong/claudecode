@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Environment Variables — Clew</title>
+  <meta name="description" content="Complete reference for all environment variables that control Clew behavior — API keys, debug flags, provider configuration.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+<header class="header"><div class="header-inner"><a href="index.html" class="logo"><span>Clew</span></a><nav class="header-nav"><a href="index.html">Home</a><a href="index.html#features">Features</a><a href="index.html#commands">Commands</a><a href="quick-start.html" class="active">Docs</a><a href="https://github.com/JonusNattapong/claudecode" target="_blank">GitHub</a></nav><button class="menu-btn" id="menuToggle" aria-label="Toggle navigation"><span></span><span></span><span></span></button></div></header>
+<div class="app"><aside class="sidebar" id="sidebar"></aside><div class="sidebar-overlay" id="sidebarOverlay"></div><main class="content">
+
+<h1>Environment Variables</h1>
+<p class="section-subtitle">Complete reference for environment variables that control Clew.</p>
+
+<h2>Provider API Keys</h2>
+<table>
+  <tr><th>Variable</th><th>Provider</th><th>Notes</th></tr>
+  <tr><td><code>ANTHROPIC_API_KEY</code></td><td>Anthropic</td><td>Format: <code>sk-ant-...</code></td></tr>
+  <tr><td><code>OPENAI_API_KEY</code></td><td>OpenAI / OpenCode</td><td>Format: <code>sk-...</code></td></tr>
+  <tr><td><code>GOOGLE_API_KEY</code></td><td>Google Gemini</td><td>Create from Google AI Studio</td></tr>
+  <tr><td><code>DEEPSEEK_API_KEY</code></td><td>DeepSeek</td><td>Format: <code>sk-...</code></td></tr>
+  <tr><td><code>OPENROUTER_API_KEY</code></td><td>OpenRouter</td><td>Format: <code>sk-or-...</code></td></tr>
+  <tr><td><code>XAI_API_KEY</code></td><td>xAI / Grok</td><td>For Grok models</td></tr>
+  <tr><td><code>MISTRAL_API_KEY</code></td><td>Mistral</td><td>For Mistral models</td></tr>
+  <tr><td><code>GROQ_API_KEY</code></td><td>Groq</td><td>For Groq-hosted models</td></tr>
+  <tr><td><code>OLLAMA_HOST</code></td><td>Ollama</td><td>Default: <code>http://localhost:11434</code></td></tr>
+  <tr><td><code>COPILOT_GITHUB_TOKEN</code></td><td>GitHub Copilot</td><td>GitHub token with Copilot access</td></tr>
+</table>
+
+<h2>Debug &amp; Logging</h2>
+<table>
+  <tr><th>Variable</th><th>Effect</th></tr>
+  <tr><td><code>DEBUG=1</code></td><td>Enable all debug logging</td></tr>
+  <tr><td><code>DEBUG=provider:anthropic</code></td><td>Debug specific provider</td></tr>
+  <tr><td><code>DEBUG=provider:*</code></td><td>Debug all providers</td></tr>
+  <tr><td><code>DEBUG=tools</code></td><td>Debug tool execution</td></tr>
+  <tr><td><code>DEBUG=bridge</code></td><td>Debug bridge/WebSocket connections</td></tr>
+  <tr><td><code>VERBOSE=1</code></td><td>Enable verbose output</td></tr>
+</table>
+
+<h2>Terminal &amp; Display</h2>
+<table>
+  <tr><th>Variable</th><th>Effect</th></tr>
+  <tr><td><code>NO_COLOR=1</code></td><td>Disable all colors in output</td></tr>
+  <tr><td><code>FORCE_COLOR=1</code></td><td>Force color output (overrides NO_COLOR)</td></tr>
+  <tr><td><code>CLICOLOR=0</code></td><td>Disable colors (standard convention)</td></tr>
+  <tr><td><code>TERM=xterm-256color</code></td><td>Terminal type detection</td></tr>
+</table>
+
+<h2>Runtime</h2>
+<table>
+  <tr><th>Variable</th><th>Effect</th></tr>
+  <tr><td><code>NODE_OPTIONS</code></td><td>Node/Bun runtime options</td></tr>
+  <tr><td><code>BUN_RUNTIME=1</code></td><td>Set automatically when running under Bun</td></tr>
+  <tr><td><code>CLEW_HOME</code></td><td>Override the home directory for .claude/ config</td></tr>
+  <tr><td><code>CLEW_CONFIG_DIR</code></td><td>Override the config directory path</td></tr>
+</table>
+
+<h2>Provider Endpoints</h2>
+<table>
+  <tr><th>Variable</th><th>Provider</th><th>Default</th></tr>
+  <tr><td><code>OPENAI_BASE_URL</code></td><td>OpenAI-compatible</td><td><code>https://api.openai.com/v1</code></td></tr>
+  <tr><td><code>ANTHROPIC_BASE_URL</code></td><td>Anthropic</td><td><code>https://api.anthropic.com</code></td></tr>
+  <tr><td><code>OLLAMA_HOST</code></td><td>Ollama</td><td><code>http://localhost:11434</code></td></tr>
+</table>
+
+<h2>Usage Example</h2>
+<pre><code># Set in shell
+export OPENAI_API_KEY=sk-...
+export DEBUG=1
+clew
+
+# Set inline for one session
+DEBUG=provider:deepseek clew
+
+# Using .env file (auto-loaded from project root)
+echo "OPENAI_API_KEY=sk-..." &gt;&gt; .env
+echo "DEEPSEEK_API_KEY=sk-..." &gt;&gt; .env</code></pre>
+
+<div class="callout callout-info">
+  <strong>Note</strong>
+  The <code>providers.json</code> file in <code>src/services/ai/providers.json</code> contains the authoritative list of all supported env vars and their provider mappings.
+</div>
+
+<footer class="footer">
+  <span>Clew v2.1.178 — Open Source (MIT)</span>
+  <div class="footer-links">
+    <a href="https://github.com/JonusNattapong/claudecode">GitHub</a>
+    <a href="https://github.com/JonusNattapong/claudecode/issues">Issues</a>
+    <a href="https://npmjs.com/package/@jonusnattapong/claudecode">npm</a>
+  </div>
+</footer>
+</main></div>
+<script src="js/main.js"></script>
+</body>
+</html>

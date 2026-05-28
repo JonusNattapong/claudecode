@@ -3,18 +3,18 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Plugins — Claudevil</title>
-  <meta name="description" content="Extend Claudevil with plugins — commands, agents, skills, hooks, MCP servers, and marketplace support.">
+  <title>Plugins — Clew</title>
+  <meta name="description" content="Extend Clew with plugins — commands, agents, skills, hooks, MCP servers, and marketplace support.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
-<header class="header"><div class="header-inner"><a href="index.html" class="logo"><span>Claudevil</span></a><nav class="header-nav"><a href="index.html">Home</a><a href="index.html#features">Features</a><a href="index.html#commands">Commands</a><a href="quick-start.html" class="active">Docs</a><a href="https://github.com/JonusNattapong/claudecode" target="_blank">GitHub</a></nav><button class="menu-btn" id="menuToggle" aria-label="Toggle navigation"><span></span><span></span><span></span></button></div></header>
+<header class="header"><div class="header-inner"><a href="index.html" class="logo"><span>Clew</span></a><nav class="header-nav"><a href="index.html">Home</a><a href="index.html#features">Features</a><a href="index.html#commands">Commands</a><a href="quick-start.html" class="active">Docs</a><a href="https://github.com/JonusNattapong/claudecode" target="_blank">GitHub</a></nav><button class="menu-btn" id="menuToggle" aria-label="Toggle navigation"><span></span><span></span><span></span></button></div></header>
 <div class="app"><aside class="sidebar" id="sidebar"></aside><div class="sidebar-overlay" id="sidebarOverlay"></div><main class="content">
   <h1>Plugins</h1>
-  <p class="section-subtitle">Plugins extend Claudevil with custom commands, agents, skills, execution hooks, MCP servers, and LSP integrations. Plugin management is handled by <code>src/services/plugins/</code> and <code>src/utils/plugins/</code>.</p>
+  <p class="section-subtitle">Plugins extend Clew with custom commands, agents, skills, execution hooks, MCP servers, and LSP integrations. Plugin management is handled by <code>src/services/plugins/</code> and <code>src/utils/plugins/</code>.</p>
 
   <h2>What Plugins Can Provide</h2>
   <table>
@@ -41,11 +41,12 @@
   <pre><code>/plugin                          # List installed plugins
 /plugin-details                  # Show detailed plugin information
 /reload-plugins                  # Activate pending plugin changes
-claude plugin validate /path       # Validate a plugin manifest (CLI)</code></pre>
+/reload-skills                   # Re-scan and reload all skills
+clew plugin validate /path  # Validate a plugin manifest (CLI)</code></pre>
 
   <p>Plugins are loaded from these locations:</p>
   <ul>
-    <li><strong>Bundled</strong> — Shipped with Claudevil</li>
+    <li><strong>Bundled</strong> — Shipped with Clew</li>
     <li><strong>User</strong> — Installed by the user (via marketplace or manual)</li>
     <li><strong>Plugin dir</strong> — Custom directories via <code>--plugin-dir &lt;path&gt;</code> (repeatable)</li>
   </ul>
@@ -82,8 +83,11 @@ claude plugin validate /path       # Validate a plugin manifest (CLI)</code></pr
   <h2>Marketplace</h2>
   <p>Plugins can be distributed through marketplaces. The <code>marketplaceManager</code> (<code>src/utils/plugins/marketplaceManager.ts</code>) handles marketplace source discovery, cache management, and plugin installation from remote sources.</p>
 
+  <h3>skipLfs Support</h3>
+  <p>GitHub and Git marketplace sources support <code>skipLfs: true</code> to skip Git LFS downloads during clone/pull. Useful for repos with large LFS objects that slow down marketplace operations or fail in environments without LFS support. A warning is shown when skipped files are detected.</p>
+
   <footer class="footer">
-    <span>Claudevil v2.1.165 — Open Source (MIT)</span>
+    <span>Clew v2.1.178 — Open Source (MIT)</span>
     <div class="footer-links">
       <a href="https://github.com/JonusNattapong/claudecode">GitHub</a>
       <a href="https://github.com/JonusNattapong/claudecode/issues">Issues</a>

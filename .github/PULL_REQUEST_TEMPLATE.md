@@ -1,89 +1,80 @@
-name: Pull Request
-description: Submit a pull request
-body:
-  - type: markdown
-    attributes:
-      value: |
-        Thank you for your contribution. Please fill in the information below.
+# Pull Request
 
-  - type: dropdown
-    id: type
-    attributes:
-      label: Change Type
-      description: What kind of change does this PR introduce?
-      options:
-        - Bug Fix
-        - New Feature
-        - Enhancement
-        - Refactoring
-        - Documentation
-        - Performance Improvement
-        - Dependency Update
-        - Other
-    validations:
-      required: true
+## Change Type
 
-  - type: textarea
-    id: description
-    attributes:
-      label: Description
-      description: Summarize the changes and the problem they solve
-      placeholder: This PR fixes...
-    validations:
-      required: true
+Select the type of change included in this PR:
 
-  - type: textarea
-    id: motivation
-    attributes:
-      label: Motivation and Context
-      description: Why is this change needed? What context does it address?
-      placeholder: Link to any related issues, discussions, or context here
-    validations:
-      required: true
+* [ ] Bug fix
+* [ ] New feature
+* [ ] Enhancement
+* [ ] Refactoring
+* [ ] Documentation
+* [ ] Performance improvement
+* [ ] Dependency update
+* [ ] Other
 
-  - type: textarea
-    id: testing
-    attributes:
-      label: Testing
-      description: How has this been tested? Include steps to reproduce if applicable
-      placeholder: |
-        - [ ] Added unit tests
-        - [ ] Manually tested the following scenarios:
-          1. ...
-          2. ...
-    validations:
-      required: true
+## Description
 
-  - type: checkboxes
-    id: checklist
-    attributes:
-      label: Checklist
-      description: Ensure the following before submitting
-      options:
-        - label: My code follows the project's code style
-          required: true
-        - label: I have performed a self-review of my code
-          required: true
-        - label: I have commented my code, particularly in hard-to-understand areas
-          required: false
-        - label: I have updated the documentation accordingly
-          required: false
-        - label: My changes generate no new warnings
-          required: true
-        - label: I have added tests that prove my fix is effective or that my feature works
-          required: false
-        - label: New and existing unit tests pass locally with my changes
-          required: true
+Describe the changes in this PR.
 
-  - type: textarea
-    id: screenshots
-    attributes:
-      label: Screenshots
-      description: If applicable, add screenshots to help explain your changes
+<!-- Example: This PR fixes..., adds..., removes..., or updates... -->
 
-  - type: input
-    id: issue
-    attributes:
-      label: Related Issue
-      description: Link to the issue this PR addresses (if applicable)
-      placeholder: "Closes #123"
+## Motivation and Context
+
+Explain why this change is needed.
+
+Related issue, discussion, or context:
+
+<!-- Example: Closes #123 -->
+
+## Testing
+
+Describe how you tested this change.
+
+* [ ] Added or updated unit tests
+* [ ] Ran existing tests
+* [ ] Manually tested the affected behavior
+
+Test commands run:
+
+```bash
+bun test
+bun run lint:check
+bun run format:check
+bun run build
+```
+
+Manual testing notes:
+
+1.
+2.
+3.
+
+## Screenshots or Recordings
+
+Add screenshots, terminal output, or recordings if this PR changes UI, CLI output, or user-facing behavior.
+
+## Security Checklist
+
+* [ ] This PR does not include API keys, tokens, credentials, or private files.
+* [ ] This PR does not log secrets or sensitive user data.
+* [ ] File access, command execution, plugin behavior, MCP behavior, or sandbox changes have been reviewed.
+* [ ] User-controlled input is validated before use in shell commands, file paths, or network requests.
+
+## Documentation
+
+* [ ] Documentation was updated.
+* [ ] Documentation is not needed for this change.
+
+## Contributor Checklist
+
+* [ ] My code follows the project's code style.
+* [ ] I have performed a self-review.
+* [ ] I have added comments only where the code is hard to understand.
+* [ ] My changes generate no new warnings.
+* [ ] New and existing tests pass locally.
+* [ ] This contribution contains only material I have the right to submit.
+
+## Additional Notes
+
+Add anything reviewers should know.

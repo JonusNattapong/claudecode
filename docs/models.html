@@ -3,45 +3,45 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Models — Claudevil</title>
-  <meta name="description" content="Model selection guide for Claudevil — how to pick, switch, and manage models across 27 providers.">
+  <title>Models — Clew</title>
+  <meta name="description" content="Model selection guide for Clew — how to pick, switch, and manage models across 27 providers.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
-<header class="header"><div class="header-inner"><a href="index.html" class="logo"><span>Claudevil</span></a><nav class="header-nav"><a href="index.html">Home</a><a href="index.html#features">Features</a><a href="index.html#commands">Commands</a><a href="quick-start.html" class="active">Docs</a><a href="https://github.com/JonusNattapong/claudecode" target="_blank">GitHub</a></nav><button class="menu-btn" id="menuToggle" aria-label="Toggle navigation"><span></span><span></span><span></span></button></div></header>
+<header class="header"><div class="header-inner"><a href="index.html" class="logo"><span>Clew</span></a><nav class="header-nav"><a href="index.html">Home</a><a href="index.html#features">Features</a><a href="index.html#commands">Commands</a><a href="quick-start.html" class="active">Docs</a><a href="https://github.com/JonusNattapong/claudecode" target="_blank">GitHub</a></nav><button class="menu-btn" id="menuToggle" aria-label="Toggle navigation"><span></span><span></span><span></span></button></div></header>
 <div class="app"><aside class="sidebar" id="sidebar"></aside><div class="sidebar-overlay" id="sidebarOverlay"></div><main class="content">
   <h1>Models</h1>
-  <p class="section-subtitle">Claudevil supports 100+ models across 27 providers. Pick the right model for each task — from frontier reasoning to fast local inference.</p>
+  <p class="section-subtitle">Clew supports 100+ models across 27 providers. Pick the right model for each task — from frontier reasoning to fast local inference.</p>
 
   <h2>Model Selection Guide</h2>
   <table>
     <tr><th>Workload</th><th>Recommended Models</th><th>Context</th><th>Notes</th></tr>
-    <tr><td>Complex architecture &amp; large edits</td><td>claude-sonnet-4-7, claude-opus-4-7, gpt-5.5-pro, deepseek-v4-pro</td><td>1M tokens</td><td>Best tool calling, strong reasoning, largest context</td></tr>
-    <tr><td>Code review &amp; debugging</td><td>claude-sonnet-4-7, gpt-5.5, gemini-3.1-pro</td><td>1M-2M tokens</td><td>Good instruction following, reliable output</td></tr>
-    <tr><td>Quick search &amp; summarization</td><td>claude-haiku-4-5, deepseek-v4-flash, mistral-small-latest, groq/llama-4-70b</td><td>128K-200K</td><td>Fast, cost-effective, lower latency</td></tr>
+    <tr><td>Complex architecture &amp; large edits</td><td>claude-opus-4-7, claude-sonnet-4-6, gpt-5.5, deepseek-v4-pro</td><td>1M tokens</td><td>Best tool calling, strong reasoning, largest context</td></tr>
+    <tr><td>Code review &amp; debugging</td><td>claude-sonnet-4-6, gpt-5.5, gemini-3.1-pro-preview</td><td>1M-2M tokens</td><td>Good instruction following, reliable output</td></tr>
+    <tr><td>Quick search &amp; summarization</td><td>claude-haiku-4-5, deepseek-v4-flash, mistral-small-latest, groq/llama-3.3-70b</td><td>128K-200K</td><td>Fast, cost-effective, lower latency</td></tr>
     <tr><td>Offline / air-gapped</td><td>ollama/llama4:70b, ollama/llama3.3</td><td>131K tokens</td><td>Fully local, no network needed</td></tr>
-    <tr><td>Cost-sensitive bulk</td><td>kilocode/kilo-auto/free, opencode-go/deepseek-v4-flash-free, groq/llama-4-8b</td><td>Varies</td><td>Free or minimal cost tiers available</td></tr>
-    <tr><td>Research &amp; reasoning</td><td>claude-opus-4-7, gpt-5.5-thinking, gemini-3.1-pro, deepseek-v4-pro</td><td>1M-2M tokens</td><td>Deep reasoning, chain-of-thought</td></tr>
-    <tr><td>Vision / multimodal</td><td>claude-sonnet-4-7, gpt-5.5-pro, gemini-3.1-flash, deepseek-v4-flash</td><td>1M tokens</td><td>Image understanding, document analysis</td></tr>
+    <tr><td>Cost-sensitive bulk</td><td>kilocode/kilo-auto/balanced, opencode-go/deepseek-v4-flash, groq/llama-3.3-70b</td><td>Varies</td><td>Free or minimal cost tiers available</td></tr>
+    <tr><td>Research &amp; reasoning</td><td>claude-opus-4-7, gpt-5.4, gemini-3.1-pro-preview, deepseek-v4-pro</td><td>1M-2M tokens</td><td>Deep reasoning, chain-of-thought</td></tr>
+    <tr><td>Vision / multimodal</td><td>claude-opus-4-7, gpt-5.5, gemini-3.1-flash-lite, deepseek-v4-flash</td><td>1M tokens</td><td>Image understanding, document analysis</td></tr>
   </table>
 
   <h2>Notable Models by Provider</h2>
   <table>
     <tr><th>Provider</th><th>Models Available</th></tr>
-    <tr><td>Anthropic</td><td>claude-opus-4-7 (1M ctx), claude-sonnet-4-7 (1M ctx, recommended), claude-haiku-4-5 (200K ctx, fast), claude-sonnet-4-5 (1M ctx)</td></tr>
-    <tr><td>OpenAI</td><td>gpt-5.5-pro (1M ctx, reasoning), gpt-5.5-thinking (1M ctx), gpt-5.5 (1M ctx), gpt-5.4-mini (fast)</td></tr>
-    <tr><td>Google</td><td>gemini-3.1-pro (2M ctx), gemini-3.1-flash (1M ctx, fast)</td></tr>
+    <tr><td>Anthropic</td><td>claude-opus-4-7 (1M ctx, recommended), claude-sonnet-4-6 (1M ctx), claude-haiku-4-5 (200K ctx, fast), claude-opus-4-6 (legacy)</td></tr>
+    <tr><td>OpenAI</td><td>gpt-5.5 (1M ctx), gpt-5.4 (1M ctx), gpt-5.4-mini (fast)</td></tr>
+    <tr><td>Google</td><td>gemini-3.1-pro-preview (2M ctx), gemini-3.1-flash-lite (1M ctx, fast)</td></tr>
     <tr><td>DeepSeek</td><td>deepseek-v4-pro (1M ctx, MoE), deepseek-v4-flash (1M ctx, fast MoE)</td></tr>
-    <tr><td>xAI</td><td>grok-4-20 (128K ctx), grok-4 (128K ctx, recommended)</td></tr>
+    <tr><td>xAI</td><td>grok-4.3 (128K ctx), grok-4 (128K ctx, recommended)</td></tr>
     <tr><td>Mistral</td><td>mistral-large-4 (128K ctx), mistral-small-latest (recommended), ministral-3-14b (fast)</td></tr>
-    <tr><td>Groq</td><td>llama-4-70b (fast), llama-4-8b (instant)</td></tr>
+    <tr><td>Groq</td><td>llama-3.3-70b-versatile (fast), llama-4-70b (fast)</td></tr>
     <tr><td>Ollama</td><td>llama4:70b (local), deepseek-v4 (local), llama3.3 (local, verified)</td></tr>
     <tr><td>GitHub Copilot</td><td>gpt-5.5, gpt-4o, claude-opus-4-7, claude-sonnet-4.5, claude-haiku-4.5</td></tr>
     <tr><td>OpenCode</td><td>claude-opus-4-7, claude-sonnet-4-6, gpt-5.5, gemini-3.1-pro, kimi-k2.6, glm-5.1, minimax-m2.7</td></tr>
-    <tr><td>KiloCode</td><td>kilo-auto/free (free tier), gpt-5.5, gpt-5.5-pro, claude-opus-4.7, kimi-k2.6, deepseek-v4-pro, mimo-v2.5-pro</td></tr>
+    <tr><td>KiloCode</td><td>kilo-auto/balanced (balanced tier), gpt-5.5, claude-opus-4.7, kimi-k2.6, deepseek-v4-pro, mimo-v2.5-pro</td></tr>
     <tr><td>NVIDIA NIM</td><td>deepseek-v4-pro, llama-3.1-405b, llama-3.1-70b, nemotron-4-340b</td></tr>
   </table>
 
@@ -82,7 +82,7 @@
   </ul>
 
   <footer class="footer">
-    <span>Claudevil v2.1.165 — Open Source (MIT)</span>
+    <span>Clew v2.1.178 — Open Source (MIT)</span>
     <div class="footer-links">
       <a href="https://github.com/JonusNattapong/claudecode">GitHub</a>
       <a href="https://github.com/JonusNattapong/claudecode/issues">Issues</a>

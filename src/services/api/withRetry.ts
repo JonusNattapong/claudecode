@@ -267,6 +267,16 @@ export async function* withRetry<T>(
         continue;
       }
 
+      // Model not found (404): switch to fallback model for the rest of the session.
+      if (error instanceof APIError && error.status === 404 && options.fallbackModel) {
+        logEvent('tengu_api_model_not_found_fallback', {
+          original_model: options.model as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
+          fallback_model: options.fallbackModel as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
+          provider: getAPIProviderForStatsig(),
+        });
+        throw new FallbackTriggeredError(options.model, options.fallbackModel);
+      }
+
       // Fast mode fallback: if the API rejects the fast mode parameter
       // (e.g., org doesn't have fast mode enabled), permanently disable fast
       // mode and retry at standard speed.

@@ -91,7 +91,7 @@ export async function fetchProviderModels(provider?: ProviderId): Promise<Fetche
       return data.data.map(model => ({
         id: model.id,
         label: model.id,
-        description: model.owned_by ? `Owned by: ${model.owned_by}` : undefined,
+        description: undefined,
       }));
     }
 
@@ -101,7 +101,7 @@ export async function fetchProviderModels(provider?: ProviderId): Promise<Fetche
         .map((model: OpenRouterModel) => ({
           id: model.id,
           label: model.name ?? model.id,
-          description: model.description,
+          description: undefined,
           contextWindow: model.context_length,
         }))
         .filter(model => {
@@ -116,7 +116,7 @@ export async function fetchProviderModels(provider?: ProviderId): Promise<Fetche
       return data.data.map((model: any) => ({
         id: model.id || model.name,
         label: model.name || model.id || 'Unknown',
-        description: model.description,
+        description: undefined,
         contextWindow: model.context_length || model.context_window,
       }));
     }

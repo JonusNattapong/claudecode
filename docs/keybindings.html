@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Keybindings — Clew</title>
+  <meta name="description" content="Keyboard shortcuts reference for Clew — navigation, editing, permission cycling, Vim mode, and custom keybindings.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+<header class="header"><div class="header-inner"><a href="index.html" class="logo"><span>Clew</span></a><nav class="header-nav"><a href="index.html">Home</a><a href="index.html#features">Features</a><a href="index.html#commands">Commands</a><a href="quick-start.html" class="active">Docs</a><a href="https://github.com/JonusNattapong/claudecode" target="_blank">GitHub</a></nav><button class="menu-btn" id="menuToggle" aria-label="Toggle navigation"><span></span><span></span><span></span></button></div></header>
+<div class="app"><aside class="sidebar" id="sidebar"></aside><div class="sidebar-overlay" id="sidebarOverlay"></div><main class="content">
+
+<h1>Keybindings</h1>
+<p class="section-subtitle">Keyboard shortcuts for navigation, editing, and session control.</p>
+
+<h2>Default Shortcuts</h2>
+<table>
+  <tr><th>Key</th><th>Action</th></tr>
+  <tr><td><kbd>Enter</kbd></td><td>Submit prompt / execute</td></tr>
+  <tr><td><kbd>Shift</kbd>+<kbd>Enter</kbd></td><td>New line in input</td></tr>
+  <tr><td><kbd>Tab</kbd></td><td>Accept ghost text / autocomplete suggestion</td></tr>
+  <tr><td><kbd>Up</kbd> / <kbd>Down</kbd></td><td>Navigate command history</td></tr>
+  <tr><td><kbd>Ctrl</kbd>+<kbd>C</kbd></td><td>Cancel current operation</td></tr>
+  <tr><td><kbd>Ctrl</kbd>+<kbd>D</kbd></td><td>Exit / close session</td></tr>
+  <tr><td><kbd>Ctrl</kbd>+<kbd>L</kbd></td><td>Clear terminal screen</td></tr>
+  <tr><td><kbd>Ctrl</kbd>+<kbd>R</kbd></td><td>Search command history (across all projects)</td></tr>
+  <tr><td><kbd>Shift</kbd>+<kbd>Tab</kbd></td><td>Cycle permission modes</td></tr>
+  <tr><td><kbd>Escape</kbd></td><td>Close sidebar / cancel</td></tr>
+</table>
+
+<h2>Permission Mode Cycling</h2>
+<p><kbd>Shift</kbd>+<kbd>Tab</kbd> cycles through permission modes:</p>
+<ol>
+  <li><strong>Default</strong> — ask before every tool execution</li>
+  <li><strong>Auto</strong> — automatically approve safe operations</li>
+  <li><strong>Plan</strong> — only plan, no execution</li>
+  <li><strong>YOLO Lite</strong> — auto-approve most operations</li>
+  <li><strong>YOLO</strong> — full autonomous mode</li>
+  <li><strong>YOLO MAX</strong> — unrestricted autonomous mode</li>
+</ol>
+<p>See <a href="permission-model.html">Permission Model</a> for details on each mode.</p>
+
+<h2>Vim Mode</h2>
+<p>Clew includes a Vim-inspired navigation mode for efficient keyboard-driven interaction.</p>
+
+<table>
+  <tr><th>Key</th><th>Vim Mode Action</th></tr>
+  <tr><td><code>j</code> / <code>k</code></td><td>Scroll down / up through output</td></tr>
+  <tr><td><code>g</code> / <code>G</code></td><td>Go to top / bottom of output</td></tr>
+  <tr><td><code>/</code></td><td>Search within output</td></tr>
+  <tr><td><code>n</code> / <code>N</code></td><td>Next / previous search match</td></tr>
+  <tr><td><code>i</code></td><td>Enter insert mode (back to input)</td></tr>
+  <tr><td><code>q</code></td><td>Quit Vim mode</td></tr>
+</table>
+
+<p>Toggle Vim mode with <code>/vim</code> or configure it in settings.</p>
+
+<h2>Custom Keybindings</h2>
+<p>Create a <code>keybindings.json</code> file to customize or add shortcuts:</p>
+
+<pre><code>{
+  "keybindings": [
+    {
+      "key": "ctrl+p",
+      "command": "model",
+      "description": "Quick model switch"
+    },
+    {
+      "key": "ctrl+shift+f",
+      "command": "compact",
+      "description": "Compact context"
+    }
+  ]
+}</code></pre>
+
+<p>Keybinding files are loaded from <code>~/.claude/keybindings.json</code> (global) and <code>.claude/keybindings.json</code> (project-level). The <code>key</code> field supports modifiers (<code>ctrl</code>, <code>shift</code>, <code>alt</code>, <code>meta</code>) and a single character or named key.</p>
+
+<h2>Terminal Configuration</h2>
+<p>Some shortcuts require terminal-specific setup:</p>
+<ul>
+  <li><kbd>Shift</kbd>+<kbd>Enter</kbd> for new lines — may need to configure your terminal to not capture it</li>
+  <li><kbd>Ctrl</kbd>+<kbd>R</kbd> for history search — works in most modern terminals</li>
+  <li>Custom keybindings — require a terminal that passes the key combination through</li>
+</ul>
+
+<footer class="footer">
+  <span>Clew v2.1.178 — Open Source (MIT)</span>
+  <div class="footer-links">
+    <a href="https://github.com/JonusNattapong/claudecode">GitHub</a>
+    <a href="https://github.com/JonusNattapong/claudecode/issues">Issues</a>
+    <a href="https://npmjs.com/package/@jonusnattapong/claudecode">npm</a>
+  </div>
+</footer>
+</main></div>
+<script src="js/main.js"></script>
+</body>
+</html>

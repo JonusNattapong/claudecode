@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Best Practices — Clew</title>
+  <meta name="description" content="Tips, patterns, and workflow recommendations for getting the most out of Clew.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+<header class="header"><div class="header-inner"><a href="index.html" class="logo"><span>Clew</span></a><nav class="header-nav"><a href="index.html">Home</a><a href="index.html#features">Features</a><a href="index.html#commands">Commands</a><a href="quick-start.html" class="active">Docs</a><a href="https://github.com/JonusNattapong/claudecode" target="_blank">GitHub</a></nav><button class="menu-btn" id="menuToggle" aria-label="Toggle navigation"><span></span><span></span><span></span></button></div></header>
+<div class="app"><aside class="sidebar" id="sidebar"></aside><div class="sidebar-overlay" id="sidebarOverlay"></div><main class="content">
+  <h1>Best Practices</h1>
+  <p class="section-subtitle">Tips, patterns, and workflow recommendations for effective use of Clew.</p>
+
+  <h2>Project Setup</h2>
+
+  <h3>Always Write a CLAUDE.md</h3>
+  <p>A good <code>CLAUDE.md</code> is the single highest-leverage thing you can do. It teaches Clew your project's conventions, architecture, and rules before every session.</p>
+  <pre><code># CLAUDE.md
+## Build
+- Use `bun test` for tests, `bun run build` for production.
+- This is an ESM project. Don't add CommonJS files.
+
+## Conventions
+- Components use React 19 + Ink 6.
+- Use Zod for validation, not Yup.
+- Files are kebab-case, functions are camelCase.
+
+## Rules
+- Don't add dependencies without strong justification.
+- Prefer surgical edits over broad rewrites.</code></pre>
+
+  <h3>Use Project-Level Configuration</h3>
+  <p>Create <code>.claude/settings.json</code> in your project root to set project-specific defaults:</p>
+  <pre><code>{
+  "model": "claude-sonnet-4-20250514",
+  "permissions": {
+    "allow": [
+      "Bash(git *)",
+      "Bash(bun test *)",
+      "Bash(bun run build)"
+    ],
+    "deny": [
+      "Bash(rm -rf *)",
+      "Bash(git push --force *)"
+    ]
+  }
+}</code></pre>
+
+  <h2>Prompting</h2>
+
+  <h3>Be Specific About Scope</h3>
+  <p>Vague prompts get vague results. Name files, functions, and constraints:</p>
+  <table>
+    <tr><th>Instead of</th><th>Try</th></tr>
+    <tr><td>"Fix the bug"</td><td>"Fix the null reference in <code>src/utils/parser.ts:142</code> — it should return an empty array instead"</td></tr>
+    <tr><td>"Add auth"</td><td>"Add JWT authentication middleware to <code>src/api/</code>. Use the existing pattern from <code>authMiddleware.ts</code>"</td></tr>
+    <tr><td>"Refactor this"</td><td>"Extract the validation logic from <code>UserForm.tsx</code> into <code>src/utils/validators.ts</code> without changing behavior"</td></tr>
+  </table>
+
+  <h3>Use Plan Mode for Complex Changes</h3>
+  <p>For multi-file refactors or new features, switch to plan mode first:</p>
+  <pre><code>/permissions plan
+# Now Clew will present an implementation plan before writing code.
+# Review the plan, then approve or refine.</code></pre>
+
+  <h3>Use /compact Proactively</h3>
+  <p>Don't wait for auto-compaction. If you've been in a long session with many tool calls, run <code>/compact</code> to keep the conversation focused and reduce token costs.</p>
+
+  <h2>Provider & Model Selection</h2>
+
+  <h3>Match Model to Task</h3>
+  <table>
+    <tr><th>Task Type</th><th>Recommended Models</th></tr>
+    <tr><td>Complex reasoning, architecture</td><td>Claude Opus, o1-pro</td></tr>
+    <tr><td>General coding, editing</td><td>Claude Sonnet, DeepSeek v4</td></tr>
+    <tr><td>Quick fixes, simple tasks</td><td>Claude Haiku, GPT-4o-mini</td></tr>
+    <tr><td>Budget-conscious work</td><td>DeepSeek, Qwen via OpenRouter</td></tr>
+    <tr><td>Offline / air-gapped</td><td>Ollama with local models</td></tr>
+  </table>
+
+  <h3>Switch Models Mid-Session</h3>
+  <p>Use <code>/model</code> to switch providers or models without restarting. Press <code>d</code> in the picker to set a new default. Recent models are tracked and shown at the top.</p>
+
+  <h2>Tool & Permission Strategy</h2>
+
+  <h3>Layer Your Permissions</h3>
+  <p>Start strict and relax as you build trust:</p>
+  <ol>
+    <li><strong>New project:</strong> <code>default</code> mode — get prompted for each sensitive action.</li>
+    <li><strong>After adding CLAUDE.md:</strong> <code>auto</code> mode with allow rules for common operations.</li>
+    <li><strong>Trusted workspace:</strong> <code>acceptEdits</code> for rapid file editing iteration.</li>
+    <li><strong>CI/automation:</strong> <code>bypassPermissions</code> only in isolated sandboxes.</li>
+  </ol>
+
+  <h3>Create Targeted Allow Rules</h3>
+  <p>Prefer specific allow rules over blanket bypass. Rules are auditable and scoped:</p>
+  <pre><code># Good: specific and reviewable
+Bash(git diff *)
+Bash(git log *)
+Bash(bun test *)
+Bash(bun run build)
+
+# Avoid: too broad
+Bash(*)</code></pre>
+
+  <h2>Agent & Automation Workflows</h2>
+
+  <h3>Delegate to Sub-agents for Parallel Work</h3>
+  <p>For tasks that can be split, use sub-agents to work in parallel:</p>
+  <pre><code>> "Spawn a sub-agent to run the test suite while I review the diff.
+   Then spawn another to check for unused imports."</code></pre>
+
+  <h3>Use Scheduled Tasks for Recurring Work</h3>
+  <p>Set up recurring checks that run even when you're away:</p>
+  <pre><code>/task           # Interactive form
+# → Name: "PR Monitor"
+# → Schedule: every-minutes / 30
+# → Prompt: "Check for new PR comments and summarize any that need my attention"</code></pre>
+
+  <h3>Use /loop for Quick Recurring Commands</h3>
+  <pre><code>/loop 5m /babysit-prs        # Monitor PRs every 5 minutes
+/loop 1h /status               # Health check every hour</code></pre>
+
+  <h2>Context Window Management</h2>
+
+  <h3>Monitor Context Usage</h3>
+  <p>Keep an eye on the status bar context percentage. Use <code>/context</code> to see a detailed breakdown of token distribution across System Prompt, Tools, Rules, Chat, and Sub-agents.</p>
+
+  <h3>Keep Sessions Focused</h3>
+  <ul>
+    <li>Start a new session for unrelated tasks (use <code>/resume</code> to switch).</li>
+    <li>Use <code>/clear</code> to reset context when changing topics.</li>
+    <li>Use <code>/resume &lt;N&gt;</code> to resume with only the last N exchanges.</li>
+  </ul>
+
+  <h2>Plugin & Extension Workflow</h2>
+
+  <h3>Audit Plugin Costs</h3>
+  <p>Before installing a plugin, check its token impact:</p>
+  <pre><code>/plugin browse          # Browse marketplace
+/plugin-details &lt;name&gt;   # Check token cost per session</code></pre>
+
+  <h3>Keep Plugins Updated</h3>
+  <pre><code>/plugin update          # Update all plugins
+/plugin update &lt;name&gt;   # Update specific plugin
+/reload-plugins          # Reload without restart</code></pre>
+
+  <h2>Troubleshooting</h2>
+
+  <h3>When Things Go Wrong</h3>
+  <ol>
+    <li><strong>Run <code>/doctor</code></strong> — Diagnoses environment, API keys, MCP servers, and common issues.</li>
+    <li><strong>Check <code>/status</code></strong> — Shows model, provider, API status, and context usage.</li>
+    <li><strong>Enable debug logging</strong> — <code>DEBUG=1 clew</code> or <code>clew --debug</code>.</li>
+    <li><strong>Provider-specific debug</strong> — <code>DEBUG=provider:anthropic clew</code>.</li>
+    <li><strong>Check <code>/mcp list</code></strong> — MCP config parse errors are displayed here.</li>
+  </ol>
+
+  <h3>Recovering from Stuck Sessions</h3>
+  <ul>
+    <li><code>Ctrl+C</code> — Interrupt the current operation.</li>
+    <li><code>Ctrl+Z</code> then resume — Suspends the session for later recovery.</li>
+    <li><code>/compact</code> — If the model is struggling with context overflow.</li>
+    <li><code>clew --resume</code> — Pick up from a previous session checkpoint.</li>
+  </ul>
+
+  <h2>Performance Tips</h2>
+  <ul>
+    <li><strong>Use <code>.gitignore</code>-aware search</strong> — Clew's Glob and Grep tools respect <code>.gitignore</code>. Keep it updated.</li>
+    <li><strong>Prefer targeted tests</strong> — <code>"run the test in src/utils/parser.test.ts"</code> is faster than <code>"run all tests"</code>.</li>
+    <li><strong>Use <code>NO_FLICKER=1</code></strong> — On slower terminals, this provides smoother rendering.</li>
+    <li><strong>Use WSL2 on Windows</strong> — Best experience for Windows users.</li>
+  </ul>
+
+</main></div>
+<script src="js/main.js"></script>
+</body>
+</html>

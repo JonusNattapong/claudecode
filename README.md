@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/claude-logo-long.png" alt="Claude Code" width="480" />
+  <img src="assets/claude-logo-long.png" alt="Clew" width="480" />
 </p>
 
 <p align="center">
@@ -9,64 +9,27 @@
   <a href="readme/README.th.md">ไทย</a>
 </p>
 
-# Claude Code
+<p align="center">
+  <a href="#installation"><img src="https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2FJonusNattapong%2Fclaudecode%2Fmain%2Fpackage.json&query=%24.version&label=version&color=%238b5cf6" alt="Version"></a>
+  <a href="LICENSE.md"><img src="https://img.shields.io/badge/license-MIT-%238b5cf6" alt="License"></a>
+  <a href="https://nodejs.org"><img src="https://img.shields.io/badge/node-%3E%3D18-%238b5cf6" alt="Node"></a>
+</p>
 
-Claude Code is an independent, research-oriented **source-built reverse engineering and reconstruction** project of Anthropic's official [Claude Code](https://claude.ai/code) CLI. 
+**Clew** is a terminal-based AI coding assistant that works with any LLM provider. Read code, edit files, run commands, and orchestrate multi-agent workflows — all from your terminal.
 
-This project aims to provide a **fully runnable, buildable, and debuggable** version of the code directly from source code—liberating developers from closed-source binaries. In addition, it extends the experience with native multi-provider routing, adapters, and advanced developer utilities.
+> **Disclaimer:** This project is independently rebuilt from Anthropic's Claude Code CLI for research and self-hosted development. Not affiliated with or endorsed by Anthropic PBC. See [LICENSE.md](LICENSE.md).
 
-> **Disclaimer:** This project is not affiliated with, endorsed by, or sponsored by Anthropic PBC. The original Claude Code product is proprietary. This project reconstructs and extends its behaviors strictly for research and self-hosted development environments. Please read [LICENSE.md](LICENSE.md) before distributing or using it in an enterprise setting.
+---
 
-## Project Positioning
-
-| Dimension | What Claude Code Provides |
-| --- | --- |
-| **Original Fidelity** | A reconstructed CLI conforming to the terminal UX, tools, and extension points of the official Claude Code. |
-| **Build & Debug** | A modular Bun/TypeScript codebase tree that can be typechecked, tested, and modified locally using `bun run dev`. |
-| **Enterprise Capabilities** | Remote session bridging, MCP, plugins, skills, agents/supervisor, voice, session memory, and LSP integrations—without forcing all workflows to run through Anthropic's hosted-only services. |
-| **Our Superpowers** | Declarative **multi-provider** routing (`providers.json`, `/model`), provider-specific adapters, and custom developer utilities (`preload`, `codeindex`, `session`). |
-
-> This is a community rebuild for software engineers who require transparency and provider choice—not an official distribution from Anthropic.
-
-## Features
-
-Claude Code is an AI coding assistant that runs directly in your terminal. It inspects and edits local codebases, executes shell commands, switches model providers, and coordinates complex, long-running agent workflows through custom commands, supervisors, plugins, and skills.
-
-Key Highlights:
-
-- **Multi-Provider AI Routing** — Supports Anthropic, OpenAI, Google Gemini, OpenRouter, Ollama, GitHub Copilot, and other OpenAI-compatible endpoints.
-- **Runtime Model Swapping** — Switch models or providers on-the-fly using the `/model` slash command.
-- **Tool-Driven Workflows** — Automatically read, search, edit, and write files, execute shell commands, query LSPs, browser automation, and run MCP tools.
-- **Plugin Hooks System** — Intercept and hook into prompts, shell executions, tool invocations, and file editing actions.
-- **Dynamic Skills** — Load capabilities from bundled sources and custom project-level `.claude/skills/` directories.
-- **Agents & Supervisor** — Orchestrate deep research, coding, and multi-agent coordination.
-- **Durable Agent Runtime & Orchestrator (PLAN I)** — A highly resilient, 100% offline-friendly agent runtime featuring automated checkpoint recovery and interactive user approvals for sensitive commands.
-- **Scheduled Tasks** — Create one-shot or recurring automation tasks via the interactive `/task` panel, backed by durable storage (`.claude/scheduled_tasks.json`).
-- **Sessions & Bridge** — Save context, pause/resume tasks across sessions, and enable remote workspace collaboration.
-
-## Quick Start
-
-### Global Installation
+## Install
 
 ```bash
 npm install -g @jonusnattapong/claudecode
 ```
 
-`npm install -g` installs the launcher, but `claudevil` still requires [Bun](https://bun.sh) to be installed on your machine at runtime.
+Requires [Bun](https://bun.sh) 1.3+ at runtime. Then run `clew` in any project directory.
 
-Or:
-
-```bash
-bun install -g @jonusnattapong/claudecode
-```
-
-Run the assistant in any of your project directories:
-
-```bash
-claudevil
-```
-
-### Running From Source
+### From source
 
 ```bash
 git clone https://github.com/JonusNattapong/claudecode.git
@@ -76,201 +39,59 @@ bun run build
 bun run start
 ```
 
-## System Requirements
-
-- [Bun](https://bun.sh) 1.3 or higher for local development and for the globally installed `claudevil` launcher.
-- At least one API key, such as `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GOOGLE_API_KEY`, or other supported providers.
-- Windows, macOS, Linux, or WSL2.
-
-## Provider Configuration
-
-Configure keys in your shell or inside a local `.env` file at the root of the project:
+## Quick start
 
 ```bash
-export ANTHROPIC_API_KEY=sk-ant-...
 export OPENAI_API_KEY=sk-...
-export GOOGLE_API_KEY=...
-export OPENROUTER_API_KEY=sk-or-...
-export OLLAMA_HOST=http://localhost:11434
+clew
 ```
-
-To switch models or providers inside a live session:
 
 ```text
-/model
-/model list
-/model openai/gpt-4o
-/model google/gemini-2.5-pro
+> "explain the codebase structure"
+> /model deepseek-v4-pro
+> /status
 ```
 
-Provider Configuration Overview: [docs/providers.html](docs/providers.html)
+Press `/` in the CLI to discover all commands. See the [quick start](docs/quick-start.html) guide.
 
-## Frequently Used Commands
+## What makes it different
 
-```text
-/model      Switch models or providers at runtime
-/status     Show provider session and context status
-/doctor     Run diagnostic tests and auto-fixes
-/context    Inspect detail of the active context window
-/compact    Compress and prune conversation history
-/mcp        Manage Model Context Protocol (MCP) servers
-/plugin     Manage plugins and lifecycle hooks
-/bridge     Configure bridge mode for remote collaboration
-/agent      Manage background agent workflows (run, status, trace, approvals, report)
-/daemon     Open an interactive dashboard for autonomous background daemons
-/task       Create Scheduled Tasks or manage the autonomous task queue
-```
+- **27+ providers** — Anthropic, OpenAI, Google Gemini, DeepSeek, OpenRouter, Ollama, xAI, Mistral, Groq, GitHub Copilot, and any OpenAI-compatible endpoint. Switch at runtime with `/model`.
+- **90+ commands** — `/edit`, `/glob`, `/grep`, `/commit`, `/compact`, `/color`, `/task`, and more.
+- **65+ tools** — file read/write/search, shell, web search, LSP, MCP, agent orchestration, scheduled tasks.
+- **Plugin system** — lifecycle hooks (PreToolUse, PostToolUse, PreBash), marketplace, custom commands.
+- **Agent runtime** — multi-agent orchestration, 24/7 daemon mode, worktree isolation, autonomous task queue.
+- **Research & memory** — deep research, semantic cross-session memory, auto-memory capture.
+- **Remote collaboration** — WebSocket bridge, session sharing, QR code pairing.
+- **Voice mode** — always available via `/voice`.
 
-Type `/` in the CLI prompt at any time to see the autocomplete list of all supported commands.
+## Documentation
 
-## Scheduled Tasks
-
-The Scheduled Tasks system is powered by an interactive form in `/task`—eliminating the need to memorize complex cron expressions. Type `/task` with no arguments, fill in the fields, and submit.
-
-| What You Do | What Claude Code Does |
-| --- | --- |
-| `/task` | Opens the interactive form to create a Scheduled Task |
-| Select `Daily` at `09:00` | Creates a daily recurring task |
-| Select `Weekdays` at `09:00` | Creates a weekday cron schedule (e.g., `0 9 * * 1-5`) |
-| Select `In N minutes` with value `10` | Creates a one-shot reminder relative to your local timezone |
-| Select `Custom cron` | Manually enter standard 5-field cron syntax |
-| `/task scheduled` | Directly opens the scheduling form |
-| `/task list` | Lists all active tasks in the autonomous queue |
-
-Details:
-
-- Uses standard 5-field cron according to your local machine's timezone: `minute hour day-of-month month day-of-week`
-- `Durable` tasks are permanently saved to `.claude/scheduled_tasks.json` and persist across sessions.
-- `Session-only` tasks are stored in volatile memory and run strictly during the active session.
-- Recurring tasks auto-expire after 30 days (except system-generated permanent tasks).
-- One-shot tasks are automatically deleted after they fire.
-- Natural language time scheduling remains supported behind the scenes via `CronCreate`, `CronList`, and `CronDelete` tools when selected by the model.
-
-Examples:
-
-```text
-/task
-Name: Server Check
-Schedule: Daily
-Time: 20:00
-Prompt: Verify the status of local servers
-Storage: Durable
-
-/task
-Name: Commit Reminder
-Schedule: In N minutes
-Delay: 10
-Prompt: Don't forget to commit the code
-Storage: Session-only
-```
+| Topic | |
+|---|---|
+| Getting started | [Quick Start](docs/quick-start.html) · [Installation](docs/installation.html) · [Configuration](docs/configuration.html) |
+| Providers | [Providers](docs/providers.html) · [Models](docs/models.html) |
+| CLI | [Commands](docs/commands.html) · [Cli Reference](docs/cli-reference.html) · [Tools](docs/tools.html) |
+| Context & sessions | [Context Window](docs/context-window.html) · [Sessions](docs/sessions.html) |
+| Extending | [Plugins](docs/plugins.html) · [Skills](docs/skills.html) · [Hooks](docs/hooks.html) · [MCP](docs/mcp.html) |
+| Autonomous | [Daemon](docs/daemon.html) · [Worktrees](docs/worktrees.html) · [Agent Teams](docs/agent-teams.html) |
+| Reference | [Keybindings](docs/keybindings.html) · [Env Vars](docs/env-vars.html) · [Errors](docs/errors.html) · [Troubleshooting](docs/troubleshooting.html) |
 
 ## Development
 
 ```bash
-bun run dev              # Starts development mode with hot-reload
-bun run start            # Runs the CLI from source code
-bun run build            # Compiles and builds the bundle into dist/
-bun test                 # Runs the test suite
-bun x tsc --noEmit       # Runs TypeScript typechecks
-bun run lint:check       # Checks Biome lint rules
-bun run format:check     # Checks Biome formatting
-bun run check:ci         # Runs Biome CI validation
+bun run dev       # hot-reload dev mode
+bun run start     # run from source
+bun run build     # build to dist/
+bun test          # run tests
+bun x tsc --noEmit  # typecheck
+bun run check     # biome lint + format
 ```
-
-In-project Developer Utilities:
-
-```bash
-bun run preload <module>     # Code Preloader: Preload module contexts before editing
-bun run session <command>    # Session Bridge: Save, list, or restore terminal context across sessions
-bun run codeindex <command>  # CodeIndex: Index and fuzzy-query the codebase
-bun run codegraph            # CodeGraph: Generate module dependency graphs
-bun run ast-grep -- <args>   # ast-grep: Perform structural AST-based search/rewriting
-```
-
-## Project Structure
-
-```text
-src/
-├── main.tsx              # Ink React terminal UI bootstrap & main loop
-├── query.ts              # Core query processing and system prompts
-├── QueryEngine.ts        # Query orchestrator (caching, deduplication, rate limits)
-├── agentRuntime/         # Agent orchestration, persistent run stores, and tool gateways
-├── commands/             # Slash command implementations
-├── tools/                # Built-in developer tools
-├── services/
-│   ├── ai/               # ProviderManager, adapters, normalizers, and providers.json
-│   ├── mcp/              # Model Context Protocol clients
-│   ├── plugins/          # Plugin lifecycle hooks and interceptors
-│   ├── tools/            # Tool execution service
-│   ├── lsp/              # Language Server Protocol integration
-│   ├── Supervisor/       # Autonomous agent supervisor
-│   └── SessionMemory/    # Persistent session memory
-├── skills/               # Dynamic project-level skills loader
-├── cli/                  # Terminal UI contexts
-├── components/           # Terminal UI rendering components
-├── bridge/               # WebSocket bridge for remote pairing
-├── coordinator/          # Multi-agent coordinator and worker setup
-├── keybindings/          # Keyboard shortcut mappings
-├── state/                # Reactive store implementations
-└── vim/                  # Vim-like keyboard navigation mode
-```
-
-## Architecture
-
-```text
-Terminal UI
-  -> Command Registry & Keybindings Layer
-  -> Provider Manager & AI Adapters
-  -> Query Engine & Streaming Loops
-  -> Tool Executor Service
-  -> Plugin hooks, MCP client, LSP integration, agents, session memory, bridge
-```
-
-## Documentation
-
-- [Installation](docs/installation.html)
-- [Quick Start](docs/quick-start.html)
-- [Configuration](docs/configuration.html)
-- [AI Providers](docs/providers.html)
-- [Models](docs/models.html)
-- [Commands](docs/commands.html)
-- [Tools](docs/tools.html)
-- [Plugins](docs/plugins.html)
-- [Skills](docs/skills.html)
-- [Architecture](docs/architecture.html)
-- [Permission Model](docs/permission-model.html)
-- [Bridge Mode](docs/features/bridge-mode.html)
-- [SearXNG Search](docs/features/searxng-search.html)
-- [Troubleshooting](docs/troubleshooting.html)
-- [Evals](docs/features/evals.html)
-
-## Debugging
-
-```bash
-DEBUG=1 bun run src/main.tsx
-DEBUG=provider:anthropic bun run src/main.tsx
-```
-
-## Platform Notes
-
-### Windows
-
-```powershell
-Remove-Item -Recurse -Force node_modules
-bun install
-bun run dev
-```
-
-- Precompiled `ripgrep` for Windows is bundled under `src/utils/vendor/ripgrep/x64-win32/rg.exe` to guarantee lightning-fast filesystem searches.
 
 ## Contributing
 
-Please refer to [CONTRIBUTING.md](CONTRIBUTING.md), [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md), and [SECURITY.md](SECURITY.md).
-
-## Changelog
-
-[CHANGELOG.md](CHANGELOG.md)
+See [CONTRIBUTING.md](CONTRIBUTING.md), [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md), and [SECURITY.md](SECURITY.md).
 
 ## License
 
-[LICENSE.md](LICENSE.md)
+[MIT](LICENSE.md)

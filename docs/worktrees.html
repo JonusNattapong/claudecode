@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Worktrees — Clew</title>
+  <meta name="description" content="Run parallel Clew sessions with git worktrees — isolate changes, run agents concurrently, and avoid conflicts.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+<header class="header"><div class="header-inner"><a href="index.html" class="logo"><span>Clew</span></a><nav class="header-nav"><a href="index.html">Home</a><a href="index.html#features">Features</a><a href="index.html#commands">Commands</a><a href="quick-start.html" class="active">Docs</a><a href="https://github.com/JonusNattapong/claudecode" target="_blank">GitHub</a></nav><button class="menu-btn" id="menuToggle" aria-label="Toggle navigation"><span></span><span></span><span></span></button></div></header>
+<div class="app"><aside class="sidebar" id="sidebar"></aside><div class="sidebar-overlay" id="sidebarOverlay"></div><main class="content">
+
+<h1>Worktrees</h1>
+<p class="section-subtitle">Isolate parallel Clew sessions in separate git worktrees.</p>
+
+<p>Git worktrees allow you to check out multiple branches of the same repository simultaneously. Clew uses worktrees to run parallel sessions without file conflicts — each session gets its own working directory and its own branch.</p>
+
+<h2>Why Worktrees?</h2>
+<ul>
+  <li><strong>Parallel agents</strong> — run multiple Clew sessions on different tasks at the same time</li>
+  <li><strong>Conflict-free</strong> — changes in one worktree don't affect others</li>
+  <li><strong>Isolated dependencies</strong> — each worktree can run <code>bun install</code> independently</li>
+  <li><strong>Safe experimentation</strong> — try risky refactors without touching main</li>
+</ul>
+
+<h2>Usage</h2>
+
+<h3>Starting a Worktree Session</h3>
+<pre><code># Create and enter a new worktree
+clew --worktree fix-auth-bug
+
+# The session starts in a new git worktree on a new branch
+# All file changes stay isolated in that worktree</code></pre>
+
+<h3>Subagent Worktrees</h3>
+<p>Clew can automatically create worktrees for subagents — each subagent operates in its own isolated directory:</p>
+<pre><code># Subagents automatically use worktrees when configured
+> "deploy three agents to fix bugs in parallel"</code></pre>
+
+<h2>Configuration</h2>
+<table>
+  <tr><th>File</th><th>Purpose</th></tr>
+  <tr><td><code>.worktreeinclude</code></td><td>List of files/directories to symlink from the main repo into each worktree (e.g. shared configs)</td></tr>
+  <tr><td><code>.gitignore</code></td><td>Add <code>.claude/worktrees/</code> to your gitignore to exclude worktree metadata</td></tr>
+</table>
+
+<h2>Managing Worktrees</h2>
+<pre><code># List all git worktrees
+git worktree list
+
+# Remove a worktree when done
+git worktree remove &lt;path&gt;
+
+# Or let Clew clean up automatically
+# (worktrees can be removed when the session ends)</code></pre>
+
+<h2>Best Practices</h2>
+<ul>
+  <li><strong>One task per worktree</strong> — keep each worktree focused on a single feature or bug fix</li>
+  <li><strong>Clean up when done</strong> — remove completed worktrees to save disk space</li>
+  <li><strong>Use .worktreeinclude</strong> — for shared configuration files that all worktrees need</li>
+  <li><strong>Rebase before merging</strong> — rebase worktree branches onto main before creating a PR</li>
+</ul>
+
+<h2>Limitations</h2>
+<ul>
+  <li>Worktrees share the same git history — they diverge at the branch point</li>
+  <li>Large monorepos may benefit from <a href="https://git-scm.com/docs/git-sparse-checkout" target="_blank">sparse checkout</a> to reduce disk usage</li>
+  <li>Not all VCS systems support worktrees (git only)</li>
+</ul>
+
+<footer class="footer">
+  <span>Clew v2.1.178 — Open Source (MIT)</span>
+  <div class="footer-links">
+    <a href="https://github.com/JonusNattapong/claudecode">GitHub</a>
+    <a href="https://github.com/JonusNattapong/claudecode/issues">Issues</a>
+    <a href="https://npmjs.com/package/@jonusnattapong/claudecode">npm</a>
+  </div>
+</footer>
+</main></div>
+<script src="js/main.js"></script>
+</body>
+</html>

@@ -1,63 +1,53 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Operational guide for coding agents working in this repository.
 
 ## Repository Purpose
 
-This repository is a research-oriented fork of Anthropic's Claude Code CLI. The binary is renamed to `claudevil` to avoid conflicts with the official `claude` package. It keeps the original terminal-first coding-agent workflow while adding:
+This repository is a research-oriented fork of Anthropic's Claude Code CLI. The binary is renamed to `claudevil` to avoid conflicts with the official package. It keeps the terminal-first coding-agent workflow while adding:
 
 - unified multi-provider model routing
 - provider-specific adapters
 - built-in tools and slash commands
 - plugin and skill systems
-- MCP, LSP, bridge, supervisor, and session infrastructure
+- MCP, LSP, bridge, supervisor, session, daemon, research, and memory infrastructure
 
-The project should be treated as a large TypeScript/Bun CLI application with a React/Ink terminal UI and a provider-agnostic AI execution layer.
+Treat the project as a large TypeScript/Bun CLI app with React/Ink terminal UI and a provider-agnostic AI execution layer.
 
-> This is an independent research and development project. Do not imply affiliation, endorsement, or sponsorship by Anthropic unless the repository explicitly says so elsewhere.
+This is an independent research and development project. Do not imply affiliation, endorsement, or sponsorship by Anthropic unless the repository explicitly says so elsewhere.
 
-## Working Principles for Agents
+## Core Working Rules
 
-### Default Behavior
-
-- Make surgical changes. Touch only the files needed for the requested task.
+- Make surgical changes. Touch only files needed for the task.
 - Prefer simple fixes over new abstractions.
-- Preserve existing APIs, command names, config names, and file layout unless the task explicitly requires changing them.
-- Keep user-facing terminal output concise and consistent with the existing UI style.
-- Do not rename providers, tools, slash commands, environment variables, or config files without checking all call sites.
+- Preserve existing APIs, command names, config names, aliases, env vars, and file layout unless asked to change them.
+- Keep terminal output concise and consistent with the existing UI style.
 - Do not edit generated build output in `dist/` as the source of truth.
-- Do not remove compatibility code only because it looks unused; this repo supports multiple providers, platforms, commands, and runtime modes.
+- Do not remove compatibility code only because it appears unused. This repo supports multiple providers, platforms, commands, shells, and runtime modes.
+- Do not hardcode API keys, secrets, local machine paths, or user-specific paths.
+- Do not bypass `ProviderManager`, tool hooks, permission checks, or command registries.
+- Do not add dependencies unless existing utilities are insufficient and the benefit is clear.
 
-### Before Editing
+## Before Editing
 
-1. Identify the affected layer: UI, command, provider, adapter, query loop, tool execution, plugin, skill, config, or infrastructure.
+1. Identify the affected layer: UI, command, provider, adapter, query loop, tool execution, plugin, skill, config, bridge, daemon, memory, or infrastructure.
 2. Search for existing patterns before adding a new implementation.
-3. Check related tests near the changed files.
-4. For provider/tool/query changes, inspect normalization, streaming, error handling, and usage accounting paths.
-5. For command changes, verify registration in `src/commands.ts` or the relevant command registry.
-
-### Before Editing — Context Preloader
-
-Before editing a module, preload its context:
+3. Check nearby tests and related call sites.
+4. For provider/tool/query changes, inspect normalization, streaming, error handling, retries, and usage accounting.
+5. For command changes, verify registration in `src/commands.ts` or the relevant registry.
+6. For risky modules, preload context before editing:
 
 ```bash
-bun run preload bridge          # bridge/
-bun run preload query           # query.ts
-bun run preload commands        # commands/
-bun run preload services/ai     # services/ai/
-bun run preload src/bridge      # also works with src/ prefix
+bun run preload bridge
+bun run preload query
+bun run preload commands
+bun run preload services/ai
+bun run preload src/bridge
 ```
 
-The script generates context at `.claude/context/<module>.md`:
-- All files in the module with sizes
-- Exports and key types
-- Internal dependencies
-- Recent git history (10 commits)
-- Outstanding TODO/FIXME items
+The preloader writes `.claude/context/<module>.md`. Read it before changing that module.
 
-> Then read the context file with the Read tool before editing code.
-
-### After Editing
+## After Editing
 
 Run the smallest useful validation first:
 
@@ -66,102 +56,39 @@ bun x tsc --noEmit
 bun test <path>
 ```
 
-For broader changes, run:
+For broader changes:
 
 ```bash
 bun test
 bun run build
-bun run check     # Biome lint + format + import organize
+bun run check
 ```
 
-If a test cannot be run in the current environment, state what should be run and why.
+If validation cannot run in the environment, state what should be run and why.
 
 ## Development Commands
 
 ```bash
-bun install              # Install dependencies
-bun run dev              # Start dev mode with watch
-bun run start            # Run CLI without watch
-bun run build            # Build production bundle into dist/
-bun test                 # Run all tests
-bun test <path>          # Run a single test file or directory
-bun x tsc --noEmit       # TypeScript type check only
-bun run check            # Biome lint + format + organize imports (safe fixes)
-bun run lint             # Biome lint only (safe fixes)
-bun run lint:check       # Biome lint check (no writes)
-bun run format           # Biome format only
-bun run format:check     # Biome format check (no writes)
-bun run check:ci         # Biome CI check (no writes, for CI pipelines)
-bun run ast-grep -- <args>  # AST-based code search & rewrite (via ast-grep)
-bun run preload <module>  # Context Preloader — prepare module context before editing
-bun run codegraph         # CodeGraph — code intelligence graph queries
-bun run session <cmd>     # Session Bridge — save/list/restore session context
-bun run codeindex <cmd>   # CodeIndex — index/search codebase (fuzzy search)
+bun install                # install dependencies
+bun run dev                # dev mode with watch
+bun run start              # run CLI without watch
+bun run build              # build production bundle into dist/
+bun test                   # run all tests
+bun test <path>            # run targeted tests
+bun x tsc --noEmit         # type check only
+bun run check              # Biome lint + format + organize imports
+bun run lint               # Biome lint with safe fixes
+bun run lint:check         # Biome lint check, no writes
+bun run format             # Biome format
+bun run format:check       # format check, no writes
+bun run check:ci           # CI check, no writes
+bun run ast-grep -- <args> # AST-based search/rewrite
+bun run preload <module>   # create module context
+bun run codegraph          # code intelligence graph queries
+bun run session <cmd>      # save/list/restore session context
 ```
 
-### ast-grep usage (structural code search/rewrite)
-
-```bash
-# Search by AST pattern (not regex — understands code structure)
-bun run ast-grep run -p 'console.log($_)' src/         # Find all console.log
-bun run ast-grep run -p 'try { $$$ } catch($ERR) {}'  # Find empty catch blocks
-bun run ast-grep run -p 'function $F($$$) { $$$ }'    # Find all function declarations
-
-# Search by file pattern
-bun run ast-grep run -p 'import { $A } from "$B"' --glob '**/*.ts'
-
-# Rewrite (search + replace with AST awareness)
-bun run ast-grep run -p '$X.catch($F)' -r 'await $X.catch($F)' src/
-
-# Run rules from config
-bun run ast-grep scan
-```
-
-### Session Bridge (cross-session context)
-
-```bash
-# Save context before closing a session
-bun run session save "adding auth middleware to bridge"
-bun run session save "refactoring ProviderManager"
-
-# In a new session — see what the last session was doing
-bun run session list
-
-# Restore context from the latest session
-bun run session restore
-
-# When starting a new session:
-# 1. session restore → know where you left off
-# 2. codegraph → see the latest codebase structure
-# 3. preload <module> → context for the module you're editing
-```
-
-### CodeIndex (fuzzy code search)
-
-```bash
-# Index the codebase (once, persists to .claude/code-index/)
-bun run codeindex index
-
-# Search across all indexed code
-bun run codeindex search "bridgeMain"
-bun run codeindex search "getSessionId"
-bun run codeindex search "handleIngressMessage"
-
-# Show index stats
-bun run codeindex stats
-```
-
-> Note: the built-in CodeIndexTool requires the CODE_INDEX feature flag (disabled by default).
-> `bun run codeindex` bypasses the flag and uses the CodeIndex utility directly.
-
-### Debugging
-
-```bash
-DEBUG=1 bun run src/main.tsx
-DEBUG=provider:anthropic bun run src/main.tsx
-```
-
-Useful in-session commands:
+## Useful Runtime Commands
 
 ```text
 /status     Show model, provider, context, and internal state
@@ -200,7 +127,7 @@ AI Provider + Adapter Layer
   src/services/ai/errorNormalizer.ts
   src/services/ai/usageNormalizer.ts
 
-Core Query + Streaming Layer
+Core Query + Streaming
   src/main.tsx
   src/query.ts
   src/QueryEngine.ts
@@ -212,32 +139,20 @@ Tool System
   src/tools/
   src/services/tools/
 
-State Management
-  src/state/store.ts          # Lightweight observable store (createStore<T>)
-  src/state/AppState.tsx       # Root app state (React context)
+State
+  src/state/store.ts
+  src/state/AppState.tsx
   src/state/AppStateStore.ts
   src/state/selectors.ts
 
-Agent Runtime
-  src/agentRuntime/orchestrator.ts   # Agent orchestration
-  src/agentRuntime/runStore.ts       # Persistent run store
-  src/agentRuntime/toolGateway.ts    # Tool routing for agents
-  src/agentRuntime/workflowRegistry.ts
-  src/agentRuntime/agentRegistry.ts
+Agent Runtime + Autonomous
+  src/agentRuntime/
+  src/services/autonomous/
+  src/coordinator/
 
-Autonomous / Daemon
-  src/services/autonomous/taskQueue.ts   # File-backed persistent task queue
-  src/services/autonomous/agentLoop.ts   # 24/7 agent loop (queue → spawn → monitor)
-  src/services/autonomous/daemonMode.ts  # Daemon entry for supervisor-managed bg process
-  src/services/autonomous/supervisorIntegration.ts
-
-Coordinator (Multi-Agent)
-  src/coordinator/coordinatorMode.ts  # Coordinator agent orchestration
-  src/coordinator/workerAgent.ts      # Worker agent for delegated tasks
-
-Research / Memory
-  src/research/               # Deep research, dossier generation, truth checking
-  src/memdir/                 # Semantic memory search and storage
+Research + Memory
+  src/research/
+  src/memdir/
 
 Infrastructure
   src/services/mcp/
@@ -248,7 +163,7 @@ Infrastructure
   src/services/SessionMemory/
   src/services/settingsSync/
   src/bridge/
-  src/voice/                  # Voice mode support (compile-time gated)
+  src/voice/
 ```
 
 ## Key Files
@@ -256,137 +171,82 @@ Infrastructure
 | File | Role |
 | --- | --- |
 | `src/main.tsx` | Main CLI bootstrap, Ink app setup, streaming loop |
-| `src/entrypoints/cli.tsx` | Alternative CLI entry point (Commander-based) |
-| `src/entrypoints/init.ts` | Init/repl entry point |
-| `src/entrypoints/mcp.ts` | MCP server entry point |
-| `src/query.ts` | Core query processing, message building, context handling, tool call loop |
-| `src/QueryEngine.ts` | Query orchestration, caching, deduplication, rate limiting |
+| `src/entrypoints/cli.tsx` | Commander-based CLI entry |
+| `src/entrypoints/init.ts` | Init/repl entry |
+| `src/entrypoints/mcp.ts` | MCP server entry |
+| `src/query.ts` | Core query processing, message building, context, tool loop |
+| `src/QueryEngine.ts` | Query orchestration, caching, dedupe, rate limiting |
 | `src/commands.ts` | Slash command registry |
 | `src/tools.ts` | Built-in tool registry |
 | `src/Tool.ts` | Base tool types and schemas |
-| `src/services/ai/ProviderManager.ts` | Provider selection, API keys, config migration, model resolution |
+| `src/services/ai/ProviderManager.ts` | Provider/model selection, API keys, config migration |
 | `src/services/ai/providerRegistry.ts` | Provider metadata and capability resolution |
-| `src/services/ai/providers.json` | Declarative provider config, env keys, models, base URLs, capabilities |
-| `src/services/autonomous/taskQueue.ts` | Persistent task queue (file-backed, priorities, leases, dead-letter) |
-| `src/services/autonomous/agentLoop.ts` | 24/7 autonomous agent loop (queue → spawn worker → monitor → repeat) |
-| `src/services/autonomous/daemonMode.ts` | Daemon entry point for supervisor-managed background process |
-| `src/services/autonomous/supervisorIntegration.ts` | Supervisor hooks: auto-start, health checks, auto-respawn |
-| `src/services/ai/adapter/AnthropicAdapter.ts` | Anthropic-compatible adapter for non-Anthropic providers |
-| `src/services/ai/adapter/GoogleAdapter.ts` | Google/Gemini adapter |
-| `src/services/ai/contentBlockUtils.ts` | Content block conversion between provider formats |
-| `src/services/ai/toolCallParser.ts` | Tool call normalization across providers |
+| `src/services/ai/providers.json` | Declarative provider config |
+| `src/services/ai/adapter/AnthropicAdapter.ts` | Anthropic-compatible adapter |
+| `src/services/ai/adapter/GoogleAdapter.ts` | Gemini adapter |
+| `src/services/ai/contentBlockUtils.ts` | Content block conversion |
+| `src/services/ai/toolCallParser.ts` | Tool call normalization |
 | `src/services/tools/StreamingToolExecutor.ts` | Streaming tool execution |
 | `src/services/tools/toolHooks.ts` | Pre/post tool hooks |
 | `src/bridge/bridgeMain.ts` | WebSocket bridge and remote collaboration |
 | `src/state/store.ts` | Lightweight observable store |
+| `src/services/autonomous/taskQueue.ts` | File-backed queue with priorities, leases, dead-letter |
+| `src/services/autonomous/agentLoop.ts` | Continuous autonomous loop |
+| `src/services/autonomous/daemonMode.ts` | Daemon entrypoint |
+| `src/services/autonomous/supervisorIntegration.ts` | Health checks and respawn |
 
 ## Multi-Provider Flow
 
-1. User selects a provider/model through `/model` or provider config.
-2. `ProviderManager` resolves provider, API key, model, and config migration.
-3. `providerRegistry` loads provider capabilities and model metadata.
-4. Non-Anthropic providers are wrapped by the adapter layer.
+1. User selects provider/model through `/model` or config.
+2. `ProviderManager` resolves provider, API key, model, and migrations.
+3. `providerRegistry` loads capabilities and model metadata.
+4. Non-Anthropic providers use adapter layer.
 5. `contentBlockUtils` normalizes content blocks.
 6. `toolCallParser` normalizes tool calls.
-7. The core query/streaming loop processes the response uniformly.
+7. Core query/streaming loop processes the response uniformly.
 8. Usage, errors, and tool results are normalized before display or persistence.
 
-When modifying this flow, check all of these areas:
+When modifying this flow, check streaming chunks, tool parsing, thinking/text blocks, content conversion, normalized errors, token accounting, retries/rate limits, provider capability flags, and model discovery fallbacks.
 
-- streaming chunks
-- tool call parsing
-- content block conversion
-- error normalization
-- usage accounting
-- retry/rate-limit behavior
-- provider capability flags
-- model discovery and cache behavior
-
-## State Management
-
-The app uses a lightweight observable store pattern (`createStore<T>` in `src/state/store.ts`):
-
-```typescript
-type Store<T> = {
-  getState: () => T;
-  setState: (updater: (prev: T) => T) => void;
-  subscribe: (listener: Listener) => () => void;
-};
-```
-
-Stores are plain functions, not classes. React components subscribe via the `AppState` React context. When adding new global state, prefer adding to an existing store or creating a new one with `createStore` rather than introducing a state management library.
-
-## Agent Runtime & Autonomous System
-
-The agent runtime (`src/agentRuntime/`) manages multi-agent orchestration:
-- `orchestrator.ts` — coordinates agent sessions
-- `runStore.ts` — persists agent run data
-- `toolGateway.ts` — routes tools to/from agents
-- `workflowRegistry.ts` — declares named workflows
-
-The autonomous system (`src/services/autonomous/`) enables 24/7 background execution:
-- `taskQueue.ts` — file-backed queue with priorities, leases, dead-letter
-- `agentLoop.ts` — continuous loop: dequeue → spawn worker → monitor → retry
-- `daemonMode.ts` — supervisor-managed background process
-- `supervisorIntegration.ts` — health checks and auto-respawn
-
-The coordinator layer (`src/coordinator/`) supports multi-agent collaboration:
-- `coordinatorMode.ts` — delegate tasks to sub-agents
-- `workerAgent.ts` — standalone worker for delegated subtasks
-
-## Research & Memory System
-
-- `src/research/` — built-in deep research: citation extraction, claim verification, dossier generation, truth checking, source ranking
-- `src/memdir/` — semantic memory: text embedding search, memory age tracking, cross-session memory recall
-
-## Tool Execution Flow
-
-1. Model emits one or more `tool_use` blocks.
-2. Tool calls are normalized across provider formats.
-3. `StreamingToolExecutor` executes tools.
-4. Tool hooks run before and after execution.
-5. Results are returned as `tool_result` blocks.
-6. The query loop continues until completion or stop condition.
+## Tool System Rules
 
 When adding or editing a tool:
 
-- define strict schemas (Zod)
+- define strict schemas with Zod
 - validate input early
-- keep output stable and machine-readable where possible
+- keep output stable and machine-readable when possible
 - avoid hidden side effects
-- respect permission and hook behavior
-- add or update tests near the tool when possible
+- preserve permission checks and hooks
+- add or update nearby tests when available
 
-### Tool File Convention
-
-Each tool in `src/tools/<ToolName>/` follows a consistent structure:
+Typical tool structure:
 
 | File | Purpose |
 | --- | --- |
-| `<ToolName>.ts` or `index.ts` | Tool class extending `Tool` with `inputSchema` + `execute` |
-| `prompt.ts` | System prompt content describing the tool to the model |
-| `UI.tsx` | Ink React component for terminal output during execution |
-| `constants.ts` | Shared constants (timeouts, limits, defaults) |
-| `types.ts` | TypeScript types specific to the tool |
+| `<ToolName>.ts` or `index.ts` | Tool class, schema, execute logic |
+| `prompt.ts` | Tool prompt injected into system prompt |
+| `UI.tsx` | Ink output component |
+| `constants.ts` | Shared defaults and limits |
+| `types.ts` | Tool-specific types |
 
-Tools are registered in `src/tools.ts`. Tool prompts are collected by the query system and injected into the system prompt.
+Register tools in `src/tools.ts`.
 
-## Slash Command Guidelines
+## Slash Command Rules
 
 Slash commands live under `src/commands/` and are registered through the command registry.
 
-When adding or editing a command:
+When changing a command:
 
 - keep interactive and non-interactive behavior consistent
-- update command registration
-- preserve existing aliases
+- update registration
+- preserve aliases
 - avoid breaking scripts that call command names directly
 - keep terminal UI output short
-- add tests for parser or non-interactive logic when available
+- test parser or non-interactive logic when possible
 
-## Plugin and Skill Guidelines
+## Plugin and Skill Rules
 
-Plugins are loaded from user and bundled plugin locations. Hook points include:
+Plugins load from user and bundled plugin locations. Hook points include:
 
 - `PreToolUse`
 - `PostToolUse`
@@ -394,50 +254,93 @@ Plugins are loaded from user and bundled plugin locations. Hook points include:
 - `PostPrompt`
 - `PreAcceptEdit`
 
-Skills are progressive capability packages loaded from bundled and project-level locations.
-
 When changing plugin or skill behavior:
 
 - preserve manifest compatibility
-- avoid changing hook payload shape without migration
-- keep bundled skills independent from local user configuration
-- do not assume a plugin is installed unless the code path guarantees it
+- avoid hook payload shape changes without migration
+- keep bundled skills independent from local user config
+- do not assume a plugin is installed unless the path guarantees it
+
+## State Management
+
+The app uses lightweight observable stores through `createStore<T>` in `src/state/store.ts`.
+
+```ts
+type Store<T> = {
+  getState: () => T;
+  setState: (updater: (prev: T) => T) => void;
+  subscribe: (listener: Listener) => () => void;
+};
+```
+
+Stores are plain functions. React components subscribe through `AppState`. Prefer extending an existing store or adding a small store over adding a new state management library.
+
+## Agent Runtime and Daemon
+
+Agent runtime:
+
+- `src/agentRuntime/orchestrator.ts` coordinates agent sessions.
+- `src/agentRuntime/runStore.ts` persists run data.
+- `src/agentRuntime/toolGateway.ts` routes tools.
+- `src/agentRuntime/workflowRegistry.ts` declares workflows.
+- `src/agentRuntime/agentRegistry.ts` registers agents.
+
+Autonomous system:
+
+- `taskQueue.ts` stores tasks with priorities, leases, retries, and dead-letter handling.
+- `agentLoop.ts` dequeues, spawns workers, monitors, and retries.
+- `daemonMode.ts` runs under supervisor.
+- `supervisorIntegration.ts` handles health checks and respawn.
+
+Coordinator:
+
+- `coordinatorMode.ts` delegates work to sub-agents.
+- `workerAgent.ts` runs delegated subtasks.
+
+## Research and Memory
+
+- `src/research/` handles deep research, citation extraction, claim verification, dossier generation, truth checking, and source ranking.
+- `src/memdir/` handles semantic memory search, memory age tracking, and cross-session recall.
 
 ## Platform and Build Notes
 
 - Runtime: Bun 1.3+
-- Language: TypeScript 5.x with ESM, `moduleResolution: "bundler"`, path alias `src/*` → `src/*`
+- Language: TypeScript 5.x, ESM, `moduleResolution: "bundler"`, alias `src/*` -> `src/*`
 - UI: React 19 + Ink 6
 - Validation: Zod 3 and Valibot 0.42
 - CLI: Commander.js 13
-- Code Search: ast-grep (AST-based), ripgrep (in `src/utils/vendor/`)
+- Code search: ast-grep, bundled ripgrep
 - Markdown: marked, highlight.js, turndown
-- Lint/Format: Biome 2.4 (via `bun run check` / `bun run lint` / `bun run format`)
+- Lint/format: Biome 2.4
 - Terminal: chalk, ora, ink-spinner, ink-text-input
 
-Important constraints:
+Platform constraints:
 
-- Windows uses bundled ripgrep at `src/utils/vendor/ripgrep/x64-win32/rg.exe`; `Glob` and `Grep` may depend on it.
-- Windows also has a dedicated `PowerShellTool` alongside the `BashTool` — test Windows changes with both shells.
-- `src/main.tsx` applies TTY workarounds for Windows PowerShell/Ink compatibility (stdin `isTTY`, `setRawMode`, `ref`/`unref` shims).
-- `@ant/claude-for-chrome-mcp` is dynamically imported at runtime for Claude-in-Chrome functionality.
+- Windows uses bundled ripgrep at `src/utils/vendor/ripgrep/x64-win32/rg.exe`.
+- Windows has a `PowerShellTool` alongside `BashTool`; test both when shell behavior changes.
+- `src/main.tsx` contains Windows PowerShell/Ink TTY workarounds.
+- Claude-in-Chrome MCP is dynamically imported at runtime.
 - Native TypeScript ports live in `src/native-ts/`.
 - Some native or external packages are intentionally externalized during build.
 
-### Biome Formatting Conventions
+## Biome Conventions
 
-Biome config at `biome.json` controls formatting. Key settings:
+- 120 char line width
+- 2-space indent
+- LF line endings
+- single quotes
+- semicolons always
+- trailing commas
+- organize imports enabled
+- git integration respects `.gitignore`
+- `noUnusedVariables` and `noUnusedImports` are warnings
+- `noExplicitAny` and `noNonNullAssertion` are off
 
-- 120 char line width, 2-space indent, LF line endings
-- Single quotes, trailing commas, semicolons always
-- `organizeImports` runs on assist (auto-import sorting)
-- VCS git integration enabled (respects `.gitignore`)
-- `noUnusedVariables` and `noUnusedImports` are warnings (not errors)
-- `noExplicitAny`, `noNonNullAssertion` are **off** — use is permitted
+`.claude/settings.json` auto-runs Biome after edits by `FileEditTool` or `FileWriteTool`; no manual format step is needed for touched files unless broader formatting is intended.
 
-### Feature Flags (Compile-Time)
+## Feature Flags
 
-Build uses Bun `--define` for feature gating:
+Build uses Bun `--define` flags in `dev` and `build` scripts.
 
 | Flag | Purpose |
 | --- | --- |
@@ -445,11 +348,7 @@ Build uses Bun `--define` for feature gating:
 | `CHICAGO_MCP` | MCP server enhancements |
 | `VOICE_MODE` | Voice input support |
 
-These are set in `dev` and `build` scripts. When adding new feature flags, add them to `bun run dev` and `bun run build` scripts in `package.json`.
-
-### Settings Hooks (Auto-Format)
-
-`.claude/settings.json` configures a `PostToolUse` hook that auto-runs Biome on any file edited by `FileEditTool` or `FileWriteTool`. This means generated or edited code will be automatically formatted — no need to run `bun run format` manually after edits unless you want to format untouched files.
+Add new compile-time flags to both scripts in `package.json`.
 
 ## Environment Variables
 
@@ -458,31 +357,50 @@ These are set in `dev` and `build` scripts. When adding new feature flags, add t
 | `ANTHROPIC_API_KEY` | Anthropic provider key |
 | `OPENAI_API_KEY` | OpenAI provider key |
 | `GOOGLE_API_KEY` | Google/Gemini provider key |
-| `OPENROUTER_API_KEY` | OpenRouter provider key |
-| `DEEPSEEK_API_KEY` | DeepSeek provider key |
-| `XAI_API_KEY` | xAI/Grok provider key |
-| `MISTRAL_API_KEY` | Mistral provider key |
-| `GROQ_API_KEY` | Groq provider key |
+| `OPENROUTER_API_KEY` | OpenRouter key |
+| `DEEPSEEK_API_KEY` | DeepSeek key |
+| `XAI_API_KEY` | xAI/Grok key |
+| `MISTRAL_API_KEY` | Mistral key |
+| `GROQ_API_KEY` | Groq key |
 | `COPILOT_GITHUB_TOKEN` | GitHub Copilot token |
 | `OLLAMA_HOST` | Local Ollama host |
 | `DEBUG` | Debug logging, e.g. `1` or `provider:anthropic` |
 | `NO_COLOR` / `FORCE_COLOR` | Terminal color control |
 | `NODE_OPTIONS` | Node/Bun runtime options |
 
-Provider-specific environment keys should be checked in `src/services/ai/providers.json` before adding new ones.
+Check `src/services/ai/providers.json` before adding provider-specific env keys.
+
+## ast-grep Examples
+
+```bash
+bun run ast-grep run -p 'console.log($_)' src/
+bun run ast-grep run -p 'try { $$$ } catch($ERR) {}'
+bun run ast-grep run -p 'function $F($$$) { $$$ }'
+bun run ast-grep run -p 'import { $A } from "$B"' --glob '**/*.ts'
+bun run ast-grep run -p '$X.catch($F)' -r 'await $X.catch($F)' src/
+bun run ast-grep scan
+```
+
+## Session
+
+```bash
+bun run session save "adding auth middleware to bridge"
+bun run session list
+bun run session restore
+```
+
+## Debugging
+
+```bash
+DEBUG=1 bun run src/main.tsx
+DEBUG=provider:anthropic bun run src/main.tsx
+```
 
 ## Testing Strategy
 
-Tests use Bun's built-in test runner.
+Tests use Bun's built-in test runner. Prefer colocated `*.test.ts` files and targeted tests during active development. Run full tests and build before finalizing broad changes.
 
-Common patterns:
-
-- test files are usually colocated with source
-- test names use `*.test.ts`
-- targeted tests are preferred during active development
-- full tests and build are preferred before finalizing broad changes
-
-Useful commands:
+Useful targeted checks:
 
 ```bash
 bun test src/utils/codeIndex/
@@ -491,69 +409,52 @@ bun x tsc --noEmit
 bun run build
 ```
 
-## Change Risk Checklist
+## Risk Checklist
 
-Use this checklist before making risky changes.
+Provider or adapter changes:
 
-### Provider or Adapter Changes
+- streaming still works
+- text blocks, tool calls, thinking blocks, and errors normalize correctly
+- usage tokens are counted correctly
+- model discovery falls back to `providers.json`
+- capability flags are accurate
 
-- Does streaming still work?
-- Are text blocks, tool calls, thinking blocks, and errors normalized?
-- Are usage tokens counted correctly?
-- Does model discovery still fall back to `providers.json`?
-- Are provider capability flags accurate?
+Tool changes:
 
-### Tool Changes
+- schemas are strict
+- permission checks remain intact
+- hooks still fire
+- results remain compatible with the query loop
+- failures return structured errors
 
-- Are schemas strict enough?
-- Are permission checks preserved?
-- Do hooks still fire?
-- Are tool results compatible with the query loop?
-- Are failures returned as structured errors rather than thrown unexpectedly?
+Command/UI changes:
 
-### Command/UI Changes
+- command remains registered
+- interactive and non-interactive paths work
+- output remains stable and readable
+- keybindings and aliases remain intact
 
-- Is the command still registered?
-- Does it work in both interactive and non-interactive paths if both exist?
-- Is terminal output stable and readable?
-- Are keybindings or aliases affected?
+Autonomous/daemon changes:
 
-### Autonomous / Daemon Changes
+- task queue format remains backward-compatible
+- leases, dead-letter, and retry semantics remain valid
+- supervisor health check and respawn still work
 
-- Does the task queue format change? (backward-compat with existing queue files)
-- Does the agent loop need to handle the new state?
-- Are leases, dead-letter, or retry semantics affected?
-- Does the supervisor integration (health check, respawn) still work?
+State/store changes:
 
-### State / Store Changes
+- store shape remains backward-compatible
+- React subscribers re-render correctly
+- serialized state contains no functions or circular refs
 
-- Is the store shape backward-compatible?
-- Are React subscribers re-rendering correctly?
-- Is serialization/deserialization safe (no functions, no circular refs)?
+Build/runtime changes:
 
-### Build/Runtime Changes
+- Windows, macOS, Linux, and WSL2 remain supported
+- PowerShellTool and BashTool behavior remain correct
+- native dependencies are externalized or bundled correctly
+- Bun ESM / `NodeNext` resolution remains valid
+- feature flags are added where needed
 
-- Does the change affect Windows, macOS, Linux, or WSL2 differently?
-- Does it affect the PowerShellTool as well as BashTool?
-- Does it introduce a native dependency that must be externalized or bundled?
-- Does it break Bun ESM / `NodeNext` resolution?
-- Does it rely on Node-only behavior unsupported by Bun?
-- Are feature flags (`--define` in build scripts) needed for new compile-time gated features?
-
-## Do Not Do
-
-- Do not rewrite major architecture unless explicitly requested.
-- Do not collapse provider-specific adapters into one generic adapter without proving compatibility.
-- Do not bypass `ProviderManager` for provider/model selection.
-- Do not bypass tool hooks or permission checks.
-- Do not hardcode API keys, user paths, local machine paths, or provider secrets.
-- Do not remove Windows-specific vendor/runtime handling without replacement.
-- Do not introduce new dependencies unless the benefit is clear and existing utilities are insufficient.
-- Do not use README-style marketing language inside this file; keep this file operational for coding agents.
-
-## Preferred Response Format for Coding Agents
-
-When reporting work, use this structure:
+## Preferred Work Report
 
 ```text
 Summary

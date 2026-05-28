@@ -784,6 +784,8 @@ export const SessionStartHookSpecificOutputSchema = lazySchema(() =>
     additionalContext: z.string().optional(),
     initialUserMessage: z.string().optional(),
     watchPaths: z.array(z.string()).optional(),
+    sessionTitle: z.string().optional(),
+    reloadSkills: z.boolean().optional(),
   }),
 );
 
@@ -855,6 +857,14 @@ export const CwdChangedHookSpecificOutputSchema = lazySchema(() =>
   }),
 );
 
+export const MessageDisplayHookSpecificOutputSchema = lazySchema(() =>
+  z.object({
+    hookEventName: z.literal('MessageDisplay'),
+    transformedText: z.string().optional(),
+    hideMessage: z.boolean().optional(),
+  }),
+);
+
 export const FileChangedHookSpecificOutputSchema = lazySchema(() =>
   z.object({
     hookEventName: z.literal('FileChanged'),
@@ -900,6 +910,7 @@ export const SyncHookJSONOutputSchema = lazySchema(() =>
         ElicitationResultHookSpecificOutputSchema(),
         CwdChangedHookSpecificOutputSchema(),
         FileChangedHookSpecificOutputSchema(),
+        MessageDisplayHookSpecificOutputSchema(),
         WorktreeCreateHookSpecificOutputSchema(),
       ])
       .optional(),

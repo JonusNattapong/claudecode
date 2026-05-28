@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Plugin Development — Claudevil</title>
+  <meta name="description" content="Create custom plugins for Claudevil — manifest format, hooks, commands, agents, and marketplace publishing.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../css/styles.css">
+</head>
+<body>
+
+<header class="header">
+  <div class="header-inner">
+    <a href="../index.html" class="logo">
+      <span>Claudevil</span>
+    </a>
+    <nav class="header-nav">
+      <a href="../index.html">Home</a>
+      <a href="../index.html#features">Features</a>
+      <a href="../index.html#commands">Commands</a>
+      <a href="../quick-start.html" class="active">Docs</a>
+      <a href="https://github.com/JonusNattapong/claudecode" target="_blank">GitHub</a>
+    </nav>
+    <button class="menu-btn" id="menuToggle" aria-label="Toggle navigation">
+      <span></span><span></span><span></span>
+    </button>
+  </div>
+</header>
+
+<div class="app">
+  <aside class="sidebar" id="sidebar"></aside>
+
+  <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+  <main class="content">
+    <h1>Plugin Development</h1>
+    <p class="section-subtitle">Create, package, and publish custom plugins</p>
+
+    <div class="callout callout-tip">
+      <strong>TL;DR</strong>
+      Create a folder with a <code>plugin.json</code> manifest, add your commands/agents/skills/hooks, then install via <code>/plugin install path/to/plugin</code> or publish to a marketplace.
+    </div>
+
+    <h2>Plugin Directory Structure</h2>
+    <pre><code>my-plugin/
+├── plugin.json              # Manifest (metadata + capabilities)
+├── commands/                # Custom slash commands (markdown files)
+│   ├── build.md
+│   └── deploy.md
+├── agents/                  # Custom AI agent configurations
+│   └── test-runner.md
+├── skills/                  # Reusable skill definitions
+│   └── code-review.md
+├── hooks/                   # Lifecycle hook configurations
+│   └── hooks.json
+├── output-styles/           # Custom output formatting
+├── .mcp.json                # MCP server definitions (optional)
+└── .lsp.json                # LSP server definitions (optional)</code></pre>
+
+    <h2>Manifest (plugin.json)</h2>
+    <p>
+      The <code>plugin.json</code> file declares metadata and all capabilities your plugin provides.
+      All top-level fields except <code>name</code> are optional. Fields are merged with content found
+      in the standard subdirectories (e.g., <code>commands/</code>).
+    </p>
+
+    <pre><code>{
+  <span style="color:var(--text-tertiary)">// Required</span>
+  <span style="color:var(--teal-400)">"name"</span>: <span style="color:var(--orange-500)">"my-plugin"</span>,
+  <span style="color:var(--teal-400)">"version"</span>: <span style="color:var(--orange-500)">"1.0.0"</span>,
+  <span style="color:var(--teal-400)">"description"</span>: <span style="color:var(--orange-500)">"Useful development tools"</span>,
+
+  <span style="color:var(--text-tertiary)">// Author info</span>
+  <span style="color:var(--teal-400)">"author"</span>: {
+    <span style="color:var(--teal-400)">"name"</span>: <span style="color:var(--orange-500)">"Your Name"</span>,
+    <span style="color:var(--teal-400)">"email"</span>: <span style="color:var(--orange-500)">"you@example.com"</span>,
+    <span style="color:var(--teal-400)">"url"</span>: <span style="color:var(--orange-500)">"https://github.com/you"</span>
+  },
+
+  <span style="color:var(--text-tertiary)">// Additional commands (beyond commands/ dir)</span>
+  <span style="color:var(--teal-400)">"commands"</span>: [
+    <span style="color:var(--orange-500)">"./README.md"</span>
+  ],
+
+  <span style="color:var(--text-tertiary)">// User-configurable options (prompted at enable time)</span>
+  <span style="color:var(--teal-400)">"userConfig"</span>: {
+    <span style="color:var(--orange-500)">"apiKey"</span>: {
+      <span style="color:var(--teal-400)">"type"</span>: <span style="color:var(--orange-500)">"string"</span>,
+      <span style="color:var(--teal-400)">"title"</span>: <span style="color:var(--orange-500)">"API Key"</span>,
+      <span style="color:var(--teal-400)">"description"</span>: <span style="color:var(--orange-500)">"Your API key for the service"</span>,
+      <span style="color:var(--teal-400)">"sensitive"</span>: true
+    }
+  },
+
+  <span style="color:var(--text-tertiary)">// Plugin dependencies</span>
+  <span style="color:var(--teal-400)">"dependencies"</span>: [
+    <span style="color:var(--orange-500)">"helper-tool@community-plugins"</span>
+  ]
+}</code></pre>
+
+    <h3>Manifest Fields</h3>
+    <div class="scroll-wrap">
+    <table>
+      <thead>
+        <tr><th>Field</th><th>Type</th><th>Description</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>name</code></td><td>string</td><td>Unique identifier (kebab-case, no spaces). <strong>Required.</strong></td></tr>
+        <tr><td><code>version</code></td><td>string</td><td>Semantic version (e.g., <code>1.2.3</code>)</td></tr>
+        <tr><td><code>description</code></td><td>string</td><td>Brief user-facing summary</td></tr>
+        <tr><td><code>author</code></td><td>object</td><td>Author info (<code>name</code>, <code>email</code>, <code>url</code>)</td></tr>
+        <tr><td><code>homepage</code></td><td>string</td><td>Documentation URL</td></tr>
+        <tr><td><code>repository</code></td><td>string</td><td>Source code URL</td></tr>
+        <tr><td><code>license</code></td><td>string</td><td>SPDX identifier (e.g., <code>MIT</code>)</td></tr>
+        <tr><td><code>keywords</code></td><td>string[]</td><td>Discovery tags</td></tr>
+        <tr><td><code>commands</code></td><td>string | string[] | object</td><td>Additional command files or inline definitions</td></tr>
+        <tr><td><code>agents</code></td><td>string | string[]</td><td>Additional agent definition files</td></tr>
+        <tr><td><code>skills</code></td><td>string | string[]</td><td>Additional skill directories</td></tr>
+        <tr><td><code>outputStyles</code></td><td>string | string[]</td><td>Additional output style definitions</td></tr>
+        <tr><td><code>mcpServers</code></td><td>object</td><td>MCP server configurations</td></tr>
+        <tr><td><code>lspServers</code></td><td>object</td><td>LSP server configurations</td></tr>
+        <tr><td><code>hooks</code></td><td>object</td><td>Additional lifecycle hooks</td></tr>
+        <tr><td><code>userConfig</code></td><td>object</td><td>User-configurable options prompted at enable time</td></tr>
+        <tr><td><code>channels</code></td><td>array</td><td>MCP channels (Telegram, Slack, Discord etc.)</td></tr>
+        <tr><td><code>settings</code></td><td>object</td><td>Settings to merge when enabled</td></tr>
+        <tr><td><code>bin</code></td><td>string</td><td>Bin directory added to PATH</td></tr>
+        <tr><td><code>dependencies</code></td><td>string[]</td><td>Required plugin IDs (<code>plugin@marketplace</code>)</td></tr>
+      </tbody>
+    </table>
+    </div>
+
+    <h2>Creating Commands</h2>
+    <p>
+      Place markdown files in the <code>commands/</code> directory. Each file becomes a slash command
+      named after the file (without extension). Frontmatter-style metadata is supported:
+    </p>
+
+    <pre><code><span style="color:var(--text-tertiary)"># commands/build.md</span>
+
+Build the project using the configured build tool.
+Runs the appropriate build command and reports results.
+
+<span style="color:var(--text-tertiary)">## Usage</span>
+<code>/build</code> or <code>/build --watch</code></code></pre>
+
+    <p>
+      Commands can also be defined inline in <code>plugin.json</code> using the object format with
+      <code>source</code> (file path) or <code>content</code> (inline markdown), plus optional metadata
+      like <code>description</code>, <code>argumentHint</code>, <code>model</code>, and <code>allowedTools</code>.
+    </p>
+
+    <h2>Creating Agents</h2>
+    <p>
+      Agent files (<code>agents/</code> directory) define specialized AI agent configurations with
+      custom prompts, tool access, and model settings:
+    </p>
+
+    <pre><code><span style="color:var(--text-tertiary)"># agents/test-runner.md</span>
+
+You are a test runner agent. Your job is to run tests and report
+results. You have access to:
+- BashTool (test execution only)
+- ReadTool (reading test output)
+
+Focus on:
+1. Running the specified test suite
+2. Collecting pass/fail results
+3. Reporting clear summaries
+
+<span style="color:var(--text-tertiary)">## Settings</span>
+model: claude-sonnet-4-20250514
+allowedTools: [Bash, Read]</code></pre>
+
+    <h2>Creating Skills</h2>
+    <p>
+      Skills (<code>skills/</code> directory) are reusable task instructions that users can invoke
+      during a session. Each skill is a markdown or structured file.
+    </p>
+
+    <h2>Hooks</h2>
+    <p>
+      Hooks allow your plugin to intercept Claudevil's lifecycle at specific points.
+      Define them in <code>hooks/hooks.json</code>:
+    </p>
+
+    <pre><code>{
+  <span style="color:var(--teal-400)">"hooks"</span>: {
+    <span style="color:var(--teal-400)">"PreToolUse"</span>: {
+      <span style="color:var(--teal-400)">"command"</span>: <span style="color:var(--orange-500)">"node scripts/validate.js"</span>
+    },
+    <span style="color:var(--teal-400)">"PostPrompt"</span>: {
+      <span style="color:var(--teal-400)">"content"</span>: <span style="color:var(--orange-500)">"Remember to run tests after editing."</span>
+    }
+  }
+}</code></pre>
+
+    <p>Available hook points:</p>
+    <ul>
+      <li><code>PreToolUse</code> — Before a tool executes</li>
+      <li><code>PostToolUse</code> — After a tool completes</li>
+      <li><code>PreBash</code> — Before a bash command runs</li>
+      <li><code>PostPrompt</code> — After the system prompt is built</li>
+      <li><code>PreAcceptEdit</code> — Before an edit is applied</li>
+    </ul>
+
+    <h2>MCP &amp; LSP Servers</h2>
+    <p>
+      Plugins can bundle MCP (Model Context Protocol) and LSP (Language Server Protocol) servers.
+      Define them in the manifest or in dedicated files:
+    </p>
+
+    <pre><code><span style="color:var(--text-tertiary)">// In plugin.json</span>
+{
+  <span style="color:var(--teal-400)">"mcpServers"</span>: {
+    <span style="color:var(--orange-500)">"my-service"</span>: {
+      <span style="color:var(--teal-400)">"command"</span>: <span style="color:var(--orange-500)">"node"</span>,
+      <span style="color:var(--teal-400)">"args"</span>: [<span style="color:var(--orange-500)">"server.js"</span>],
+      <span style="color:var(--teal-400)">"env"</span>: {
+        <span style="color:var(--orange-500)">"TOKEN"</span>: <span style="color:var(--orange-500)">"${user_config.apiKey}"</span>
+      }
+    }
+  }
+}</code></pre>
+
+    <h2>User Config</h2>
+    <p>
+      The <code>userConfig</code> field declares values the plugin needs from the user. At enable time,
+      users are prompted for each field. Non-sensitive values are stored in <code>settings.json</code>;
+      sensitive values go to secure storage (macOS keychain or <code>.credentials.json</code>).
+    </p>
+
+    <p>Available config types: <code>string</code>, <code>number</code>, <code>boolean</code>, <code>directory</code>, <code>file</code>.</p>
+
+    <p>Values are accessible as <code>${user_config.KEY}</code> in MCP/LSP server config, hook commands, and skill/agent content.</p>
+
+    <h2>Channels</h2>
+    <p>
+      Channels allow your plugin to inject messages into the conversation from external services
+      (Telegram, Slack, Discord, etc.). Each channel binds to an MCP server that emits
+      <code>notifications/claude/channel</code> notifications:
+    </p>
+
+    <pre><code>{
+  <span style="color:var(--teal-400)">"channels"</span>: [{
+    <span style="color:var(--teal-400)">"server"</span>: <span style="color:var(--orange-500)">"telegram-bot"</span>,
+    <span style="color:var(--teal-400)">"displayName"</span>: <span style="color:var(--orange-500)">"Telegram"</span>,
+    <span style="color:var(--teal-400)">"userConfig"</span>: {
+      <span style="color:var(--orange-500)">"botToken"</span>: { <span style="color:var(--teal-400)">"type"</span>: <span style="color:var(--orange-500)">"string"</span>, <span style="color:var(--teal-400)">"sensitive"</span>: true, ... }
+    }
+  }]
+}</code></pre>
+
+    <h2>Testing Your Plugin</h2>
+    <p>Validate your plugin manifest:</p>
+    <pre><code><span style="color:var(--orange-500)">claude</span> plugin validate ./my-plugin</code></pre>
+
+    <p>Install from a local path:</p>
+    <pre><code><span style="color:var(--orange-500)">claude</span> plugin install ./my-plugin</code></pre>
+
+    <h2>Publishing to a Marketplace</h2>
+    <p>
+      To share your plugin, add it to a marketplace manifest. Marketplaces are
+      defined in <code>marketplace.json</code> files hosted on GitHub, npm, or your own server:
+    </p>
+
+    <pre><code>{
+  <span style="color:var(--teal-400)">"name"</span>: <span style="color:var(--orange-500)">"community-plugins"</span>,
+  <span style="color:var(--teal-400)">"owner"</span>: { <span style="color:var(--teal-400)">"name"</span>: <span style="color:var(--orange-500)">"Community"</span> },
+  <span style="color:var(--teal-400)">"plugins"</span>: [
+    {
+      <span style="color:var(--teal-400)">"name"</span>: <span style="color:var(--orange-500)">"my-plugin"</span>,
+      <span style="color:var(--teal-400)">"source"</span>: {
+        <span style="color:var(--teal-400)">"source"</span>: <span style="color:var(--orange-500)">"github"</span>,
+        <span style="color:var(--teal-400)">"repo"</span>: <span style="color:var(--orange-500)">"you/my-plugin"</span>
+      },
+      <span style="color:var(--teal-400)">"description"</span>: <span style="color:var(--orange-500)">"Useful dev tools"</span>
+    }
+  ]
+}</code></pre>
+
+    <footer class="footer">
+      <span>Claudevil v2.1.178</span>
+      <div class="footer-links">
+        <a href="https://github.com/JonusNattapong/claudecode">GitHub</a>
+        <a href="https://github.com/JonusNattapong/claudecode/issues">Issues</a>
+      </div>
+    </footer>
+  </main>
+</div>
+
+<script src="../js/main.js"></script>
+</body>
+</html>

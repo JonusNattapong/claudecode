@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Common Workflows — Claudevil</title>
+  <meta name="description" content="Step-by-step guides for everyday tasks with Claudevil.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../css/styles.css">
+</head>
+<body>
+
+<header class="header">
+  <div class="header-inner">
+    <a href="../index.html" class="logo">
+      <span>Claudevil</span>
+    </a>
+    <nav class="header-nav">
+      <a href="../index.html">Home</a>
+      <a href="../index.html#features">Features</a>
+      <a href="../index.html#commands">Commands</a>
+      <a href="../quick-start.html" class="active">Docs</a>
+      <a href="https://github.com/JonusNattapong/claudecode" target="_blank">GitHub</a>
+    </nav>
+    <button class="menu-btn" id="menuToggle" aria-label="Toggle navigation">
+      <span></span><span></span><span></span>
+    </button>
+  </div>
+</header>
+
+<div class="app">
+  <aside class="sidebar" id="sidebar"></aside>
+
+  <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+  <main class="content">
+    <h1>Common Workflows</h1>
+    <p class="section-subtitle">Step-by-step guides for everyday tasks</p>
+
+    <h2>Starting a New Project</h2>
+    <ol>
+      <li>Launch Claudevil in your desired directory: <code>claude</code></li>
+      <li>Ask Claude to scaffold the project: <em>"Create a new React app with Vite"</em></li>
+      <li>Run <code>/init</code> to generate a <code>CLAUDE.md</code> with project-specific instructions</li>
+      <li>Use <code>/model</code> to switch providers if needed</li>
+    </ol>
+
+    <h2>Debugging a Bug</h2>
+    <ol>
+      <li>Describe the bug clearly — include error messages, expected vs. actual behavior</li>
+      <li>Let Claude explore the codebase and identify the root cause</li>
+      <li>Review the proposed fix before applying</li>
+      <li>Run <code>/rewind</code> if the fix needs to be undone</li>
+      <li>Run tests to verify: <code>bun test &lt;path&gt;</code></li>
+    </ol>
+
+    <div class="callout callout-info">
+      <strong>Tip</strong>
+      For complex debugging, provide reproduction steps and any relevant logs. Claude works best with evidence, not guesses.
+    </div>
+
+    <h2>Code Review</h2>
+    <ol>
+      <li>Stage your changes and create a commit</li>
+      <li>Ask: <em>"Review the latest commit for bugs"</em></li>
+      <li>Claude will inspect the diff, check for correctness, security issues, and test gaps</li>
+      <li>Apply suggestions with <code>--fix</code> or discuss findings</li>
+    </ol>
+
+    <h2>Refactoring Code</h2>
+    <ol>
+      <li>Be specific about the goal: <em>"Extract the validation logic from this function into a separate module"</em></li>
+      <li>Set a clear boundary — what files should change</li>
+      <li>Review the diff before accepting changes</li>
+      <li>Run the type checker: <code>bun x tsc --noEmit</code></li>
+      <li>Run tests to confirm nothing broke: <code>bun test</code></li>
+    </ol>
+
+    <h2>Adding a Feature</h2>
+    <ol>
+      <li>Describe the feature: <em>"Add a --json flag to the /status command"</em></li>
+      <li>Let Claude explore the codebase for the relevant command handler</li>
+      <li>Review the implementation plan before code is written</li>
+      <li>Test the feature manually and with <code>bun test &lt;path&gt;</code></li>
+      <li>Run <code>/rewind</code> if the feature needs to be rolled back</li>
+    </ol>
+
+    <h2>Using Multiple Providers</h2>
+    <ol>
+      <li>Set your API keys as environment variables (see <a href="../env-vars.html">Environment Variables</a>)</li>
+      <li>Run <code>/model</code> to select a provider and model at runtime</li>
+      <li>Switch freely between Anthropic, OpenAI, Google, DeepSeek, Groq, and others</li>
+      <li>Claudevil's adapter layer normalizes the experience across providers</li>
+    </ol>
+
+    <h2>Working with Plugins</h2>
+    <ol>
+      <li>Browse available plugins: <code>/plugin discover</code></li>
+      <li>Install a plugin: <code>/plugin install &lt;plugin-id&gt;</code></li>
+      <li>List installed plugins: <code>/plugin list</code></li>
+      <li>Remove a plugin: <code>/plugin remove &lt;plugin-id&gt;</code></li>
+      <li>See <a href="../plugin-development.html">Plugin Development</a> to create your own</li>
+    </ol>
+
+    <h2>Using MCP Servers</h2>
+    <ol>
+      <li>Add an MCP server to your <code>.claude/settings.json</code> or install one via a plugin</li>
+      <li>Claude automatically connects and makes the server's tools available</li>
+      <li>Manage servers at runtime: <code>/mcp list</code>, <code>/mcp restart</code></li>
+    </ol>
+
+    <h2>Voice Dictation</h2>
+    <ol>
+      <li>Install SoX (<code>brew install sox</code> / <code>apt install sox</code>)</li>
+      <li>Authenticate: <code>/login</code></li>
+      <li>Enable: <code>/voice</code></li>
+      <li>Hold <kbd>Space</kbd> while speaking, release to submit</li>
+    </ol>
+
+    <h2>Remote Collaboration (Bridge)</h2>
+    <ol>
+      <li>Start a bridge session: <code>/bridge start</code></li>
+      <li>Share the generated URL with a collaborator</li>
+      <li>Both parties can see and interact with the same session</li>
+      <li>Stop the bridge: <code>/bridge stop</code></li>
+    </ol>
+
+    <h2>Saving &amp; Restoring Context</h2>
+    <ol>
+      <li>Save current session context: <code>claude session save "description"</code></li>
+      <li>List saved sessions: <code>claude session list</code></li>
+      <li>Restore a session later: <code>claude session restore</code></li>
+      <li>Use <code>/compact</code> when context becomes large during a session</li>
+    </ol>
+
+    <h2>Checking System Health</h2>
+    <ol>
+      <li>Run <code>/doctor</code> for a full diagnostic — checks provider connectivity, plugin state, hooks, and configuration</li>
+      <li>Run <code>/status</code> to see current model, provider, and context usage</li>
+      <li>Run <code>/context</code> to inspect the context window breakdown</li>
+    </ol>
+
+    <footer class="footer">
+      <span>Claudevil v2.1.178</span>
+      <div class="footer-links">
+        <a href="https://github.com/JonusNattapong/claudecode">GitHub</a>
+        <a href="https://github.com/JonusNattapong/claudecode/issues">Issues</a>
+      </div>
+    </footer>
+  </main>
+</div>
+
+<script src="../js/main.js"></script>
+</body>
+</html>

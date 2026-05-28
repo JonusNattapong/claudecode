@@ -2,55 +2,70 @@
 
 ## Nature of This Repository
 
-This repository contains a **reverse-engineered rebuild** of Anthropic's Claude Code CLI—source code reconstructed and extended for research, local development, and self-hosted use. It is **not** an official Anthropic product or distribution.
+This repository contains an unofficial, reverse-engineered rebuild of Anthropic's Claude Code CLI. The code has been reconstructed and extended for research, local development, and self-hosted use.
 
-The upstream Claude Code product is proprietary software:
+This repository is not an official Anthropic product. Anthropic has not authorized, endorsed, sponsored, or approved this project.
 
-- Copyright (c) Anthropic PBC. All rights reserved.
-- Subject to Anthropic's applicable terms, including Commercial Terms of Service where they apply to your use of Anthropic services.
+The upstream Claude Code product is proprietary software owned by Anthropic PBC. Anthropic retains all rights in its original software, services, models, APIs, trademarks, and related materials.
 
-Claude Code contributors do **not** claim ownership of Anthropic's original work. This project has **no authorization** from Anthropic to redistribute their proprietary source or to imply endorsement.
+## No Claim to Anthropic IP
+
+The contributors to this repository do not claim ownership of Anthropic's original work.
+
+This repository does not grant any license to Anthropic's proprietary source code, binaries, models, hosted services, trademarks, trade dress, or other protected materials.
+
+Any use of Anthropic APIs, accounts, services, or names remains subject to Anthropic's applicable terms and policies.
 
 ## Trademarks
 
-"Claude", "Claude Code", "Anthropic", and related marks are trademarks of their respective owners. Claude Code is an independent community project name and must not be presented as an official Anthropic offering.
+"Anthropic", "Claude", "Claude Code", and related marks are trademarks or registered trademarks of their respective owners.
 
-## What Is Licensed Under MIT
+Any reference to those names in this repository is for identification and compatibility discussion only. This project must not be presented as an official Anthropic product, distribution, partner project, or supported implementation.
 
-**Only modifications and original additions** authored by Claude Code contributors are offered under the MIT License, where legally permissible:
+## MIT License for Contributor Modifications
+
+Only original modifications, extensions, patches, documentation, tooling, and other contributions authored by this repository's contributors are licensed under the MIT License, to the extent the contributors have the legal right to license them.
 
 ```
 MIT License
 
-Copyright (c) 2026 Claude Code contributors (modifications and original additions only)
+Copyright (c) 2026 Claude Code contributors
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
-of the modifications and original additions made by Claude Code contributors,
-to deal in those modifications without restriction, including without
-limitation the rights to use, copy, modify, merge, publish, distribute,
-sublicense, and/or sell copies of such modifications, subject to the
-following conditions:
+of the contributor-authored modifications and original additions in this
+repository, to deal in those modifications without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of those modifications, subject to
+the following conditions:
 
-The above copyright notice and this permission notice shall be included in
-all copies or substantial portions of the modifications.
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the contributor-authored modifications.
 
-THE MODIFICATIONS ARE PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+THE CONTRIBUTOR-AUTHORED MODIFICATIONS ARE PROVIDED "AS IS", WITHOUT WARRANTY
+OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
+OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN
+NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
 DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
-OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE MODIFICATIONS OR
-THE USE OR OTHER DEALINGS IN THE MODIFICATIONS.
+OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE CONTRIBUTOR-AUTHORED
+MODIFICATIONS OR THE USE OR OTHER DEALINGS IN THOSE MODIFICATIONS.
 ```
 
-## What Is Not Granted Here
+## Excluded Materials
 
-This file does **not** grant you rights to Anthropic's proprietary code, models, or services. In particular:
+The MIT License above does not apply to any material owned by Anthropic or any third party, including proprietary source code, compiled binaries, service credentials, model access, API access, documentation copied from proprietary sources, trademarks, or other protected materials.
 
-- You remain responsible for complying with Anthropic's and any third-party provider terms when using their APIs, accounts, or trademarks.
-- Redistribution, commercial use, or public hosting of this repository may carry legal risk depending on your jurisdiction and how the upstream software was obtained.
-- "Enterprise-style" features in this project describe **reimplemented or extended capabilities** in source form—they do **not** include an Anthropic enterprise license or support entitlement.
+## Distribution and Use
 
-## Your Responsibility
+You are responsible for evaluating whether you may clone, modify, redistribute, publish, deploy, or use this repository in your jurisdiction and under any applicable contract, platform policy, or third-party license.
 
-Before you clone, modify, redistribute, or deploy Claude Code, evaluate your own legal position. If you are unsure, consult qualified counsel. Contributors should only submit material they have the right to license.
+Public distribution, commercial use, hosted access, or packaging of this repository may carry legal risk if the repository contains or derives from proprietary material that you do not have permission to use.
+
+## Contributor Responsibility
+
+Contributors must only submit material they have the right to contribute and license.
+
+Do not submit proprietary code, leaked code, copied source, credentials, private keys, confidential documentation, or material that violates another party's rights.
+
+## No Legal Advice
+
+This notice is provided for repository documentation purposes only. It is not legal advice. Consult qualified counsel before relying on this repository for redistribution, commercial use, public hosting, or production deployment.

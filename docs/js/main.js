@@ -1,4 +1,4 @@
-// Claudevil Docs — Mobile Nav & Helpers
+// Clew Docs — Mobile Nav & Helpers
 (function () {
   'use strict';
 
@@ -36,7 +36,13 @@
       '    <a href="' + rootPrefix + 'quick-start.html" class="sidebar-link"><span class="link-icon"></span>Quick Start</a>' +
       '    <a href="' + rootPrefix + 'installation.html" class="sidebar-link"><span class="link-icon"></span>Installation</a>' +
       '    <a href="' + rootPrefix + 'configuration.html" class="sidebar-link"><span class="link-icon"></span>Configuration</a>' +
+      '    <a href="' + rootPrefix + 'cli-reference.html" class="sidebar-link"><span class="link-icon"></span>CLI Reference</a>' +
+      '    <a href="' + rootPrefix + 'env-vars.html" class="sidebar-link"><span class="link-icon"></span>Environment Variables</a>' +
       '    <a href="' + rootPrefix + 'troubleshooting.html" class="sidebar-link"><span class="link-icon"></span>Troubleshooting</a>' +
+      '    <a href="' + rootPrefix + 'errors.html" class="sidebar-link"><span class="link-icon"></span>Error Reference</a>' +
+      '    <a href="' + rootPrefix + 'best-practices.html" class="sidebar-link"><span class="link-icon"></span>Best Practices</a>' +
+      '    <a href="' + rootPrefix + 'glossary.html" class="sidebar-link"><span class="link-icon"></span>Glossary</a>' +
+      '    <a href="' + rootPrefix + 'changelog.html" class="sidebar-link"><span class="link-icon"></span>Changelog</a>' +
       '  </nav>' +
       '</div>' +
       '<div class="sidebar-section">' +
@@ -46,7 +52,11 @@
       '    <a href="' + rootPrefix + 'models.html" class="sidebar-link"><span class="link-icon"></span>Models</a>' +
       '    <a href="' + rootPrefix + 'commands.html" class="sidebar-link"><span class="link-icon"></span>Commands</a>' +
       '    <a href="' + rootPrefix + 'tools.html" class="sidebar-link"><span class="link-icon"></span>Tools</a>' +
+      '    <a href="' + rootPrefix + 'context-window.html" class="sidebar-link"><span class="link-icon"></span>Context Window</a>' +
+      '    <a href="' + rootPrefix + 'sessions.html" class="sidebar-link"><span class="link-icon"></span>Sessions</a>' +
+      '    <a href="' + rootPrefix + 'keybindings.html" class="sidebar-link"><span class="link-icon"></span>Keybindings</a>' +
       '    <a href="' + rootPrefix + 'permission-model.html" class="sidebar-link"><span class="link-icon"></span>Permission Model</a>' +
+      '    <a href="' + rootPrefix + 'sandbox-security.html" class="sidebar-link"><span class="link-icon"></span>Sandbox & Security</a>' +
       '  </nav>' +
       '</div>' +
       '<div class="sidebar-section">' +
@@ -54,6 +64,7 @@
       '  <nav>' +
       '    <a href="' + rootPrefix + 'plugins.html" class="sidebar-link"><span class="link-icon"></span>Plugins</a>' +
       '    <a href="' + rootPrefix + 'skills.html" class="sidebar-link"><span class="link-icon"></span>Skills</a>' +
+      '    <a href="' + rootPrefix + 'hooks.html" class="sidebar-link"><span class="link-icon"></span>Hooks</a>' +
       '    <a href="' + rootPrefix + 'architecture.html" class="sidebar-link"><span class="link-icon"></span>Architecture</a>' +
       '    <a href="' + rootPrefix + 'mcp.html" class="sidebar-link"><span class="link-icon"></span>MCP</a>' +
       '  </nav>' +
@@ -62,6 +73,9 @@
       '  <div class="sidebar-label">Autonomous</div>' +
       '  <nav>' +
       '    <a href="' + rootPrefix + 'daemon.html" class="sidebar-link"><span class="link-icon"></span>Daemon Mode</a>' +
+      '    <a href="' + rootPrefix + 'agent-teams.html" class="sidebar-link"><span class="link-icon"></span>Agent Teams</a>' +
+      '    <a href="' + rootPrefix + 'scheduled-tasks.html" class="sidebar-link"><span class="link-icon"></span>Scheduled Tasks</a>' +
+      '    <a href="' + rootPrefix + 'worktrees.html" class="sidebar-link"><span class="link-icon"></span>Worktrees</a>' +
       '  </nav>' +
       '</div>' +
       '<div class="sidebar-section">' +

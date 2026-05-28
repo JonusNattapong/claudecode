@@ -277,7 +277,10 @@ function addToTotalModelUsage(
     ? ((usage as Usage).cache_read_input_tokens ?? 0)
     : ((usage as ProviderUsage).cacheReadInputTokens ?? 0);
   const cacheCreateTokens = isAnthropicUsage
-    ? ((usage as Usage).cache_creation_input_tokens ?? 0)
+    ? Math.max(
+        (usage as Usage).cache_creation_input_tokens ?? 0,
+        (usage as any).cache_creation?.input_tokens ?? 0,
+      )
     : ((usage as ProviderUsage).cacheCreationInputTokens ?? 0);
   const webSearchRequests = isAnthropicUsage
     ? ((usage as Usage).server_tool_use?.web_search_requests ?? 0)
@@ -318,7 +321,10 @@ export function addToTotalSessionCost(
     ? ((usage as Usage).cache_read_input_tokens ?? 0)
     : ((usage as ProviderUsage).cacheReadInputTokens ?? 0);
   const cacheCreateTokens = isAnthropicUsage
-    ? ((usage as Usage).cache_creation_input_tokens ?? 0)
+    ? Math.max(
+        (usage as Usage).cache_creation_input_tokens ?? 0,
+        (usage as any).cache_creation?.input_tokens ?? 0,
+      )
     : ((usage as ProviderUsage).cacheCreationInputTokens ?? 0);
   const speed = isAnthropicUsage ? (usage as Usage).speed : undefined;
 

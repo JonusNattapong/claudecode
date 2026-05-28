@@ -9,6 +9,32 @@ This project follows a practical changelog format based on:
 - `Security` for permission, sandbox, auth, and trust-related hardening
 - `Internal` for tests, types, refactors, and developer-facing implementation work
 
+## [2.1.179] - 2026-05-28
+
+### Added
+
+- **Npm global install auto-update notice** — One-time notice when CLI detects npm global install lacks write permissions for auto-update. Notice resets after a successful update. Shows remediation link and suggests native installation via `claude install`.
+- **`/doctor` last update attempt** — Doctor screen now displays the result of the most recent update attempt (status, channel, version, error, install type) with human-readable age and recovery hints. Errors are classified as recoverable vs non-recoverable.
+- **Unified release channel resolver** — New `resolveReleaseChannel()` function is the single source of truth for channel resolution across all update paths (CLI, auto-updater, native installer). Validates channel values and falls back to `latest` on invalid input.
+- **`COLUMNS`/`LINES` in status line env** — Status line commands now receive `COLUMNS` and `LINES` environment variables reflecting the current terminal dimensions, allowing scripts to adapt output width accordingly.
+- **MCP progress in collapsed tool view** — Collapsed tool rows now display MCP progress notifications (progress message or percentage) alongside the MCP server name, so users can track MCP activity without expanding the view.
+- **Agent view dispatch autocomplete** — Typing `/` in the `claude agents` dispatch input now shows autocomplete suggestions from native slash commands, bundled skills, and project skills. Each suggestion displays a source label (`[cmd]`, `[bundled]`, `[skill]`, `[plugin]`). Navigate with arrow keys, accept with Tab, dismiss with Escape.
+- **Agent view skill dispatch** — Dispatch input now recognizes `/skill-name` syntax and invokes the matching command. Project skills take priority when names collide with bundled commands.
+- **`skipLfs` for plugin marketplace sources** — GitHub and Git marketplace sources now support `skipLfs: true` to skip Git LFS downloads during clone/pull. Useful for repos with large LFS objects that slow down marketplace operations or fail in environments without LFS support. Shows a warning when skipped files are detected.
+
+### Changed
+
+- **Narrow terminal help wrapping** — `--help` output now uses actual terminal width (minimum 60 columns) instead of Commander's default 92, preventing horizontal overflow in narrow terminals.
+- **Responsive help menu** — `PromptInputHelpMenu` switches to a vertical stacked layout when terminal width is below 80 columns.
+- **Agent view PR column** — PR column now displays `PR #123` for a single PR, `3 PRs` for multiple PRs, and empty for no PR. Previously only showed raw count for multiple PRs.
+- **Welcome frame tracks mascot body color** — The welcome screen outer border now uses the same color as the Clawd mascot body (set via `/color` → Mascot tab) instead of a fixed theme color. Customizing mascot body color now also changes the welcome frame.
+
+### Fixed
+
+- **Clickable `file://` link normalization** — Added `normalizeFileUrl()` utility that fixes malformed `file://` URLs (Windows paths, missing third slash, spaces) before rendering as OSC 8 hyperlinks. Applied at the `Link` component level so all clickable file links benefit automatically.
+- **Remote Control zombie session cleanup** — Agent view now marks sessions as detached on unmount and runs periodic cleanup of stale remote-control sessions. Prevents zombie entries from persisting in the Code tab after exiting `claude agents`.
+- **Windows installer recovery instructions** — Native installer post-install verification now includes platform-specific recovery hints (Windows: `copy` command, Unix: `ln -sf`) and suggests `claude install --force` as fallback when executable creation fails.
+
 ## [2.1.173] - 2026-05-26
 
 ### Fixed

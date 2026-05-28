@@ -1,6 +1,7 @@
 import { getMainThreadAgentType } from '../bootstrap/state.js';
 import type { HookResultMessage } from '../types/message.js';
 import { createAttachmentMessage } from './attachments.js';
+import { clearCommandsCache } from '../commands.js';
 import { logForDebugging } from './debug.js';
 import { withDiagnosticsTiming } from './diagLogs.js';
 import { isBareMode } from './envUtils.js';
@@ -24,10 +25,17 @@ type SessionStartHooksOptions = {
 // joined later — rippling a structural return-type change through that
 // handoff would touch five callsites for what is a print-mode-only value).
 let pendingInitialUserMessage: string | undefined;
+let pendingSessionTitle: string | undefined;
 
 export function takeInitialUserMessage(): string | undefined {
   const v = pendingInitialUserMessage;
   pendingInitialUserMessage = undefined;
+  return v;
+}
+
+export function takeSessionTitle(): string | undefined {
+  const v = pendingSessionTitle;
+  pendingSessionTitle = undefined;
   return v;
 }
 
@@ -135,6 +143,12 @@ export async function processSessionStartHooks(
     }
     if (hookResult.watchPaths && hookResult.watchPaths.length > 0) {
       allWatchPaths.push(...hookResult.watchPaths);
+    }
+    if (hookResult.sessionTitle) {
+      pendingSessionTitle = hookResult.sessionTitle;
+    }
+    if (hookResult.reloadSkills) {
+      clearCommandsCache();
     }
   }
 

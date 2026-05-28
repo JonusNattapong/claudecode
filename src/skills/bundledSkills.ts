@@ -19,6 +19,7 @@ export type BundledSkillDefinition = {
   whenToUse?: string;
   argumentHint?: string;
   allowedTools?: string[];
+  disallowedTools?: string[];
   model?: string;
   disableModelInvocation?: boolean;
   userInvocable?: boolean;
@@ -76,6 +77,7 @@ export function registerBundledSkill(definition: BundledSkillDefinition): void {
     aliases: definition.aliases,
     hasUserSpecifiedDescription: true,
     allowedTools: definition.allowedTools ?? [],
+    disallowedTools: definition.disallowedTools ?? [],
     argumentHint: definition.argumentHint,
     whenToUse: definition.whenToUse,
     model: definition.model,

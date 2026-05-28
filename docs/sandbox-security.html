@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sandbox & Security — Clew</title>
+  <meta name="description" content="Sandboxed Bash execution, security model, and permission approval flow in Clew.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+<header class="header"><div class="header-inner"><a href="index.html" class="logo"><span>Clew</span></a><nav class="header-nav"><a href="index.html">Home</a><a href="index.html#features">Features</a><a href="index.html#commands">Commands</a><a href="quick-start.html" class="active">Docs</a><a href="https://github.com/JonusNattapong/claudecode" target="_blank">GitHub</a></nav><button class="menu-btn" id="menuToggle" aria-label="Toggle navigation"><span></span><span></span><span></span></button></div></header>
+<div class="app"><aside class="sidebar" id="sidebar"></aside><div class="sidebar-overlay" id="sidebarOverlay"></div><main class="content">
+  <h1>Sandbox & Security</h1>
+  <p class="section-subtitle">How Clew sandboxes tool execution, enforces permission boundaries, and keeps your system safe.</p>
+
+  <h2>Security Layers</h2>
+  <p>Clew applies security at four distinct layers:</p>
+
+  <div class="feature-grid">
+    <div class="feature-card">
+      <div class="feature-icon">&#x25C8;</div>
+      <h3>Permission Modes</h3>
+      <p>Tiered user-facing modes from default (ask) to bypass (trusted sandboxes).</p>
+      <span class="feature-tag">/permissions</span>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">&#x2B21;</div>
+      <h3>Shell Analysis</h3>
+      <p>Static analysis of Bash/PowerShell commands before execution to classify risk.</p>
+      <span class="feature-tag">BashTool</span>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">&#x2387;</div>
+      <h3>Sandbox Isolation</h3>
+      <p>Process-level sandboxing with PID namespace isolation on Linux.</p>
+      <span class="feature-tag">Sandbox</span>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">&#x25CB;</div>
+      <h3>Tool Hooks</h3>
+      <p>Pre/post tool execution hooks for custom validation and auditing.</p>
+      <span class="feature-tag">Hooks</span>
+    </div>
+  </div>
+
+  <h2>Permission Approval Flow</h2>
+  <p>When the AI requests a tool execution, it goes through this pipeline:</p>
+
+  <ol>
+    <li><strong>Permission mode check</strong> — The current mode determines the base behavior (ask, auto-deny, plan-only, etc.).</li>
+    <li><strong>Allow/deny rule matching</strong> — Pattern-based rules from user, project, local, flag, and policy settings are evaluated. Later sources override earlier ones.</li>
+    <li><strong>Shell command analysis</strong> — Bash and PowerShell commands are statically analyzed for destructive patterns (<code>rm -rf</code>, <code>git push --force</code>, etc.).</li>
+    <li><strong>PreToolUse hooks</strong> — Custom hook scripts can inspect, modify, allow, or deny the tool call. Hooks can return <code>allow</code>, <code>deny</code>, or <code>defer</code>.</li>
+    <li><strong>User prompt</strong> — If not auto-allowed, the user sees a permission dialog with command details and risk assessment.</li>
+    <li><strong>Execution</strong> — The tool runs (possibly sandboxed), with output captured for the AI.</li>
+    <li><strong>PostToolUse hooks</strong> — After execution, hooks can inspect results, log activity, or modify the output.</li>
+  </ol>
+
+  <h2>Sandboxed Bash Tool</h2>
+  <p>The Bash tool supports sandboxed execution that restricts what commands can do:</p>
+
+  <h3>Linux Sandboxing</h3>
+  <ul>
+    <li><strong>PID namespace isolation</strong> — Subprocess runs in its own PID namespace, preventing it from seeing or signaling host processes.</li>
+    <li><strong>Network restrictions</strong> — Configurable network access control. Auto and bypass-permissions modes can be configured for sandbox network access.</li>
+    <li><strong>macOS sandbox</strong> — <code>allowMachLookup</code> support for controlled inter-process communication.</li>
+  </ul>
+
+  <h3>Command Safety Checks</h3>
+  <table>
+    <tr><th>Check</th><th>What It Catches</th></tr>
+    <tr><td>Destructive patterns</td><td><code>rm -rf</code>, <code>git push --force</code>, <code>git reset --hard</code>, <code>git clean -fd</code></td></tr>
+    <tr><td>CWD-changing operations</td><td><code>cd</code>, <code>pushd</code>, <code>popd</code>, <code>cd..</code>, <code>cd\</code>, bare drive letters (<code>D:</code>, <code>C:</code>)</td></tr>
+    <tr><td>Env var bypasses</td><td>Commands that manipulate <code>$PATH</code>, <code>$HOME</code>, or other security-sensitive variables</td></tr>
+    <tr><td>Shell expansions</td><td><code>$VAR</code> and <code>$(cmd)</code> patterns in sandbox auto-allow contexts</td></tr>
+    <tr><td>Redirect bypasses</td><td>Output redirection that could overwrite protected files</td></tr>
+  </table>
+
+  <h2>PowerShell Security</h2>
+  <p>Windows PowerShell commands receive equivalent hardening:</p>
+  <ul>
+    <li><strong>CWD detection</strong> — <code>cd..</code>, <code>cd\</code>, <code>cd~</code>, and bare drive letters correctly detected as directory-changing operations.</li>
+    <li><strong>Permission bypass prevention</strong> — Parser-level shortcuts cannot bypass the cd+compound guard in permission checks.</li>
+    <li><strong>Separate tool</strong> — <code>PowerShellTool</code> alongside <code>BashTool</code> with its own security analysis.</li>
+  </ul>
+
+  <h2>Allow/Deny Rule Patterns</h2>
+  <p>Create granular rules to control specific tools:</p>
+  <pre><code># Allow all git operations
+Bash(git *)
+
+# Block destructive operations
+Bash(rm *)
+
+# Allow only specific npm commands
+Bash(npm run *)
+
+# Allow reads in a specific directory
+Read src/**/*.ts
+
+# Block writes outside the project
+Write !../**</code></pre>
+
+  <h2>Tool Hooks</h2>
+  <p>Hooks fire before and after tool execution for custom security logic:</p>
+  <table>
+    <tr><th>Hook Point</th><th>Fires</th><th>Can</th></tr>
+    <tr><td><code>PreToolUse</code></td><td>Before every tool execution</td><td>Inspect inputs, allow/deny/defer, modify arguments</td></tr>
+    <tr><td><code>PostToolUse</code></td><td>After every tool execution</td><td>Inspect results, log, modify output</td></tr>
+    <tr><td><code>PreBash</code></td><td>Before Bash/PowerShell commands</td><td>Shell-specific validation and transformation</td></tr>
+    <tr><td><code>PermissionDenied</code></td><td>When auto-mode classifier denies</td><td>Retry with adjusted parameters or escalate to user</td></tr>
+  </table>
+
+  <h2>Security Best Practices</h2>
+  <ul>
+    <li><strong>Start with <code>default</code> mode</strong> — prompts for sensitive operations. Only escalate when needed.</li>
+    <li><strong>Use allow rules, not <code>bypassPermissions</code></strong> — rules are auditable and scoped. Bypass removes all checks.</li>
+    <li><strong>Add project-level deny rules</strong> for production repos to block destructive commands.</li>
+    <li><strong>Audit with PostToolUse hooks</strong> — log all tool executions for security review.</li>
+    <li><strong>Keep <code>disallowedTools</code> updated</strong> as new tools are added to the system.</li>
+  </ul>
+
+  <div class="callout">
+    <strong>Related:</strong> <a href="permission-model.html">Permission Model</a> for the complete mode reference and rule system.
+  </div>
+</main></div>
+<script src="js/main.js"></script>
+</body>
+</html>

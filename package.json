@@ -1,12 +1,11 @@
 {
   "name": "@jonusnattapong/claudecode",
-  "version": "2.1.178",
-  "description": "Official Claude Code CLI — AI-powered coding assistant",
+  "version": "2.1.153",
+  "description": "Unofficial Claude Code-compatible CLI rebuild for research, local development, and self-hosted use",
   "main": "./dist/main.js",
   "type": "module",
   "bin": {
-    "claudevil": "bin/claudevil.cjs",
-    "claudecode": "bin/claudevil.cjs"
+    "clew": "bin/clew.cjs"
   },
   "files": [
     "bin/",
@@ -37,8 +36,7 @@
     "ast-grep": "bun x ast-grep",
     "codegraph": "bun run scripts/codegraph.ts",
     "preload": "bun run scripts/preload.ts",
-    "session": "bun run scripts/session.ts",
-    "codeindex": "bun run scripts/codeindex.ts"
+    "session": "bun run scripts/session.ts"
   },
   "keywords": [
     "ai",
@@ -93,6 +91,7 @@
     "@types/ws": "^8.18.1",
     "@xenova/transformers": "^2.17.2",
     "asciichart": "^1.5.25",
+    "avr-vad": "^1.0.10",
     "axios": "^1.14.0",
     "bidi-js": "1.0.3",
     "chalk": "^5.4.1",
@@ -153,6 +152,6 @@
     "@types/bun": "latest",
     "@types/lodash-es": "^4.17.12",
     "@types/semver": "^7.7.1",
-    "react-devtools-core": "^7.0.1"
+    "react-devtools-core": "^4.28.5"
   }
 }

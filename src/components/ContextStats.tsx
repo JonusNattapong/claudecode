@@ -1,598 +1,322 @@
-import type React from 'react';
-import { useMemo, useState } from 'react';
-import { Box, Text, useInput } from '../ink.js';
-import type { LocalJSXCommandOnDone } from '../types/command.js';
-import type { ContextData } from '../utils/analyzeContext.js';
-import { renderSegmentedBar, THEME_COLOR_TO_HEX } from '../utils/contextBar.js';
-import { getDisplayPath } from '../utils/file.js';
-import { formatTokens } from '../utils/format.js';
-import { getSourceDisplayName } from '../utils/settings/constants.js';
-import { Pane } from './design-system/Pane.js';
-import { Tab, Tabs } from './design-system/Tabs.js';
+import type React from "react";
+import { useMemo } from "react";
+import { Box, Text, useInput } from "../ink.js";
+import type { LocalJSXCommandOnDone } from "../types/command.js";
+import type { ContextData } from "../utils/analyzeContext.js";
+import { formatTokens } from "../utils/format.js";
 
 type Props = {
   data: ContextData;
   onClose: LocalJSXCommandOnDone;
 };
 
-type TabId = 'Overview' | 'Breakdown';
+type Category = ContextData["categories"][number];
 
-type BreakdownRow = {
-  type: 'header' | 'item' | 'empty';
-  label: string;
-  value?: string;
-  color?: string;
-};
-
-type OverviewRow = {
+type UsageRow = {
   key: string;
   label: string;
   tokens: number;
   color: string;
+  marker: string;
+  priority: number;
 };
 
-const RESERVED_CATEGORY_NAME = 'Autocompact buffer';
-const VISIBLE_BREAKDOWN_ROWS = 9;
-const BAR_WIDTH = 55;
-
-const COLOR_MAP: Record<string, string> = {
-  gray: '#94A3B8', // Slate
-  blue: '#38BDF8', // Sky Blue
-  green: '#34D399', // Emerald Green
-  yellow: '#FBBF24', // Glowing Amber
-  magenta: '#EC4899', // Hot Pink
-  cyan: '#A78BFA', // Purple
-  red: '#F87171', // Rose Red
-};
-
-const DISPLAY_NAMES: Record<string, string> = {
-  'System prompt': 'System prompt',
-  'System tools': 'Tools',
-  '[ANT-ONLY] System tools': 'Tools',
-  'MCP tools': 'MCP',
-  'MCP tools (deferred)': 'MCP deferred',
-  'System tools (deferred)': 'Tools deferred',
-  'Custom agents': 'Subagents',
-  'Memory files': 'Rules',
-  Skills: 'Skills',
-  Messages: 'Conversation',
-};
-
-const OVERVIEW_ROWS: Array<{
-  key: string;
-  label: string;
+type GridCell = {
+  char: string;
   color: string;
-  categoryNames: string[];
-}> = [
-  {
-    key: 'system-prompt',
-    label: 'System prompt',
-    color: 'gray',
-    categoryNames: ['System prompt'],
-  },
-  {
-    key: 'tools',
-    label: 'Tools',
-    color: 'blue',
-    categoryNames: ['System tools', '[ANT-ONLY] System tools'],
-  },
-  {
-    key: 'rules',
-    label: 'Rules',
-    color: 'green',
-    categoryNames: ['Memory files'],
-  },
-  {
-    key: 'skills',
-    label: 'Skills',
-    color: 'yellow',
-    categoryNames: ['Skills'],
-  },
-  {
-    key: 'mcp',
-    label: 'MCP',
-    color: 'magenta',
-    categoryNames: ['MCP tools'],
-  },
-  {
-    key: 'subagents',
-    label: 'Subagents',
-    color: 'cyan',
-    categoryNames: ['Custom agents'],
-  },
-  {
-    key: 'conversation',
-    label: 'Conversation',
-    color: 'red',
-    categoryNames: ['Messages'],
-  },
-];
+};
 
-function displayName(name: string): string {
-  return DISPLAY_NAMES[name] ?? name;
+const GRID_COLUMNS = 10;
+const GRID_ROWS = 10;
+const GRID_CELLS = GRID_COLUMNS * GRID_ROWS;
+const RESERVED_CATEGORY_NAME = "Autocompact buffer";
+
+const CATEGORY_ORDER: Record<string, number> = {
+  "System prompt": 10,
+  "System tools": 20,
+  "Custom agents": 30,
+  "Memory files": 40,
+  Skills: 50,
+  Messages: 60,
+  "Free space": 70,
+  [RESERVED_CATEGORY_NAME]: 80,
+};
+
+const CATEGORY_COLORS: Record<string, string> = {
+  "System prompt": "#9CA3AF",
+  "System tools": "#9CA3AF",
+  "Custom agents": "#B7C4FF",
+  "Memory files": "#F59E7A",
+  Skills: "#FBBF24",
+  Messages: "#7C3AED",
+  "Free space": "#9CA3AF",
+  [RESERVED_CATEGORY_NAME]: "#9CA3AF",
+};
+
+function canonicalCategoryName(name: string): string {
+  switch (name) {
+    case "[ANT-ONLY] System tools":
+    case "System tools (deferred)":
+      return "System tools";
+    case "MCP tools":
+    case "MCP tools (deferred)":
+      return "MCP tools";
+    default:
+      return name;
+  }
 }
 
-function getUsageStatus(percentage: number): {
-  label: string;
-  color: string;
-  hint: string;
-} {
-  if (percentage >= 90) {
-    return {
-      label: 'Critical',
-      color: 'red',
-      hint: 'compact soon',
-    };
+function displayModelName(modelId: string): string {
+  const normalized = modelId.toLowerCase();
+
+  if (normalized.includes("sonnet") && normalized.includes("4-6")) {
+    return "Sonnet 4.6";
   }
 
-  if (percentage >= 75) {
-    return {
-      label: 'High',
-      color: 'yellow',
-      hint: 'getting full',
-    };
+  if (normalized.includes("sonnet")) {
+    return "Sonnet";
   }
 
-  if (percentage >= 50) {
-    return {
-      label: 'Moderate',
-      color: 'cyan',
-      hint: 'healthy',
-    };
+  if (normalized.includes("opus")) {
+    return "Opus";
   }
 
-  return {
-    label: 'Low',
-    color: 'green',
-    hint: 'plenty left',
-  };
+  if (normalized.includes("haiku")) {
+    return "Haiku";
+  }
+
+  return "Context Window";
 }
 
-function Metric({
-  label,
-  value,
-  hint,
-  color,
+function getModelInfo(data: ContextData): { title: string; id: string } {
+  const rawData = data as Record<string, unknown>;
+  const explicitTitle =
+    rawData.modelDisplayName ?? rawData.displayModelName ?? rawData.modelTitle;
+  const explicitId =
+    rawData.modelId ??
+    rawData.model ??
+    rawData.modelName ??
+    rawData.currentModel;
+
+  const id =
+    typeof explicitId === "string" && explicitId.length > 0
+      ? explicitId
+      : "active model";
+  const title =
+    typeof explicitTitle === "string" && explicitTitle.length > 0
+      ? explicitTitle
+      : displayModelName(id);
+
+  return { title, id };
+}
+
+const CATEGORY_MARKERS: Record<string, string> = {
+  "System prompt": "⬡",
+  "System tools": "⬢",
+  "Custom agents": "⬣",
+  "Memory files": "◆",
+  Skills: "◇",
+  Messages: "●",
+  "MCP tools": "◈",
+  "Free space": "▢",
+  [RESERVED_CATEGORY_NAME]: "▣",
+};
+
+function markerFor(label: string): string {
+  return CATEGORY_MARKERS[label] ?? "◉";
+}
+
+function colorFor(category: Category, label: string): string {
+  return CATEGORY_COLORS[label] ?? category.color ?? "#9CA3AF";
+}
+
+function buildUsageRows(
+  categories: Category[],
+  freeTokens: number,
+): UsageRow[] {
+  const rowsByLabel = new Map<string, UsageRow>();
+
+  for (const category of categories) {
+    if (category.tokens <= 0 || category.isDeferred) {
+      continue;
+    }
+
+    const label = canonicalCategoryName(category.name);
+    const current = rowsByLabel.get(label);
+
+    rowsByLabel.set(label, {
+      key: label,
+      label,
+      tokens: (current?.tokens ?? 0) + category.tokens,
+      color: current?.color ?? colorFor(category, label),
+      marker: markerFor(label),
+      priority: CATEGORY_ORDER[label] ?? 500,
+    });
+  }
+
+  if (!rowsByLabel.has("Free space") && freeTokens > 0) {
+    rowsByLabel.set("Free space", {
+      key: "Free space",
+      label: "Free space",
+      tokens: freeTokens,
+      color: CATEGORY_COLORS["Free space"],
+      marker: markerFor("Free space"),
+      priority: CATEGORY_ORDER["Free space"],
+    });
+  }
+
+  return Array.from(rowsByLabel.values()).sort(
+    (a, b) => a.priority - b.priority || a.label.localeCompare(b.label),
+  );
+}
+
+function buildGrid(rows: UsageRow[], maxTokens: number): GridCell[] {
+  const cells: GridCell[] = Array.from({ length: GRID_CELLS }, () => ({
+    char: "▢",
+    color: CATEGORY_COLORS["Free space"],
+  }));
+
+  if (maxTokens <= 0) {
+    return cells;
+  }
+
+  let cursor = 0;
+  let cumulativeTokens = 0;
+
+  for (const row of rows) {
+    cumulativeTokens += row.tokens;
+    const nextCursor = Math.min(
+      GRID_CELLS,
+      Math.round((cumulativeTokens / maxTokens) * GRID_CELLS),
+    );
+
+    for (let index = cursor; index < nextCursor; index += 1) {
+      cells[index] = {
+        char: row.marker,
+        color: row.color,
+      };
+    }
+
+    cursor = nextCursor;
+  }
+
+  return cells;
+}
+
+function CategoryUsageRow({
+  row,
+  maxTokens,
 }: {
-  label: string;
-  value: string;
-  hint?: string;
-  color?: string;
+  row: UsageRow;
+  maxTokens: number;
 }): React.ReactNode {
+  const percentage = maxTokens > 0 ? (row.tokens / maxTokens) * 100 : 0;
+
   return (
-    <Box flexDirection="row" gap={1}>
-      <Text dimColor>{label}</Text>
-      <Text bold color={color}>
-        {value}
-      </Text>
-      {hint ? <Text dimColor>{hint}</Text> : null}
+    <Box flexDirection="row">
+      <Text color={row.color}>{row.marker}</Text>
+      <Text> </Text>
+      <Text bold>{row.label}:</Text>
+      <Text dimColor> {formatTokens(row.tokens)} tokens </Text>
+      <Text dimColor>({percentage.toFixed(1)}%)</Text>
     </Box>
   );
 }
 
-function SourceRow({
-  marker,
-  label,
-  value,
-  color,
-}: {
-  marker: string;
-  label: string;
-  value: string;
-  color?: string;
-}): React.ReactNode {
-  const displayColor = color ? COLOR_MAP[color] || color : undefined;
+function UsageGrid({ cells }: { cells: GridCell[] }): React.ReactNode {
   return (
-    <Box flexDirection="row" justifyContent="space-between">
-      <Box flexDirection="row" gap={1}>
-        <Text color={displayColor}>{marker}</Text>
-        <Text>{label}</Text>
-      </Box>
-      <Text dimColor>{value}</Text>
+    <Box flexDirection="column">
+      {Array.from({ length: GRID_ROWS }).map((_, rowIndex) => {
+        const rowCells = cells.slice(
+          rowIndex * GRID_COLUMNS,
+          (rowIndex + 1) * GRID_COLUMNS,
+        );
+
+        return (
+          <Box key={rowIndex} flexDirection="row" gap={1}>
+            {rowCells.map((cell, cellIndex) => (
+              <Text key={`${rowIndex}-${cellIndex}`} color={cell.color}>
+                {cell.char}
+              </Text>
+            ))}
+          </Box>
+        );
+      })}
     </Box>
   );
 }
 
 export function ContextStats({ data, onClose }: Props): React.ReactNode {
-  const [activeTab, setActiveTab] = useState<TabId>('Overview');
-  const [scrollOffset, setScrollOffset] = useState(0);
-
-  const {
-    categories,
-    totalTokens,
-    rawMaxTokens,
-    percentage,
-    memoryFiles,
-    mcpTools,
-    systemTools = [],
-    systemPromptSections = [],
-    agents,
-    skills,
-    messageBreakdown,
-  } = data;
-
-  const usageStatus = useMemo(() => getUsageStatus(percentage), [percentage]);
-
-  const freeTokens = useMemo(() => {
-    const freeCategory = categories.find(category => category.name === 'Free space');
-    return freeCategory?.tokens ?? Math.max(rawMaxTokens - totalTokens, 0);
-  }, [categories, rawMaxTokens, totalTokens]);
-
-  const barSegments = useMemo(() => {
-    const segments = categories
-      .filter(category => category.tokens > 0 && category.name !== 'Free space' && !category.isDeferred)
-      .map(category => ({
-        tokens: category.tokens,
-        colorHex: THEME_COLOR_TO_HEX[category.color] || '#999999',
-      }));
-
-    const freeCategory = categories.find(category => category.name === 'Free space');
-
-    if (freeCategory && freeCategory.tokens > 0) {
-      segments.push({
-        tokens: freeCategory.tokens,
-        colorHex: '#2A2A2A',
-      });
-    }
-
-    return segments;
-  }, [categories]);
-
-  const overviewRows = useMemo((): OverviewRow[] => {
-    const tokensByName = new Map<string, number>();
-    for (const category of categories) {
-      tokensByName.set(category.name, (tokensByName.get(category.name) ?? 0) + category.tokens);
-    }
-
-    const knownCategoryNames = new Set(OVERVIEW_ROWS.flatMap(row => row.categoryNames));
-    const fixedRows = OVERVIEW_ROWS.map(row => ({
-      key: row.key,
-      label: row.label,
-      color: row.color,
-      tokens: row.categoryNames.reduce((sum, name) => sum + (tokensByName.get(name) ?? 0), 0),
-    }));
-
-    const extraRows = categories
-      .filter(category => {
-        return (
-          category.tokens > 0 &&
-          category.name !== 'Free space' &&
-          category.name !== RESERVED_CATEGORY_NAME &&
-          !knownCategoryNames.has(category.name)
-        );
-      })
-      .map(category => ({
-        key: `extra-${category.name}`,
-        label: displayName(category.name),
-        color: category.color,
-        tokens: category.tokens,
-      }));
-
-    return [...fixedRows, ...extraRows];
-  }, [categories]);
-
-  const breakdownRows = useMemo((): BreakdownRow[] => {
-    const rows: BreakdownRow[] = [];
-
-    const addSection = (label: string) => {
-      if (rows.length > 0) {
-        rows.push({ type: 'empty', label: '' });
-      }
-
-      rows.push({
-        type: 'header',
-        label,
-      });
-    };
-
-    const addItem = (label: string, value?: string, color?: string) => {
-      rows.push({
-        type: 'item',
-        label,
-        value,
-        color,
-      });
-    };
-
-    addSection('Summary');
-
-    for (const row of overviewRows) {
-      addItem(row.label, formatTokens(row.tokens), row.color);
-    }
-
-    if (systemPromptSections.length > 0) {
-      addSection('System prompt');
-
-      for (const section of systemPromptSections) {
-        addItem(section.name, formatTokens(section.tokens));
-      }
-    }
-
-    if (mcpTools.length > 0) {
-      addSection('MCP tools');
-
-      const loaded = mcpTools.filter(tool => tool.isLoaded);
-      const available = mcpTools.filter(tool => !tool.isLoaded);
-
-      for (const tool of loaded) {
-        addItem(`[Loaded] ${tool.name}`, formatTokens(tool.tokens), 'green');
-      }
-
-      for (const tool of available) {
-        addItem(`[Available] ${tool.name}`, 'not loaded', 'yellow');
-      }
-    }
-
-    const loadedSystemTools = systemTools.filter(tool => !('isLoaded' in tool) || (tool as any).isLoaded);
-
-    if (loadedSystemTools.length > 0) {
-      addSection('System tools');
-
-      for (const tool of loadedSystemTools) {
-        addItem(tool.name, formatTokens(tool.tokens));
-      }
-    }
-
-    if (agents.length > 0) {
-      addSection('Custom agents');
-
-      for (const agent of agents) {
-        const sourceDisplay = getSourceDisplayName(agent.source);
-        addItem(`[${sourceDisplay}] ${agent.agentType}`, formatTokens(agent.tokens));
-      }
-    }
-
-    if (memoryFiles.length > 0) {
-      addSection('Memory files');
-
-      for (const file of memoryFiles) {
-        addItem(getDisplayPath(file.path), formatTokens(file.tokens));
-      }
-    }
-
-    if (skills && skills.tokens > 0) {
-      addSection('Skills');
-
-      for (const skill of skills.skillFrontmatter) {
-        const sourceDisplay = getSourceDisplayName(skill.source);
-        addItem(`[${sourceDisplay}] ${skill.name}`, formatTokens(skill.tokens));
-      }
-    }
-
-    if (messageBreakdown) {
-      addSection('Messages');
-
-      addItem('Tool calls', formatTokens(messageBreakdown.toolCallTokens));
-      addItem('Tool results', formatTokens(messageBreakdown.toolResultTokens));
-      addItem('Attachments', formatTokens(messageBreakdown.attachmentTokens));
-      addItem('Assistant messages', formatTokens(messageBreakdown.assistantMessageTokens));
-      addItem('User messages', formatTokens(messageBreakdown.userMessageTokens));
-
-      if (messageBreakdown.toolCallsByType.length > 0) {
-        addSection('Top tools');
-
-        for (const tool of messageBreakdown.toolCallsByType.slice(0, 5)) {
-          addItem(tool.name, `${formatTokens(tool.callTokens)} calls · ${formatTokens(tool.resultTokens)} results`);
-        }
-      }
-
-      if (messageBreakdown.attachmentsByType.length > 0) {
-        addSection('Top attachments');
-
-        for (const attachment of messageBreakdown.attachmentsByType.slice(0, 5)) {
-          addItem(attachment.name, formatTokens(attachment.tokens));
-        }
-      }
-    }
-
-    if (rows.length === 0) {
-      rows.push({
-        type: 'item',
-        label: 'No breakdown data available',
-        value: '',
-      });
-    }
-
-    return rows;
-  }, [overviewRows, systemPromptSections, mcpTools, systemTools, agents, memoryFiles, skills, messageBreakdown]);
-
-  const maxScrollOffset = Math.max(0, breakdownRows.length - VISIBLE_BREAKDOWN_ROWS);
+  const { categories, totalTokens, rawMaxTokens, percentage } = data;
 
   useInput((input, key) => {
-    if (key.escape || input === 'q' || (key.ctrl && (input === 'c' || input === 'd'))) {
-      onClose('Context stats dismissed', { display: 'system' });
-      return;
-    }
-
-    if (key.tab) {
-      setActiveTab(previous => (previous === 'Overview' ? 'Breakdown' : 'Overview'));
-      setScrollOffset(0);
-      return;
-    }
-
-    if (activeTab !== 'Breakdown') {
-      return;
-    }
-
-    if (key.downArrow || input === 'j') {
-      setScrollOffset(previous => Math.min(previous + 1, maxScrollOffset));
-    }
-
-    if (key.upArrow || input === 'k') {
-      setScrollOffset(previous => Math.max(previous - 1, 0));
+    if (
+      key.escape ||
+      input === "q" ||
+      (key.ctrl && (input === "c" || input === "d"))
+    ) {
+      onClose("Context usage dismissed", { display: "system" });
     }
   });
 
-  const visibleBreakdown = useMemo(() => {
-    return breakdownRows.slice(scrollOffset, scrollOffset + VISIBLE_BREAKDOWN_ROWS);
-  }, [breakdownRows, scrollOffset]);
+  const freeTokens = useMemo(() => {
+    const freeCategory = categories.find(
+      (category) => category.name === "Free space",
+    );
+    return freeCategory?.tokens ?? Math.max(rawMaxTokens - totalTokens, 0);
+  }, [categories, rawMaxTokens, totalTokens]);
 
-  const canScrollUp = scrollOffset > 0;
-  const canScrollDown = scrollOffset < maxScrollOffset;
-  const bar = renderSegmentedBar(barSegments, BAR_WIDTH);
+  const usageRows = useMemo(
+    () => buildUsageRows(categories, freeTokens),
+    [categories, freeTokens],
+  );
+  const gridCells = useMemo(
+    () => buildGrid(usageRows, rawMaxTokens),
+    [usageRows, rawMaxTokens],
+  );
+  const modelInfo = useMemo(() => getModelInfo(data), [data]);
 
   return (
-    <Pane color="claude">
-      <Box flexDirection="column" gap={1}>
-        <Box flexDirection="row" justifyContent="space-between" paddingX={1}>
-          <Box flexDirection="row" gap={1}>
-            <Text bold>Context</Text>
-            <Text dimColor>stats</Text>
-          </Box>
+    <Box flexDirection="column" gap={1} paddingX={1}>
+      <Box flexDirection="row">
+        <Text dimColor>└ </Text>
+        <Text bold>Context Usage</Text>
+      </Box>
 
-          <Box flexDirection="row" gap={1}>
-            <Text color={usageStatus.color}>{usageStatus.label}</Text>
-            <Text dimColor>×</Text>
-          </Box>
-        </Box>
+      <Box flexDirection="row" gap={4} marginLeft={2}>
+        <UsageGrid cells={gridCells} />
 
-        <Box flexDirection="column" paddingX={1}>
-          <Box flexDirection="row" gap={3}>
-            <Metric
-              label="Used"
-              value={`${formatTokens(totalTokens)} / ${formatTokens(rawMaxTokens)}`}
-              color={usageStatus.color}
-            />
-
-            <Metric
-              label="Free"
-              value={formatTokens(freeTokens)}
-              hint={usageStatus.hint}
-              color={freeTokens > 0 ? 'green' : 'red'}
-            />
-
-            <Metric label="Usage" value={`${percentage.toFixed(0)}%`} color={usageStatus.color} />
+        <Box flexDirection="column" gap={1}>
+          <Box flexDirection="column">
+            <Text bold>{modelInfo.title}</Text>
+            <Text dimColor>{modelInfo.id}</Text>
+            <Text dimColor>
+              {formatTokens(totalTokens)}/{formatTokens(rawMaxTokens)} tokens (
+              {percentage.toFixed(0)}%)
+            </Text>
           </Box>
 
           <Box flexDirection="column" marginTop={1}>
-            <Box flexDirection="row" justifyContent="flex-end">
-              <Text dimColor>{(100 - percentage).toFixed(0)}% until auto-compact</Text>
-            </Box>
-            <Box marginTop={1}>
-              <Text>{bar}</Text>
-            </Box>
-            <Box marginTop={1}>
-              <Text>
-                {overviewRows
-                  .filter(row => row.tokens > 0)
-                  .map((row, i, arr) => {
-                    const displayColor = COLOR_MAP[row.color] || row.color;
-                    const label = row.label;
-                    const value = formatTokens(row.tokens);
-                    const sep = i < arr.length - 1 ? <Text dimColor> · </Text> : null;
-                    return (
-                      <Text key={row.key}>
-                        <Text color={displayColor}>{label}</Text>
-                        <Text>: </Text>
-                        <Text color={displayColor}>{value}</Text>
-                        {sep}
-                      </Text>
-                    );
-                  })}
-              </Text>
-            </Box>
-          </Box>
-        </Box>
-
-        <Tabs
-          title=""
-          color="claude"
-          selectedTab={activeTab}
-          onTabChange={tabId => {
-            setActiveTab(tabId as TabId);
-            setScrollOffset(0);
-          }}
-        >
-          <Tab title="Overview">
-            <Box flexDirection="column" width={56} paddingX={1} marginTop={1}>
-              <Box flexDirection="row" justifyContent="space-between">
-                <Text bold>Sources</Text>
-                <Text dimColor>{overviewRows.filter(row => row.tokens > 0).length} active</Text>
-              </Box>
-
-              <Box flexDirection="column" marginTop={1}>
-                {overviewRows.length === 0 ? (
-                  <Text dimColor>No active context sources</Text>
-                ) : (
-                  overviewRows
-                    .slice(0, 8)
-                    .map(row => (
-                      <SourceRow
-                        key={row.key}
-                        marker="■"
-                        label={row.label}
-                        value={formatTokens(row.tokens)}
-                        color={row.color}
-                      />
-                    ))
-                )}
-              </Box>
-
-              {overviewRows.length > 8 ? (
-                <Box marginTop={1}>
-                  <Text dimColor>+{overviewRows.length - 8} more in Breakdown</Text>
-                </Box>
-              ) : null}
-            </Box>
-          </Tab>
-
-          <Tab title="Breakdown">
-            <Box flexDirection="column" width={72} height={VISIBLE_BREAKDOWN_ROWS} paddingX={1} marginTop={1}>
-              {visibleBreakdown.map((row, index) => {
-                const key = `${scrollOffset + index}-${row.type}-${row.label}`;
-
-                if (row.type === 'empty') {
-                  return <Text key={key}> </Text>;
-                }
-
-                if (row.type === 'header') {
-                  return (
-                    <Box key={key} flexDirection="row" gap={1}>
-                      <Text color="claude">◆</Text>
-                      <Text bold>{row.label}</Text>
-                    </Box>
-                  );
-                }
-
-                return (
-                  <Box key={key} flexDirection="row" justifyContent="space-between">
-                    <Box flexDirection="row" gap={1}>
-                      <Text dimColor>├─</Text>
-                      <Text color={COLOR_MAP[row.color || ''] || row.color}>{row.label}</Text>
-                    </Box>
-
-                    {row.value ? <Text dimColor>{row.value}</Text> : null}
-                  </Box>
-                );
-              })}
-            </Box>
-          </Tab>
-        </Tabs>
-
-        <Box
-          paddingLeft={1}
-          marginTop={1}
-          borderStyle="single"
-          borderTop={true}
-          borderBottom={false}
-          borderLeft={false}
-          borderRight={false}
-          borderColor="subtle"
-        >
-          <Box flexDirection="row" justifyContent="space-between" width="100%">
-            <Text dimColor>
-              Esc/q close · Tab switch
-              {activeTab === 'Breakdown' && breakdownRows.length > VISIBLE_BREAKDOWN_ROWS ? (
-                <Text>
-                  {' '}
-                  · {canScrollUp ? '▲' : ' '} {canScrollDown ? '▼' : ' '} ↑↓/j/k scroll {scrollOffset + 1}-
-                  {Math.min(scrollOffset + VISIBLE_BREAKDOWN_ROWS, breakdownRows.length)} of {breakdownRows.length}
-                </Text>
-              ) : null}
+            <Text italic dimColor>
+              Estimated usage by category
             </Text>
+
+            <Box flexDirection="column" marginTop={1}>
+              {usageRows.map((row) => (
+                <CategoryUsageRow
+                  key={row.key}
+                  row={row}
+                  maxTokens={rawMaxTokens}
+                />
+              ))}
+            </Box>
           </Box>
         </Box>
       </Box>
-    </Pane>
+
+      <Box marginLeft={2}>
+        <Text dimColor>Esc/q close</Text>
+      </Box>
+    </Box>
   );
 }

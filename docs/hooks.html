@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hooks — Clew</title>
+  <meta name="description" content="Complete reference for Clew lifecycle hooks — PreToolUse, PostToolUse, PreBash, PrePrompt, Stop, and configuration schema.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+<header class="header"><div class="header-inner"><a href="index.html" class="logo"><span>Clew</span></a><nav class="header-nav"><a href="index.html">Home</a><a href="index.html#features">Features</a><a href="index.html#commands">Commands</a><a href="quick-start.html" class="active">Docs</a><a href="https://github.com/JonusNattapong/claudecode" target="_blank">GitHub</a></nav><button class="menu-btn" id="menuToggle" aria-label="Toggle navigation"><span></span><span></span><span></span></button></div></header>
+<div class="app"><aside class="sidebar" id="sidebar"></aside><div class="sidebar-overlay" id="sidebarOverlay"></div><main class="content">
+
+<h1>Hooks</h1>
+<p class="section-subtitle">Automate workflows by running shell commands before and after Clew actions.</p>
+
+<p>Hooks let you run shell commands automatically at key points in the agent lifecycle. They're configured in <code>~/.claude/settings.json</code> or <code>.claude/settings.json</code> at the project level.</p>
+
+<div class="callout callout-tip">
+  <strong>Use Cases</strong>
+  Auto-format code after every file edit, run lint before a commit, send notifications when a long task finishes, validate commands before execution, or enforce project rules.
+</div>
+
+<h2>Hook Events</h2>
+<table>
+  <tr><th>Event</th><th>When It Fires</th><th>Typical Use</th></tr>
+  <tr><td><code>PreToolUse</code></td><td>Before any tool executes</td><td>Validate input, block dangerous operations</td></tr>
+  <tr><td><code>PostToolUse</code></td><td>After any tool completes</td><td>Auto-format, run tests, send notifications</td></tr>
+  <tr><td><code>PreBash</code></td><td>Before a shell command runs</td><td>Audit commands, enforce allow/deny lists</td></tr>
+  <tr><td><code>PostBash</code></td><td>After a shell command completes</td><td>Log output, flag errors</td></tr>
+  <tr><td><code>PrePrompt</code></td><td>Before sending a prompt to the model</td><td>Inject context, modify the prompt</td></tr>
+  <tr><td><code>Stop</code></td><td>When a session ends</td><td>Cleanup, save summaries</td></tr>
+</table>
+
+<h2>Configuration</h2>
+<p>Hooks are defined in the <code>hooks</code> array of your settings file. Each hook specifies an event, a shell command, and optional filters.</p>
+
+<pre><code>{
+  "hooks": [
+    {
+      "matcher": {
+        "type": "PostToolUse",
+        "tool": "FileEditTool"
+      },
+      "command": "bun run format"
+    },
+    {
+      "matcher": {
+        "type": "PostToolUse",
+        "tool": "FileWriteTool"
+      },
+      "command": "bun run check --write src/"
+    },
+    {
+      "matcher": {
+        "type": "PreBash"
+      },
+      "command": "echo 'Running: $CLEW_COMMAND'"
+    }
+  ]
+}</code></pre>
+
+<h3>Matcher Configuration</h3>
+<table>
+  <tr><th>Field</th><th>Type</th><th>Description</th></tr>
+  <tr><td><code>type</code></td><td>string</td><td>Hook event name (see table above)</td></tr>
+  <tr><td><code>tool</code></td><td>string</td><td>(Optional) Filter by tool name, e.g. <code>FileEditTool</code>, <code>BashTool</code></td></tr>
+  <tr><td><code>glob</code></td><td>string</td><td>(Optional) Filter by file glob pattern, e.g. <code>src/**/*.ts</code></td></tr>
+</table>
+
+<div class="callout callout-info">
+  <strong>Environment Variables</strong>
+  Hooks receive context via environment variables: <code>$CLEW_TOOL</code>, <code>$CLEW_COMMAND</code>, <code>$CLEW_FILE</code>, and <code>$CLEW_RESULT</code>.
+</div>
+
+<h2>Async &amp; HTTP Hooks</h2>
+<p>Hooks can also be HTTP endpoints instead of shell commands. Use <code>"url"</code> + optional <code>"method"</code> in the hook config.</p>
+
+<pre><code>{
+  "hooks": [
+    {
+      "matcher": { "type": "PostToolUse" },
+      "url": "https://hooks.example.com/clew",
+      "method": "POST"
+    }
+  ]
+}</code></pre>
+
+<h2>Prompt Hooks</h2>
+<p>Prompt hooks (<code>PrePrompt</code>) receive the assembled prompt on stdin. The command can read, modify, and output a transformed prompt.</p>
+
+<pre><code>{
+  "hooks": [
+    {
+      "matcher": { "type": "PrePrompt" },
+      "command": "node scripts/inject-context.js"
+    }
+  ]
+}</code></pre>
+
+<h2>Best Practices</h2>
+<ul>
+  <li><strong>Keep hooks fast</strong> — slow hooks delay the agent loop. Aim for sub-second execution.</li>
+  <li><strong>Use project-level hooks</strong> — <code>.claude/settings.json</code> is shared with your team via git.</li>
+  <li><strong>Use global hooks</strong> — <code>~/.claude/settings.json</code> for personal automation that applies everywhere.</li>
+  <li><strong>Filter by tool</strong> — avoid running format on every tool; scope to <code>FileEditTool</code> and <code>FileWriteTool</code>.</li>
+  <li><strong>Test hooks independently</strong> — run the command manually before adding it as a hook.</li>
+</ul>
+
+<h2>Debugging Hooks</h2>
+<p>Use <code>/doctor</code> to check if your hooks are loaded correctly. Hook output is visible in debug mode:</p>
+
+<pre><code>DEBUG=1 clew</code></pre>
+
+<footer class="footer">
+  <span>Clew v2.1.178 — Open Source (MIT)</span>
+  <div class="footer-links">
+    <a href="https://github.com/JonusNattapong/claudecode">GitHub</a>
+    <a href="https://github.com/JonusNattapong/claudecode/issues">Issues</a>
+    <a href="https://npmjs.com/package/@jonusnattapong/claudecode">npm</a>
+  </div>
+</footer>
+</main></div>
+<script src="js/main.js"></script>
+</body>
+</html>

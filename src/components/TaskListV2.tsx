@@ -10,9 +10,22 @@ import { isAgentSwarmsEnabled } from '../utils/agentSwarmsEnabled.js';
 import { count } from '../utils/array.js';
 import { summarizeRecentActivities } from '../utils/collapseReadSearch.js';
 import { truncateToWidth } from '../utils/format.js';
+import { getGlobalConfig } from '../utils/config.js';
 import { isTodoV2Enabled, type Task } from '../utils/tasks.js';
 import type { Theme } from '../utils/theme.js';
 import ThemedText from './design-system/ThemedText.js';
+
+const SPINNER_TO_THEME: Record<string, keyof Theme> = {
+  autoAccept: 'autoAccept',
+  red: 'error',
+  blue: 'suggestion',
+  green: 'success',
+  yellow: 'warning',
+  cyan: 'info',
+  pink: 'permission',
+  orange: 'warning',
+  white: 'inverseText',
+};
 
 type Props = {
   tasks: Task[];
@@ -252,11 +265,13 @@ function getTaskIcon(status: Task['status']): {
   icon: string;
   color: keyof Theme | undefined;
 } {
+  const spinnerColor = getGlobalConfig().spinnerColor as string | undefined;
+  const taskColor = spinnerColor && spinnerColor !== 'default' ? (SPINNER_TO_THEME[spinnerColor] ?? 'claude') : 'claude';
   switch (status) {
     case 'completed':
       return { icon: figures.squareSmallFilled, color: 'success' };
     case 'in_progress':
-      return { icon: figures.squareSmallFilled, color: 'claude' };
+      return { icon: figures.squareSmallFilled, color: taskColor };
     case 'pending':
       return { icon: figures.squareSmall, color: undefined };
   }

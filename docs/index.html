@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Claudevil — Multi-Provider AI Coding Assistant</title>
-  <meta name="description" content="Terminal-based AI coding assistant with 15+ AI providers, 80+ slash commands, extensible plugin system.">
+  <title>Clew — Multi-Provider AI Coding Assistant</title>
+  <meta name="description" content="Terminal-based AI coding assistant with 27 AI providers, 110+ slash commands, extensible plugin system.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -17,7 +17,7 @@
   <div class="header-inner">
     <a href="index.html" class="logo">
       
-      <span>Claudevil</span>
+      <span>Clew</span>
     </a>
     <nav class="header-nav">
       <a href="index.html" class="active">Home</a>
@@ -45,7 +45,7 @@
     <section class="hero">
       <div class="hero-badge">
         <span class="dot"></span>
-        v2.1.165 — Multi-Provider AI CLI
+        v2.1.178 — Multi-Provider AI CLI
       </div>
       <h1>
         Code with<br>
@@ -72,12 +72,12 @@
         <span class="terminal-dot"></span>
         <span class="terminal-dot"></span>
         <span class="terminal-dot"></span>
-        <span class="terminal-title">claudevil — ~/project</span>
+        <span class="terminal-title">clew — ~/project</span>
       </div>
       <div class="terminal-body">
-        <span class="line"><span class="prompt">$</span> <span class="cmd">claudevil</span></span>
+        <span class="line"><span class="prompt">$</span> <span class="cmd">clew</span></span>
         <span class="line"><span class="output">╭──────────────────────────────────────────╮</span></span>
-        <span class="line"><span class="output">│ <span class="highlight-amber">Claudevil</span> · model: <span class="highlight-cyan">deepseek-v4-flash</span>  │</span></span>
+        <span class="line"><span class="output">│ <span class="highlight-amber">Clew</span> · model: <span class="highlight-cyan">deepseek-v4-flash</span>  │</span></span>
         <span class="line"><span class="output">│ provider: <span class="highlight-cyan">DeepSeek</span> · context: <span class="highlight-amber">78%</span>  │</span></span>
         <span class="line"><span class="output">╰──────────────────────────────────────────╯</span></span>
         <span class="line"><span class="prompt">></span> <span class="cmd">"find all unused exports in src/"</span></span>
@@ -92,7 +92,7 @@
         <div class="stat-label">AI Providers</div>
       </div>
       <div class="stat-card fade-up">
-        <div class="stat-number">80+</div>
+        <div class="stat-number">110+</div>
         <div class="stat-label">Slash Commands</div>
       </div>
       <div class="stat-card fade-up">
@@ -176,8 +176,8 @@
     <p class="section-subtitle">From zero to coding in under a minute.</p>
 
     <pre><code><span style="color:var(--orange-500)">$</span> <span style="color:var(--text-primary)">npm install -g @jonusnattapong/claudecode</span>
-<span style="color:var(--orange-500)">$</span> <span style="color:var(--text-primary)">export ANTHROPIC_API_KEY=sk-ant-...</span>
-<span style="color:var(--orange-500)">$</span> <span style="color:var(--text-primary)">claude</span>
+<span style="color:var(--orange-500)">$</span> <span style="color:var(--text-primary)">export OPENAI_API_KEY=sk-...</span>
+<span style="color:var(--orange-500)">$</span> <span style="color:var(--text-primary)">clew</span>
 
 <span style="color:var(--text-tertiary)"># Ask a question</span>
 <span style="color:var(--orange-500)">></span> <span style="color:var(--text-primary)">"find all unused exports in src/"</span>
@@ -192,7 +192,7 @@
 
     <!-- ─── Slash Commands ─── -->
     <h2 class="section-title" id="commands">Slash Commands</h2>
-    <p class="section-subtitle">80+ commands to control every aspect of your workflow.</p>
+    <p class="section-subtitle">110+ commands to control every aspect of your workflow.</p>
 
     <div class="scroll-wrap">
     <table>
@@ -207,7 +207,7 @@
         <tr><td><span style="color:var(--orange-400)">Config</span></td><td><code>/permissions</code> <code>/plan</code> <code>/config</code> <code>/theme</code></td><td>Settings and preferences</td></tr>
         <tr><td><span style="color:var(--orange-400)">Extend</span></td><td><code>/plugin</code> <code>/skill</code> <code>/agent</code> <code>/agents</code> <code>/mcp</code></td><td>Plugins, skills, agents, MCP</td></tr>
         <tr><td><span style="color:var(--orange-400)">Daemon</span></td><td><code>/daemon</code> <code>/task</code> <code>/loop</code></td><td>24/7 autonomous agent, task queue, and recurring tasks</td></tr>
-        <tr><td><span style="color:var(--orange-400)">Automation</span></td><td><code>/autofix-pr</code></td><td>Fix CI errors and review comments on a PR via Claudevil on the web</td></tr>
+        <tr><td><span style="color:var(--orange-400)">Automation</span></td><td><code>/autofix-pr</code></td><td>Fix CI errors and review comments on a PR via Clew on the web</td></tr>
         <tr><td><span style="color:var(--orange-400)">System</span></td><td><code>/help</code> <code>/status</code> <code>/doctor</code> <code>/exit</code></td><td>Help, diagnostics, and exit</td></tr>
       </tbody>
     </table>
@@ -223,15 +223,15 @@
         <tr><th>Provider</th><th>Config</th><th>Models</th></tr>
       </thead>
       <tbody>
-        <tr><td><span style="color:var(--teal-400)">Anthropic</span></td><td><code>ANTHROPIC_API_KEY</code></td><td>claude-opus-4, claude-sonnet-4</td></tr>
-        <tr><td><span style="color:var(--teal-400)">OpenAI</span></td><td><code>OPENAI_API_KEY</code></td><td>gpt-5.5-pro, gpt-5.5</td></tr>
-        <tr><td><span style="color:var(--teal-400)">Google</span></td><td><code>GOOGLE_API_KEY</code></td><td>gemini-3.1-pro, gemini-3.1-flash</td></tr>
+        <tr><td><span style="color:var(--teal-400)">Anthropic</span></td><td><code>ANTHROPIC_API_KEY</code></td><td>claude-opus-4-7, claude-sonnet-4-6</td></tr>
+        <tr><td><span style="color:var(--teal-400)">OpenAI</span></td><td><code>OPENAI_API_KEY</code></td><td>gpt-5.5, gpt-5.4</td></tr>
+        <tr><td><span style="color:var(--teal-400)">Google</span></td><td><code>GOOGLE_API_KEY</code></td><td>gemini-3.1-pro-preview, gemini-3.1-flash-lite</td></tr>
         <tr><td><span style="color:var(--teal-400)">DeepSeek</span></td><td><code>DEEPSEEK_API_KEY</code></td><td>deepseek-v4-pro, deepseek-v4-flash</td></tr>
         <tr><td><span style="color:var(--teal-400)">OpenRouter</span></td><td><code>OPENROUTER_API_KEY</code></td><td>100+ models</td></tr>
         <tr><td><span style="color:var(--teal-400)">Ollama</span></td><td><code>OLLAMA_HOST</code></td><td>Local models</td></tr>
-        <tr><td><span style="color:var(--teal-400)">xAI</span></td><td><code>XAI_API_KEY</code></td><td>grok-4</td></tr>
+        <tr><td><span style="color:var(--teal-400)">xAI</span></td><td><code>XAI_API_KEY</code></td><td>grok-4.3</td></tr>
         <tr><td><span style="color:var(--teal-400)">Mistral</span></td><td><code>MISTRAL_API_KEY</code></td><td>mistral-large-4</td></tr>
-        <tr><td><span style="color:var(--teal-400)">Groq</span></td><td><code>GROQ_API_KEY</code></td><td>llama-4-70b</td></tr>
+        <tr><td><span style="color:var(--teal-400)">Groq</span></td><td><code>GROQ_API_KEY</code></td><td>llama-3.3-70b</td></tr>
       </tbody>
     </table>
     </div>
@@ -263,13 +263,17 @@
     </div>
 
     <!-- ─── Changelog ─── -->
-    <h2 class="section-title" id="updates">v2.1.165 Updates</h2>
+    <h2 class="section-title" id="updates">What's New (v2.1.165 → v2.1.178)</h2>
     <ul>
-      <li><strong>Remote Control enabled by default</strong> — All sessions are now remote-control-ready without needing <code>/rc</code> or <code>--remote-control</code>. Set <code>"remoteControlAtStartup": false</code> in settings to opt out.</li>
-      <li><strong><code>/loop</code></strong> — Run a prompt on a recurring interval (<code>/loop 5m /check-deploy</code>). Previously gated behind a feature flag; now available to all users.</li>
-      <li><strong><code>/autofix-pr</code></strong> — Fix CI errors and address review comments on a PR via a remote Claudevil on the web session.</li>
-      <li><strong><code>/plugin-details</code></strong> — Show component inventory (skills, commands, hooks, MCP servers) and estimated per-session token cost for any installed plugin.</li>
-      <li><strong>Interactive Argument Ghost Text</strong> — Parameter hints now render as inline dim text after the cursor. Press <kbd>Tab</kbd> or <kbd>→</kbd> to accept and fill placeholders like <code>[condition]</code>.</li>
+      <li><strong>LogoV2 Components Upgrade</strong> — Redesigned terminal UI with React 19 dev/prod JSX mismatch resolution across all logo components.</li>
+      <li><strong>Mascot Horns Customization</strong> — <code>/color</code> now includes a toggle to show/hide mascot horns with custom color support.</li>
+      <li><strong><code>/reload-skills</code></strong> — New command to re-scan and reload all skills (project, user, plugin, bundled) without restarting.</li>
+      <li><strong><code>/reload-plugins</code></strong> — Refresh plugin configuration and activate pending changes in the current session.</li>
+      <li><strong>Default Provider: OpenAI</strong> — New default provider. Switch anytime with <code>/model</code> or configure via <code>~/.clawdbot/moltbot.json</code>.</li>
+      <li><strong>Windows Auto-Updater Fix</strong> — Improved binary resolution and Bun command discovery for global installs on Windows.</li>
+      <li><strong>Voice Integration &amp; Autonomous Execution</strong> — Updated voice mode, autonomous components, logo styling, and TUI keypress handling.</li>
+      <li><strong>Interactive Argument Ghost Text</strong> — Parameter hints render as inline dim text. Press <kbd>Tab</kbd> or <kbd>→</kbd> to accept and fill placeholders.</li>
+      <li><strong><code>/loop</code></strong> — Run a prompt on a recurring interval (<code>/loop 5m /check-deploy</code>). Available to all users.</li>
     </ul>
 
     <div style="margin-top:var(--space-lg)">
@@ -278,7 +282,7 @@
 
     <!-- ─── Footer ─── -->
     <footer class="footer">
-      <span>Claudevil v2.1.165 — Open Source (MIT)</span>
+      <span>Clew v2.1.178 — Open Source (MIT)</span>
       <div class="footer-links">
         <a href="https://github.com/JonusNattapong/claudecode">GitHub</a>
         <a href="https://github.com/JonusNattapong/claudecode/issues">Issues</a>

@@ -667,13 +667,25 @@ export async function* runAgent({
   // Track the last recorded message UUID for parent chain continuity
   let lastRecordedUuid: UUID | null = initialMessages.at(-1)?.uuid ?? null;
 
+  // Wrap canUseTool to prevent crashes from stale permission prompts after subagent cancellation.
+  // When the agent is aborted, permission requests are auto-denied instead of crashing.
+  const safeCanUseTool = (...args: Parameters<typeof canUseTool>): ReturnType<typeof canUseTool> => {
+    if (agentAbortController.signal.aborted) {
+      return Promise.resolve({
+        behavior: 'deny',
+        reason: 'Agent has been cancelled',
+      }) as ReturnType<typeof canUseTool>;
+    }
+    return canUseTool(...args);
+  };
+
   try {
     for await (const message of query({
       messages: initialMessages,
       systemPrompt: agentSystemPrompt,
       userContext: resolvedUserContext,
       systemContext: resolvedSystemContext,
-      canUseTool,
+      canUseTool: safeCanUseTool,
       toolUseContext: agentToolUseContext,
       querySource,
       maxTurns: maxTurns ?? agentDefinition.maxTurns,

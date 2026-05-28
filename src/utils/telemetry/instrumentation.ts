@@ -408,6 +408,11 @@ export async function initializeTelemetry() {
     [ATTR_SERVICE_VERSION]: MACRO.VERSION,
   };
 
+  // Add session entrypoint as OTEL metric attribute (opt-in)
+  if (isEnvTruthy(process.env.OTEL_METRICS_INCLUDE_ENTRYPOINT)) {
+    baseAttributes['app.entrypoint'] = process.env.CLAUDE_CODE_ENTRYPOINT || 'cli';
+  }
+
   // Add WSL-specific attributes if running on WSL
   if (platform === 'wsl') {
     const wslVersion = getWslVersion();

@@ -3,51 +3,51 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Providers — Claudevil</title>
-  <meta name="description" content="Complete AI provider reference for Claudevil — 27 supported providers with configuration and capabilities.">
+  <title>Providers — Clew</title>
+  <meta name="description" content="Complete AI provider reference for Clew — 27 supported providers with configuration and capabilities.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
-<header class="header"><div class="header-inner"><a href="index.html" class="logo"><span>Claudevil</span></a><nav class="header-nav"><a href="index.html">Home</a><a href="index.html#features">Features</a><a href="index.html#commands">Commands</a><a href="quick-start.html" class="active">Docs</a><a href="https://github.com/JonusNattapong/claudecode" target="_blank">GitHub</a></nav><button class="menu-btn" id="menuToggle" aria-label="Toggle navigation"><span></span><span></span><span></span></button></div></header>
+<header class="header"><div class="header-inner"><a href="index.html" class="logo"><span>Clew</span></a><nav class="header-nav"><a href="index.html">Home</a><a href="index.html#features">Features</a><a href="index.html#commands">Commands</a><a href="quick-start.html" class="active">Docs</a><a href="https://github.com/JonusNattapong/claudecode" target="_blank">GitHub</a></nav><button class="menu-btn" id="menuToggle" aria-label="Toggle navigation"><span></span><span></span><span></span></button></div></header>
 <div class="app"><aside class="sidebar" id="sidebar"></aside><div class="sidebar-overlay" id="sidebarOverlay"></div><main class="content">
   <h1>Providers</h1>
-  <p class="section-subtitle">Claudevil supports <strong>27 AI providers</strong> with a unified adapter layer. Set your API keys as environment variables and switch between providers at runtime with <code>/model</code>.</p>
+  <p class="section-subtitle">Clew supports <strong>27 AI providers</strong> with a unified adapter layer. Set your API keys as environment variables and switch between providers at runtime with <code>/model</code>.</p>
 
   <p>Provider configuration is declared in <code>src/services/ai/providers.json</code>. The <strong>ProviderManager</strong> resolves API keys, selects models, and manages provider config. Non-Anthropic providers are normalized via the <strong>AnthropicAdapter</strong> or <strong>GoogleAdapter</strong>.</p>
 
   <h2>All Providers</h2>
   <table>
     <tr><th>Provider</th><th>Env Key</th><th>Default Model</th><th>Notes</th></tr>
-    <tr><td>Anthropic</td><td><code>ANTHROPIC_API_KEY</code></td><td>claude-sonnet-4-7</td><td>Native Claude support with full tool calling and reasoning. Context: 1M tokens.</td></tr>
+    <tr><td>Anthropic</td><td><code>ANTHROPIC_API_KEY</code></td><td>claude-opus-4-7</td><td>Native Claude support with full tool calling and reasoning. Context: 1M tokens.</td></tr>
     <tr><td>OpenAI</td><td><code>OPENAI_API_KEY</code></td><td>gpt-5.5</td><td>GPT-5.5, GPT-5.5 Pro, GPT-5.4 Mini. Context: 1M+ tokens.</td></tr>
-    <tr><td>Google</td><td><code>GOOGLE_API_KEY</code></td><td>gemini-3.1-flash</td><td>Gemini 3.1 Flash, Pro. Context: up to 2M tokens. Uses GoogleAdapter.</td></tr>
+    <tr><td>Google</td><td><code>GOOGLE_API_KEY</code></td><td>gemini-3.1-pro-preview</td><td>Gemini 3.1 Pro Preview, Flash. Context: up to 2M tokens. Uses GoogleAdapter.</td></tr>
     <tr><td>GitHub Copilot</td><td><code>COPILOT_GITHUB_TOKEN</code></td><td>gpt-5.5</td><td>Access via GitHub token. Includes Claude and GPT models. Context: 1M tokens.</td></tr>
-    <tr><td>OpenRouter</td><td><code>OPENROUTER_API_KEY</code></td><td>—</td><td>100+ models via routed API. OpenAI-compatible.</td></tr>
+    <tr><td>OpenRouter</td><td><code>OPENROUTER_API_KEY</code></td><td>anthropic/claude-opus-4.7</td><td>100+ models via routed API. OpenAI-compatible.</td></tr>
     <tr><td>DeepSeek</td><td><code>DEEPSEEK_API_KEY</code></td><td>deepseek-v4-pro</td><td>DeepSeek V4 Pro, V4 Flash. Context: 1M tokens. MoE architecture.</td></tr>
     <tr><td>OpenCode</td><td><code>OPENCODE_API_KEY</code></td><td>claude-opus-4-7</td><td>OpenCode AI gateway. OpenAI-compatible. Includes Claude, GPT, Gemini, Kimi, GLM, MiniMax.</td></tr>
-    <tr><td>OpenCode Go</td><td><code>OPENCODE_GO_API_KEY</code></td><td>minimax-m2.7</td><td>Low cost subscription tier for open coding models.</td></tr>
+    <tr><td>OpenCode Go</td><td><code>OPENCODE_GO_API_KEY</code></td><td>deepseek-v4-flash</td><td>Low cost subscription tier for open coding models.</td></tr>
     <tr><td>Cline API</td><td><code>CLINE_API_KEY</code></td><td>anthropic/claude-opus-4-7</td><td>OpenAI-compatible. Model IDs format: provider/model-name.</td></tr>
-    <tr><td>Groq</td><td><code>GROQ_API_KEY</code></td><td>—</td><td>Llama 4 70B, 8B. Fast inference. Context: 128K tokens.</td></tr>
-    <tr><td>xAI</td><td><code>XAI_API_KEY</code></td><td>grok-4-20</td><td>Grok 4.20, Grok 4. Context: 128K tokens. Vision and tool calling.</td></tr>
+    <tr><td>Groq</td><td><code>GROQ_API_KEY</code></td><td>llama-3.3-70b-versatile</td><td>Llama models. Fast inference. Context: 128K tokens.</td></tr>
+    <tr><td>xAI</td><td><code>XAI_API_KEY</code></td><td>grok-4.3</td><td>Grok 4.3, Grok 4. Context: 128K tokens. Vision and tool calling.</td></tr>
     <tr><td>Mistral</td><td><code>MISTRAL_API_KEY</code></td><td>mistral-small-latest</td><td>Mistral Large 4, Small 4, Ministral 3 14B. Tool calling and vision support.</td></tr>
-    <tr><td>KiloCode</td><td><code>KILOCODE_API_KEY</code></td><td>kilo-auto/free</td><td>Gateway with 500+ models. Includes free tier.</td></tr>
+    <tr><td>KiloCode</td><td><code>KILOCODE_API_KEY</code></td><td>kilo-auto/balanced</td><td>Gateway with 500+ models. Includes free tier.</td></tr>
     <tr><td>Ollama (Local)</td><td><code>OLLAMA_API_KEY</code></td><td>llama3.3</td><td>Local models via Ollama server at <code>http://localhost:11434/v1</code>. Offline-capable.</td></tr>
-    <tr><td>Together AI</td><td><code>TOGETHER_API_KEY</code></td><td>—</td><td>Llama 4 models. OpenAI-compatible.</td></tr>
-    <tr><td>Fireworks AI</td><td><code>FIREWORKS_API_KEY</code></td><td>—</td><td>Llama 4 70B. Fast inference.</td></tr>
-    <tr><td>NVIDIA NIM</td><td><code>NVIDIA_API_KEY</code></td><td>—</td><td>NVIDIA AI Foundation Models. DeepSeek, Llama 3.1, Nemotron.</td></tr>
-    <tr><td>Cohere</td><td><code>COHERE_API_KEY</code></td><td>command-r-plus</td><td>Command R+ model. 128K context. No vision.</td></tr>
-    <tr><td>Deep Infra</td><td><code>DEEPINFRA_API_KEY</code></td><td>—</td><td>OpenAI-compatible gateway. Llama 4 Scout with 327K context.</td></tr>
-    <tr><td>Perplexity</td><td><code>PERPLEXITY_API_KEY</code></td><td>—</td><td>Sonar Huge Online. No tool calling support.</td></tr>
-    <tr><td>Cerebras</td><td><code>CEREBRAS_API_KEY</code></td><td>—</td><td>Wafer-Scale Engine. Extremely fast inference. Qwen 3 235B.</td></tr>
-    <tr><td>SiliconFlow</td><td><code>SILICONFLOW_API_KEY</code></td><td>—</td><td>China-based AI platform. DeepSeek V4 Pro and Flash.</td></tr>
-    <tr><td>Moonshot AI (Kimi)</td><td><code>MOONSHOT_API_KEY</code></td><td>kimi-latest</td><td>Kimi models. 128K context. Vision and tool calling.</td></tr>
-    <tr><td>Zhipu AI (GLM)</td><td><code>ZHIPU_API_KEY</code></td><td>glm-4</td><td>GLM-4 model. 128K context.</td></tr>
-    <tr><td>Hugging Face</td><td><code>HUGGINGFACE_API_KEY</code></td><td>—</td><td>Inference API. Llama 3.1 70B. No tool calling.</td></tr>
-    <tr><td>Poe</td><td><code>POE_API_KEY</code></td><td>—</td><td>OpenAI-compatible gateway. Claude 3.7 Sonnet available.</td></tr>
-    <tr><td>DigitalOcean</td><td><code>DIGITALOCEAN_API_KEY</code></td><td>—</td><td>Serverless Inference. Llama 3.1 70B.</td></tr>
+    <tr><td>Together AI</td><td><code>TOGETHER_API_KEY</code></td><td>deepseek-ai/DeepSeek-V4-Pro</td><td>DeepSeek V4, Llama models. OpenAI-compatible.</td></tr>
+    <tr><td>Fireworks AI</td><td><code>FIREWORKS_API_KEY</code></td><td>llama-v4-70b-instruct</td><td>Llama 4 70B. Fast inference.</td></tr>
+    <tr><td>NVIDIA NIM</td><td><code>NVIDIA_API_KEY</code></td><td>deepseek-ai/deepseek-v4-pro</td><td>NVIDIA AI Foundation Models. DeepSeek, Llama 3.1, Nemotron.</td></tr>
+    <tr><td>Cohere</td><td><code>COHERE_API_KEY</code></td><td>command-a-plus-05-2026</td><td>Command A+ model. 128K context. No vision.</td></tr>
+    <tr><td>Deep Infra</td><td><code>DEEPINFRA_API_KEY</code></td><td>meta-llama/Llama-4-Scout-17B</td><td>OpenAI-compatible gateway. Llama 4 Scout with 327K context.</td></tr>
+    <tr><td>Perplexity</td><td><code>PERPLEXITY_API_KEY</code></td><td>sonar-pro</td><td>Sonar Pro Online. No tool calling support.</td></tr>
+    <tr><td>Cerebras</td><td><code>CEREBRAS_API_KEY</code></td><td>qwen/Qwen-3-235B-Instruct</td><td>Wafer-Scale Engine. Extremely fast inference. Qwen 3 235B.</td></tr>
+    <tr><td>SiliconFlow</td><td><code>SILICONFLOW_API_KEY</code></td><td>deepseek-ai/DeepSeek-V4-Pro</td><td>China-based AI platform. DeepSeek V4 Pro and Flash.</td></tr>
+    <tr><td>Moonshot AI (Kimi)</td><td><code>MOONSHOT_API_KEY</code></td><td>moonshotai/kimi-k2.6</td><td>Kimi K2.6 models. 128K context. Vision and tool calling.</td></tr>
+    <tr><td>Zhipu AI (GLM)</td><td><code>ZHIPU_API_KEY</code></td><td>glm-4.7</td><td>GLM-4.7 model. 128K context.</td></tr>
+    <tr><td>Hugging Face</td><td><code>HUGGINGFACE_API_KEY</code></td><td>meta-llama/Llama-3.3-70B-Instruct</td><td>Inference API. Llama 3.3 70B. No tool calling.</td></tr>
+    <tr><td>Poe</td><td><code>POE_API_KEY</code></td><td>claude-3-7-sonnet</td><td>OpenAI-compatible gateway. Claude 3.7 Sonnet available.</td></tr>
+    <tr><td>DigitalOcean</td><td><code>DIGITALOCEAN_API_KEY</code></td><td>llama3.3-70b-instruct</td><td>Serverless Inference. Llama 3.3 70B.</td></tr>
   </table>
 
   <h2>Provider Selection</h2>
@@ -92,14 +92,14 @@
   <pre><code># Ollama — fully offline
 export OLLAMA_API_KEY=ollama  # (any non-empty value)
 export OLLAMA_HOST=http://localhost:11434
-claudevil
+clew
 > /model ollama/llama4:70b
 
 # Debug specific provider
-DEBUG=provider:anthropic claudevil</code></pre>
+DEBUG=provider:anthropic clew</code></pre>
 
   <footer class="footer">
-    <span>Claudevil v2.1.165 — Open Source (MIT)</span>
+    <span>Clew v2.1.178 — Open Source (MIT)</span>
     <div class="footer-links">
       <a href="https://github.com/JonusNattapong/claudecode">GitHub</a>
       <a href="https://github.com/JonusNattapong/claudecode/issues">Issues</a>

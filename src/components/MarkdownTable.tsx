@@ -218,7 +218,10 @@ export function MarkdownTable({ token, highlight, forceWidth }: Props): React.Re
         const width_0 = columnWidths[colIndex_2]!;
         // Headers always centered; data uses table alignment
         const align = isHeader ? 'center' : (token.align?.[colIndex_2] ?? 'left');
-        line += ' ' + padAligned(lineText, stringWidth(lineText), width_0, align) + ' │';
+        // Reset ANSI styles at cell boundary to prevent inline code colors
+        // from bleeding into cell border characters
+        const resetAnsi = '\x1b[0m';
+        line += ' ' + padAligned(lineText + resetAnsi, stringWidth(lineText), width_0, align) + ' │';
       }
       result.push(line);
     }
@@ -253,7 +256,8 @@ export function MarkdownTable({ token, highlight, forceWidth }: Props): React.Re
         lines_2.push(separator);
       }
       row_2.forEach((cell_0, colIndex_4) => {
-        const label = headers[colIndex_4] || `Column ${colIndex_4 + 1}`;
+        const label = headers[colIndex_4] || '';
+        // Skip empty header labels — don't show a fallback "Column N" label in stacked layout
         // Clean value: trim, remove extra internal whitespace/newlines
         const rawValue = formatCell(cell_0.tokens).trimEnd();
         const value = rawValue.replace(/\n+/g, ' ').replace(/\s+/g, ' ').trim();
@@ -279,8 +283,12 @@ export function MarkdownTable({ token, highlight, forceWidth }: Props): React.Re
           wrappedValue = [firstLine, ...rewrapped];
         }
 
-        // First line: bold label + value
-        lines_2.push(`${ANSI_BOLD_START}${label}:${ANSI_BOLD_END} ${wrappedValue[0] || ''}`);
+        // First line: bold label + value (skip label formatting if header is empty)
+        if (label) {
+          lines_2.push(`${ANSI_BOLD_START}${label}:${ANSI_BOLD_END} ${wrappedValue[0] || ''}`);
+        } else {
+          lines_2.push(`${wrappedValue[0] || ''}`);
+        }
 
         // Subsequent lines with small indent (skip empty lines)
         for (let i_3 = 1; i_3 < wrappedValue.length; i_3++) {

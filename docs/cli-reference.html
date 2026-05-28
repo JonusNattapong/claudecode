@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CLI Reference — Clew</title>
+  <meta name="description" content="Complete reference for the Clew command-line interface — flags, options, and usage patterns.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+<header class="header"><div class="header-inner"><a href="index.html" class="logo"><span>Clew</span></a><nav class="header-nav"><a href="index.html">Home</a><a href="index.html#features">Features</a><a href="index.html#commands">Commands</a><a href="quick-start.html" class="active">Docs</a><a href="https://github.com/JonusNattapong/claudecode" target="_blank">GitHub</a></nav><button class="menu-btn" id="menuToggle" aria-label="Toggle navigation"><span></span><span></span><span></span></button></div></header>
+<div class="app"><aside class="sidebar" id="sidebar"></aside><div class="sidebar-overlay" id="sidebarOverlay"></div><main class="content">
+
+<h1>CLI Reference</h1>
+<p class="section-subtitle">Flags, options, and usage patterns for the <code>clew</code> command.</p>
+
+<h2>Usage</h2>
+<pre><code>clew [flags] [prompt]
+
+# Run interactively
+clew
+
+# Run with an initial prompt
+clew "explain this project"
+
+# Pipe input from another command
+cat errors.log | clew -p "summarize these errors"</code></pre>
+
+<h2>Flags</h2>
+<table>
+  <tr><th>Flag</th><th>Description</th></tr>
+  <tr><td><code>-p, --print &lt;prompt&gt;</code></td><td>Non-interactive print mode. Pass a prompt directly or pipe input via stdin</td></tr>
+  <tr><td><code>-c, --continue</code></td><td>Continue the most recent session</td></tr>
+  <tr><td><code>-r, --resume</code></td><td>Show picker to resume a saved session</td></tr>
+  <tr><td><code>--model &lt;name&gt;</code></td><td>Set the model at startup (e.g. <code>--model deepseek-v4-pro</code>)</td></tr>
+  <tr><td><code>--provider &lt;name&gt;</code></td><td>Set the provider at startup (e.g. <code>--provider openai</code>)</td></tr>
+  <tr><td><code>--debug</code></td><td>Enable debug logging</td></tr>
+  <tr><td><code>--verbose</code></td><td>Enable verbose output</td></tr>
+  <tr><td><code>--no-autoupdate</code></td><td>Disable auto-update checks</td></tr>
+  <tr><td><code>--from-pr &lt;url&gt;</code></td><td>Resume the session that created a given PR</td></tr>
+  <tr><td><code>--output-format &lt;fmt&gt;</code></td><td>Output format for print mode: <code>text</code> (default), <code>json</code>, <code>markdown</code></td></tr>
+  <tr><td><code>--skip-permission-check</code></td><td>Skip initial permission system verification</td></tr>
+  <tr><td><code>-v, --version</code></td><td>Show version and exit</td></tr>
+  <tr><td><code>--help</code></td><td>Show help and exit</td></tr>
+</table>
+
+<h2>Print Mode</h2>
+<p>Non-interactive mode for scripting, CI/CD, and piping:</p>
+
+<pre><code># Simple query
+clew -p "find all unused exports in src/"
+
+# Pipe from stdin
+cat test-output.log | clew -p "find failures and suggest fixes"
+
+# Structured output
+clew -p --output-format json "list all dependencies"
+
+# Pipe to jq for processing
+clew -p "list all TypeScript errors" | jq '.errors'</code></pre>
+
+<h2>Remote &amp; Bridge</h2>
+<table>
+  <tr><th>Flag</th><th>Description</th></tr>
+  <tr><td><code>--teleport</code></td><td>Pull a remote session from claude.ai/code into your local terminal</td></tr>
+  <tr><td><code>--bridge</code></td><td>Start in bridge mode for remote collaboration</td></tr>
+</table>
+
+<pre><code># Pull a cloud session to your terminal
+clew --teleport
+
+# Start bridge mode
+clew --bridge</code></pre>
+
+<h2>Subcommands</h2>
+<table>
+  <tr><th>Command</th><th>Description</th></tr>
+  <tr><td><code>clew provider</code></td><td>Manage provider configuration</td></tr>
+  <tr><td><code>clew mcp</code></td><td>Manage MCP servers</td></tr>
+  <tr><td><code>clew agents</code></td><td>Open the agent view dashboard</td></tr>
+</table>
+
+<h2>Environment</h2>
+<p>See <a href="env-vars.html">Environment Variables</a> for the full reference of environment variables that control Clew behavior.</p>
+
+<footer class="footer">
+  <span>Clew v2.1.178 — Open Source (MIT)</span>
+  <div class="footer-links">
+    <a href="https://github.com/JonusNattapong/claudecode">GitHub</a>
+    <a href="https://github.com/JonusNattapong/claudecode/issues">Issues</a>
+    <a href="https://npmjs.com/package/@jonusnattapong/claudecode">npm</a>
+  </div>
+</footer>
+</main></div>
+<script src="js/main.js"></script>
+</body>
+</html>

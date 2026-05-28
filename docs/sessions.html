@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sessions — Clew</title>
+  <meta name="description" content="Session management in Clew — /session, /resume, /rewind, /rename, --continue, --resume, and session transcripts.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+<header class="header"><div class="header-inner"><a href="index.html" class="logo"><span>Clew</span></a><nav class="header-nav"><a href="index.html">Home</a><a href="index.html#features">Features</a><a href="index.html#commands">Commands</a><a href="quick-start.html" class="active">Docs</a><a href="https://github.com/JonusNattapong/claudecode" target="_blank">GitHub</a></nav><button class="menu-btn" id="menuToggle" aria-label="Toggle navigation"><span></span><span></span><span></span></button></div></header>
+<div class="app"><aside class="sidebar" id="sidebar"></aside><div class="sidebar-overlay" id="sidebarOverlay"></div><main class="content">
+
+<h1>Sessions</h1>
+<p class="section-subtitle">Name, save, resume, and manage your Clew conversations.</p>
+
+<p>Clew automatically saves every conversation as a session transcript. You can name sessions for easy recall, resume them later, branch from a checkpoint, or rewind to a previous state.</p>
+
+<h2>Session Commands</h2>
+<table>
+  <tr><th>Command</th><th>Description</th></tr>
+  <tr><td><code>/session</code></td><td>Show current session info — name, ID, start time, context usage</td></tr>
+  <tr><td><code>/session share</code></td><td>Generate a QR code for remote session sharing (bridge mode)</td></tr>
+  <tr><td><code>/rename &lt;name&gt;</code></td><td>Rename the current conversation</td></tr>
+  <tr><td><code>/resume</code></td><td>Open an interactive picker of saved sessions to resume</td></tr>
+  <tr><td><code>/rewind</code></td><td>Restore code and/or conversation to a previous point</td></tr>
+  <tr><td><code>/branch</code></td><td>Create a branch of the current conversation at this point</td></tr>
+  <tr><td><code>/copy [N]</code></td><td>Copy the last response to clipboard (or Nth latest)</td></tr>
+  <tr><td><code>/export</code></td><td>Export current conversation to a file or clipboard</td></tr>
+  <tr><td><code>/recap</code></td><td>Show a summary of the session when you return to it</td></tr>
+  <tr><td><code>/clear</code></td><td>Clear conversation history and free up context window</td></tr>
+</table>
+
+<h2>CLI Flags</h2>
+<table>
+  <tr><th>Flag</th><th>Description</th></tr>
+  <tr><td><code>-c, --continue</code></td><td>Continue the most recent session</td></tr>
+  <tr><td><code>-r, --resume</code></td><td>Show interactive picker to resume a saved session</td></tr>
+  <tr><td><code>--from-pr &lt;url&gt;</code></td><td>Resume the session that created a given PR</td></tr>
+</table>
+
+<pre><code># Continue last session
+clew -c
+
+# Resume a specific session
+clew -r
+
+# Resume session from a PR URL
+clew --from-pr https://github.com/org/repo/pull/123</code></pre>
+
+<h2>Session Transcripts</h2>
+<p>Session transcripts are saved to <code>~/.claude/projects/&lt;project-hash&gt;/transcripts/</code>. Each transcript is a JSON file that stores the full conversation history, tool results, and metadata.</p>
+
+<ul>
+  <li><strong>Auto-save</strong> — transcripts are saved continuously during a session</li>
+  <li><strong>Naming</strong> — unnamed sessions get a timestamp-based name; rename with <code>/rename</code></li>
+  <li><strong>Search</strong> — use <code>bun run session list</code> to browse all saved sessions</li>
+  <li><strong>Storage</strong> — transcripts persist across machine restarts</li>
+</ul>
+
+<h2>Session Branching</h2>
+<p>Use <code>/branch</code> to create a fork of the current conversation. This saves the entire conversation state up to that point as a new named session, letting you explore alternative approaches without losing context.</p>
+
+<pre><code>> /branch experiment-auth-refactor
+> "try a different approach to the auth rewrite"</code></pre>
+
+<h2>Rewind</h2>
+<p><code>/rewind</code> restores the codebase and/or conversation to an earlier state. You can choose:</p>
+<ul>
+  <li><strong>Code only</strong> — revert file changes without losing conversation context</li>
+  <li><strong>Conversation only</strong> — restore the conversation to a previous point</li>
+  <li><strong>Both</strong> — rewind everything to a checkpoint</li>
+</ul>
+
+<h2>Session Bridge</h2>
+<p>Clew supports remote session sharing via WebSocket bridge. Generate a QR code with <code>/session share</code> to let another developer view your session in real time, or use <code>/bridge</code> to configure persistent remote collaboration.</p>
+
+<p>See <a href="features/bridge-mode.html">Bridge Mode</a> for details.</p>
+
+<footer class="footer">
+  <span>Clew v2.1.178 — Open Source (MIT)</span>
+  <div class="footer-links">
+    <a href="https://github.com/JonusNattapong/claudecode">GitHub</a>
+    <a href="https://github.com/JonusNattapong/claudecode/issues">Issues</a>
+    <a href="https://npmjs.com/package/@jonusnattapong/claudecode">npm</a>
+  </div>
+</footer>
+</main></div>
+<script src="js/main.js"></script>
+</body>
+</html>

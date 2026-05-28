@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Changelog — Clew</title>
+  <meta name="description" content="Version history and release notes for Clew.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+<header class="header"><div class="header-inner"><a href="index.html" class="logo"><span>Clew</span></a><nav class="header-nav"><a href="index.html">Home</a><a href="index.html#features">Features</a><a href="index.html#commands">Commands</a><a href="quick-start.html" class="active">Docs</a><a href="https://github.com/JonusNattapong/claudecode" target="_blank">GitHub</a></nav><button class="menu-btn" id="menuToggle" aria-label="Toggle navigation"><span></span><span></span><span></span></button></div></header>
+<div class="app"><aside class="sidebar" id="sidebar"></aside><div class="sidebar-overlay" id="sidebarOverlay"></div><main class="content">
+  <h1>Changelog</h1>
+  <p class="section-subtitle">All notable changes to Clew, following a practical changelog format.</p>
+
+  <p>Categories: <strong>Added</strong> (new capabilities), <strong>Changed</strong> (behavior/UX), <strong>Fixed</strong> (bug fixes), <strong>Security</strong> (permission/sandbox/auth hardening), <strong>Internal</strong> (tests/types/refactors), <strong>Removed</strong> (deprecated features).</p>
+
+  <!-- 2.1.179 -->
+  <h2 id="v2.1.179"><a href="#v2.1.179">2.1.179</a> — 2026-05-28</h2>
+
+  <h3>Added</h3>
+  <ul>
+    <li><strong>Npm global install auto-update notice</strong> — One-time notice when CLI detects npm global install lacks write permissions for auto-update. Notice resets after a successful update. Shows remediation link and suggests native installation.</li>
+    <li><strong><code>/doctor</code> last update attempt</strong> — Doctor screen now displays the result of the most recent update attempt (status, channel, version, error, install type) with human-readable age and recovery hints.</li>
+    <li><strong>Unified release channel resolver</strong> — <code>resolveReleaseChannel()</code> is the single source of truth for channel resolution across all update paths (CLI, auto-updater, native installer).</li>
+    <li><strong><code>COLUMNS</code>/<code>LINES</code> in status line env</strong> — Status line commands now receive terminal dimensions, allowing scripts to adapt output width.</li>
+    <li><strong>MCP progress in collapsed tool view</strong> — Collapsed tool rows display MCP progress notifications (message or percentage) alongside the MCP server name.</li>
+    <li><strong>Agent view dispatch autocomplete</strong> — Typing <code>/</code> in agent dispatch input shows autocomplete from slash commands, skills, and plugins with source labels (<code>[cmd]</code>, <code>[bundled]</code>, <code>[skill]</code>, <code>[plugin]</code>).</li>
+    <li><strong>Agent view skill dispatch</strong> — Dispatch input recognizes <code>/skill-name</code> syntax. Project skills take priority when names collide.</li>
+    <li><strong><code>skipLfs</code> for plugin marketplace sources</strong> — GitHub and Git marketplace sources support <code>skipLfs: true</code> to skip Git LFS downloads during clone/pull.</li>
+  </ul>
+
+  <h3>Changed</h3>
+  <ul>
+    <li><strong>Narrow terminal help wrapping</strong> — <code>--help</code> output uses actual terminal width (minimum 60 columns).</li>
+    <li><strong>Responsive help menu</strong> — <code>PromptInputHelpMenu</code> switches to vertical stacked layout when terminal width is below 80 columns.</li>
+    <li><strong>Agent view PR column</strong> — Shows <code>PR #123</code> for single PR, <code>3 PRs</code> for multiple.</li>
+    <li><strong>Welcome frame tracks mascot body color</strong> — Welcome screen border uses the same color as the Clawd mascot body (customizable via <code>/color</code> → Mascot tab).</li>
+  </ul>
+
+  <h3>Fixed</h3>
+  <ul>
+    <li><strong>Clickable <code>file://</code> link normalization</strong> — Added <code>normalizeFileUrl()</code> that fixes malformed <code>file://</code> URLs (Windows paths, missing third slash, spaces).</li>
+    <li><strong>Remote Control zombie session cleanup</strong> — Agent view marks sessions as detached on unmount and runs periodic cleanup of stale remote-control sessions.</li>
+    <li><strong>Windows installer recovery instructions</strong> — Native installer post-install verification includes platform-specific recovery hints.</li>
+  </ul>
+
+  <!-- 2.1.173 -->
+  <h2 id="v2.1.173"><a href="#v2.1.173">2.1.173</a> — 2026-05-26</h2>
+
+  <h3>Fixed</h3>
+  <ul>
+    <li><strong>Windows interactive startup keepalive</strong> — Replace the Bun/Windows stdin <code>ref()</code> no-op shim with a real keepalive handle so the interactive TUI does not return to PowerShell immediately.</li>
+  </ul>
+
+  <!-- 2.1.158 -->
+  <h2 id="v2.1.158"><a href="#v2.1.158">2.1.158</a> — 2026-05-23</h2>
+
+  <h3>Added</h3>
+  <ul>
+    <li><strong>GFM Task List Checkboxes</strong> — Markdown output renders <code>- [ ] todo</code> / <code>- [x] done</code> as checkboxes instead of plain bullets.</li>
+    <li><strong>Diff keyboard scrolling</strong> — <code>/diff detail</code> supports PgUp/PgDn, Home/End, vim-style j/k, Space, and arrow keys.</li>
+    <li><strong><code>/usage</code> contributing factors</strong> — "What's contributing to your limits usage?" breakdown section from API data.</li>
+    <li><strong><code>/recap</code> command</strong> — New command for session recap functionality.</li>
+    <li><strong>Agent view CLI</strong> — <code>/agents</code> opens interactive agent view with <code>--cwd</code>, <code>--config</code>/<code>--manage</code> options. Supports <code>--json</code>.</li>
+  </ul>
+
+  <h3>Changed</h3>
+  <ul>
+    <li><strong>LogoV2 rebranding</strong> — Updated all logo components with refined visuals.</li>
+    <li><strong>Agent dashboard redesign</strong> — Refactored to use design system components (Dialog, Tabs, ProgressBar, StatusIcon, Divider).</li>
+    <li><strong>Voice module un-gated</strong> — Removed feature flag gate from <code>/voice</code>; always accessible.</li>
+    <li><strong>PromptInput, StatusLine, Settings UI updates</strong> — Various UI refinements.</li>
+    <li><strong>Permission mode updates</strong> — Refined permission mode logic and type definitions.</li>
+  </ul>
+
+  <h3>Fixed</h3>
+  <ul>
+    <li><strong>PowerShell cd built-in permission bypass</strong> — <code>cd..</code>, <code>cd\</code>, <code>cd~</code>, and bare drive letters now correctly detected as cwd-changing.</li>
+    <li><strong>Bash PWD/DIRSTACK stale variable tracking</strong> — After cd/pushd/popd, <code>PWD</code>, <code>OLDPWD</code>, and <code>DIRSTACK</code> are invalidated from variable tracking scope.</li>
+    <li><strong>Jump-to-bottom pill dismissal</strong> — Pill now dismisses immediately instead of waiting for next scroll tick.</li>
+    <li><strong><code>/voice</code> native module crash on Windows</strong> — Wrapped <code>audio-capture-napi</code> in try/catch with Windows SoX fallback.</li>
+  </ul>
+
+  <h3>Removed</h3>
+  <ul>
+    <li><strong><code>/eval</code> command</strong> — Removed the verification harness and its entire <code>src/eval/</code> framework.</li>
+    <li><strong><code>/profile</code> command</strong> — Removed profile module (profile command + profileManager utility).</li>
+  </ul>
+
+  <!-- 2.1.157 -->
+  <h2 id="v2.1.157"><a href="#v2.1.157">2.1.157</a> — 2026-05-22</h2>
+
+  <h3>Changed</h3>
+  <ul>
+    <li><strong><code>/dashboard</code> redesigned</strong> — Replaced 3-pane bordered layout with clean Dialog + Tabs design. 4 tabs: Overview, Agents, Daemons, Tasks.</li>
+  </ul>
+  <h3>Fixed</h3>
+  <ul>
+    <li><strong>Duplicate CTX display in <code>/dashboard</code></strong> — Removed redundant model/cost/cache info from Overview tab.</li>
+  </ul>
+
+  <!-- 2.1.156 -->
+  <h2 id="v2.1.156"><a href="#v2.1.156">2.1.156</a> — 2026-05-22</h2>
+
+  <h3>Added</h3>
+  <ul>
+    <li><strong>Visual Segmented Memory & Context HUD</strong> — Replaced basic context percentage with segmented progress bar displaying live token distribution (System Prompt, Tools, Rules, Chat, Sub-agents). Integrated 36-character HUD in prompt input warning. Upgraded <code>/context</code> with 55-character bar and HSL TrueColor palette.</li>
+  </ul>
+
+  <!-- 2.1.155 -->
+  <h2 id="v2.1.155"><a href="#v2.1.155">2.1.155</a> — 2026-05-22</h2>
+
+  <h3>Added</h3>
+  <ul>
+    <li><strong><code>/autofix-pr</code></strong> — Launch remote Clew on web to fix CI errors and address review comments on a GitHub PR.</li>
+    <li><strong><code>/loop</code></strong> — Run a prompt or slash command on a recurring interval. Accepts <code>s</code>/<code>m</code>/<code>h</code>/<code>d</code> suffixes and natural language "every N minutes" clauses.</li>
+    <li><strong>Interactive Argument Ghost Text</strong> — Command parameter hints render as inline ghost text. Tab or Right Arrow to accept and fill the placeholder.</li>
+    <li><strong><code>/plugin-details</code> / <code>/plugin-info</code></strong> — Show component inventory and estimated per-session token cost for any installed plugin.</li>
+  </ul>
+
+  <h3>Changed</h3>
+  <ul>
+    <li><strong>Remote Control enabled by default</strong> — All sessions are remote-control-ready without explicit config.</li>
+    <li><strong><code>/autofix-pr</code> available to all users</strong> — Moved from INTERNAL_ONLY_COMMANDS to main COMMANDS array.</li>
+    <li><strong><code>/loop</code> skill un-gated</strong> — Removed feature flag requirement from loop skill and underlying cron tools.</li>
+  </ul>
+
+  <!-- 2.1.153 -->
+  <h2 id="v2.1.153"><a href="#v2.1.153">2.1.153</a> — 2026-05-21</h2>
+
+  <h3>Security</h3>
+  <ul>
+    <li><strong>Prompt injection boundary</strong> — Worker task prompts wrap user-controlled descriptions in <code>&lt;policy&gt;</code> + <code>&lt;task_data&gt;</code> XML tags with explicit system override instructions. <code>sanitizeForXml()</code> strips control characters and CDATA closure injection.</li>
+  </ul>
+  <h3>Added</h3>
+  <ul>
+    <li><strong>Task lease/lock system</strong> — Prevents duplicate task execution with lease ownership, release, and expiry.</li>
+    <li><strong>Retry dead-letter & backoff</strong> — New <code>dead_letter</code> status with exponential backoff and auto-dead-letter after max retries.</li>
+    <li><strong>Project namespace</strong> — <code>projectRoot</code> field ensures workers spawn in correct project directory.</li>
+    <li><strong>File watcher debounce</strong> — 300ms debounce with self-write suppression.</li>
+    <li><strong>Graceful shutdown</strong> — SIGTERM stops accepting tasks → releases leases → kills workers → closes watcher → flushes queue → exits.</li>
+  </ul>
+  <h3>Changed</h3>
+  <ul>
+    <li><strong>Auto-start opt-in</strong> — <code>autoStart</code> defaults <code>false</code>. Only explicit <code>/daemon start</code> enables it.</li>
+    <li><strong><code>/daemon status</code></strong> — Shows <code>autoStart</code>, <code>dead-lettered</code>, and <code>last error</code> fields.</li>
+    <li><strong><code>/task show</code></strong> — Shows <code>projectRoot</code>, <code>lastError</code>, <code>deadLetterReason</code>, <code>leaseOwner</code>, <code>retryAfter</code>.</li>
+  </ul>
+
+  <!-- 2.1.152 -->
+  <h2 id="v2.1.152"><a href="#v2.1.152">2.1.152</a> — 2026-05-21</h2>
+
+  <h3>Added</h3>
+  <ul>
+    <li><strong>24/7 Autonomous Mode</strong> — Background daemon runs continuously with persistent task queue, autonomous agent loop (configurable concurrency, 30-min timeout), supervisor integration (30s health checks, auto-respawn).</li>
+    <li><strong><code>/daemon</code> command</strong> — <code>start</code>, <code>stop</code>, <code>status</code>, <code>restart</code> subcommands.</li>
+    <li><strong><code>/task</code> command</strong> — <code>add</code>, <code>list</code>, <code>show</code>, <code>done</code>, <code>cancel</code>, <code>fail</code>, <code>retry</code>, <code>remove</code> subcommands.</li>
+    <li><strong>Supervisor IPC</strong> — <code>autonomous_start</code>, <code>autonomous_stop</code>, <code>autonomous_status</code> commands.</li>
+  </ul>
+
+  <!-- 2.1.151 -->
+  <h2 id="v2.1.151"><a href="#v2.1.151">2.1.151</a> — 2026-05-21</h2>
+  <h3>Fixed</h3>
+  <ul>
+    <li>npm publish: fix bin/claude wrapper to use bash shebang instead of bun import</li>
+  </ul>
+
+  <!-- 2.1.150 -->
+  <h2 id="v2.1.150"><a href="#v2.1.150">2.1.150</a> — 2026-05-21</h2>
+  <h3>Internal</h3>
+  <ul>
+    <li>Bump version for npm publish</li>
+    <li>Documentation rewrite with real source content (27 providers, 80+ commands, 40+ tools)</li>
+    <li>Fix Windows CRLF normalization across docs</li>
+  </ul>
+
+  <!-- 2.1.149 -->
+  <h2 id="v2.1.149"><a href="#v2.1.149">2.1.149</a> — 2026-05-21</h2>
+
+  <h3>Added</h3>
+  <ul>
+    <li><strong>Agent Runtime & Orchestration Engine</strong> — Local-first, durable orchestration with checkpointing, secret scrubbing, tool gateway, agent registry, workflow registry, and report builder.</li>
+    <li><strong><code>/agent</code> CLI command suite</strong> — <code>run</code>, <code>status</code>, <code>trace</code>, <code>pause</code>, <code>resume</code>, <code>approvals</code>, <code>approve</code>, <code>deny</code>, <code>report</code>, <code>doctor</code>.</li>
+  </ul>
+
+  <!-- 2.1.148 -->
+  <h2 id="v2.1.148"><a href="#v2.1.148">2.1.148</a> — 2026-05-21</h2>
+  <h3>Added</h3>
+  <ul>
+    <li><strong><code>/tools</code> slash command</strong> — View real-time tool usage stats (call count, estimated token cost, last used time). <code>/tools reset</code> clears stats.</li>
+  </ul>
+
+  <!-- 2.1.147 -->
+  <h2 id="v2.1.147"><a href="#v2.1.147">2.1.147</a> — 2026-05-20</h2>
+
+  <h3>Added</h3>
+  <ul>
+    <li><strong>Self-hosted SearXNG search</strong> — Docker-based SearXNG instance with pre-configured search engines and Windows batch wrappers.</li>
+    <li><strong><code>/searxng</code> slash command</strong> — <code>on</code>, <code>off</code>, <code>status</code>, <code>restart</code> subcommands.</li>
+    <li><strong>Docs redesign</strong> — "Terminal Luxe" theme across all documentation pages with warm dark palette, amber/cyan accents, JetBrains Mono + DM Sans fonts, terminal window hero, stats grid, feature cards.</li>
+  </ul>
+
+  <h3>Changed</h3>
+  <ul>
+    <li><strong>Search provider auto-selection</strong> — No longer auto-selects public SearXNG instances. DuckDuckGo is the default free fallback.</li>
+  </ul>
+
+  <h3>Removed</h3>
+  <ul>
+    <li><strong><code>scratch/</code> directory</strong> — Deleted tracked Chromium cache (~700 files) including a leaked Google API key.</li>
+  </ul>
+
+  <!-- 2.1.146 -->
+  <h2 id="v2.1.146"><a href="#v2.1.146">2.1.146</a> — 2026-05-19</h2>
+  <h3>Changed</h3>
+  <ul>
+    <li><strong>Cross-provider structured outputs</strong> — <code>modelSupportsStructuredOutputs()</code> now returns <code>true</code> for non-Anthropic providers. Anthropic, Google, and OpenAI adapters map <code>output_config.format</code> to their respective response format APIs.</li>
+  </ul>
+
+  <!-- 2.1.145 -->
+  <h2 id="v2.1.145"><a href="#v2.1.145">2.1.145</a> — 2026-05-19</h2>
+
+  <h3>Added</h3>
+  <ul>
+    <li><strong>KiloCompact</strong> — Local context compaction engine that collapses verbose directory trees, glob outputs, stack traces, and large text dumps. Consolidates redundant failed tool runs. Semantic turn pruning with protected early/recent turns.</li>
+    <li><strong><code>/resume &lt;N&gt;</code></strong> — Numeric argument resumes the latest conversation with only the last N exchanges.</li>
+    <li><strong><code>--resume &lt;N&gt;</code> CLI support</strong> — Resumes latest conversation with limited history window.</li>
+    <li><strong>Recent model tracking</strong> — Recently used models stored in <code>recentModels</code> setting (capped at 5), surfaced near top of model picker.</li>
+    <li><strong>Background session improvements</strong> — <code>ps</code>, <code>stop</code>, <code>attach</code>, <code>--bg</code> work at runtime. <code>--name</code> support. Elapsed duration on completion.</li>
+    <li><strong>Stream-stall recovery</strong> — Pre-response stream stalls retry streaming once before falling back to non-streaming mode.</li>
+    <li><strong><code>/usage-credits</code> command</strong> — Keeps <code>/extra-usage</code> as alias.</li>
+  </ul>
+
+  <h3>Changed</h3>
+  <ul>
+    <li><code>/model</code> selection applies to current session; press <code>d</code> to set default.</li>
+    <li>Resumed sessions preserve the model they were using through <code>sessionModel</code> transcript field.</li>
+    <li>Statusline context bar freezes to last known non-zero usage instead of dropping to 0% during streaming.</li>
+    <li>Permission-mode cycling: <code>bypassPermissions</code> no longer immediately follows <code>auto</code>.</li>
+  </ul>
+
+  <h3>Fixed</h3>
+  <ul>
+    <li>Startup hangs from slow side-channel API calls (now timeout after 15s).</li>
+    <li>MCP <code>tools/list</code> pagination with <code>nextCursor</code>.</li>
+    <li>MCP SVG image handling — saved to disk instead of crashing.</li>
+    <li>MCP config error visibility in <code>mcp list</code>.</li>
+    <li>Grep-style command exit handling — <code>egrep</code>, <code>fgrep</code>, <code>git grep</code>, <code>git diff</code> exit code 1 no longer treated as hard failure.</li>
+    <li>Read-before-edit checks for <code>head</code> and <code>tail</code>.</li>
+    <li>Image extension mismatch — fallback to text handling.</li>
+    <li>Skill file watcher file-descriptor exhaustion.</li>
+    <li>Skill usage in headless/non-interactive mode.</li>
+    <li>Side-query model fallback with custom <code>ANTHROPIC_BASE_URL</code>.</li>
+    <li>Plugin cache-miss errors now show actionable install hint.</li>
+    <li>Windows background commands (<code>ps</code>, <code>stop</code>, <code>attach</code>, <code>--bg</code>).</li>
+    <li><code>/branch</code> after worktree entry.</li>
+    <li><code>Ctrl+C</code> in <code>!</code> commands now kills running process correctly.</li>
+    <li>Scrolling in attached background sessions (PgUp/PgDn).</li>
+  </ul>
+
+  <h3>Security</h3>
+  <ul>
+    <li>Improved permission-mode cycling to reduce accidental bypass-mode transitions.</li>
+    <li>Improved background-mode rejection messages for unsafe execution gates.</li>
+  </ul>
+
+  <!-- 2.1.139 -->
+  <h2 id="v2.1.139"><a href="#v2.1.139">2.1.139</a> — 2026-05-13</h2>
+
+  <h3>Added</h3>
+  <ul>
+    <li>Subagent API headers (<code>x-claude-code-agent-id</code>, <code>x-claude-code-parent-agent-id</code>).</li>
+    <li>OTEL <code>llm_request</code> spans with <code>agent_id</code> and <code>parent_agent_id</code>.</li>
+    <li>OAuth gating when API-key override is active.</li>
+    <li>Compaction prompt protection for sensitive instructions.</li>
+    <li>Ctrl+Shift+T as fallback thinking-mode hotkey on macOS.</li>
+  </ul>
+  <h3>Fixed</h3>
+  <ul>
+    <li>Keybinding validation for <code>cmd</code>, <code>super</code>, and <code>win</code> modifiers.</li>
+    <li>Settings hot-reload for symlinked <code>~/.claude/settings.json</code>.</li>
+    <li>Sandbox auto-allow behavior with shell expansions (<code>$VAR</code>, <code>$(cmd)</code>).</li>
+    <li>Ctrl+Z hangs in <code>npx</code> and <code>bun run</code> wrappers — explicit SIGTSTP handling.</li>
+    <li>Diff truncation line-count off-by-one.</li>
+    <li>Regex metacharacters in skill argument names.</li>
+  </ul>
+
+  <!-- 2.1.137 -->
+  <h2 id="v2.1.137"><a href="#v2.1.137">2.1.137</a> — 2026-05-12</h2>
+  <h3>Added</h3>
+  <ul>
+    <li>Bundled <code>/commit</code> skill for conventional commit workflows.</li>
+    <li>Per-model provider tracking in model usage (<code>/stats</code> shows correct provider prefix per model).</li>
+  </ul>
+  <h3>Fixed</h3>
+  <ul>
+    <li>Backspace and Ctrl+Backspace after Ctrl+G — reset Kitty keyboard protocol on alternate-screen exit.</li>
+    <li><code>/resume</code> tab-complete now shows picker dialog instead of immediately resuming.</li>
+    <li>Idle sub-agent summaries repeating every 30s — after 3 identical summaries, interval extends to 5 min.</li>
+    <li>claude.ai MCP connectors after <code>/clear</code> — skip the needs-auth cache.</li>
+    <li>Fork transcript creation with dangling <code>tool_use</code> blocks.</li>
+    <li><code>/stats</code> for unknown model names — shows provider label instead of "Provider: unknown".</li>
+    <li>Statusline percentage dropping to 0% during streaming.</li>
+  </ul>
+
+  <!-- 2.1.136 -->
+  <h2 id="v2.1.136"><a href="#v2.1.136">2.1.136</a> — 2026-05-12</h2>
+  <p>Major release with 40+ features, extensive MCP improvements, Windows fixes, and security hardening. Highlights include:</p>
+  <ul>
+    <li>Linux subprocess sandboxing with PID namespace isolation</li>
+    <li>Monitor tool for streaming events</li>
+    <li>Brief mode retry logic for plain-text model responses</li>
+    <li>Focus Mode system prompt for non-interactive sessions</li>
+    <li>Extensive MCP: OAuth improvements, reconnect notifications, result persistence, alwaysLoad support</li>
+    <li>Windows: PowerShellTool hardening, CRLF fixes, VS Code fixes</li>
+    <li>Agent view improvements: Running/Library tabs, dispatch, running indicator</li>
+    <li>Security: Hardened Bash and PowerShell permission checks, auto-mode boundary enforcement</li>
+  </ul>
+
+  <!-- 2.1.97 -->
+  <h2 id="v2.1.97"><a href="#v2.1.97">2.1.97</a> — 2026-05-11</h2>
+  <h3>Added</h3>
+  <ul>
+    <li>Baseline public release with major CLI, provider, tool, MCP, plugin, session, and UI functionality.</li>
+  </ul>
+
+  <!-- 0.0.1 -->
+  <h2 id="v0.0.1"><a href="#v0.0.1">0.0.1</a> — 2026-05-11</h2>
+  <h3>Added</h3>
+  <ul>
+    <li>Initial release with core terminal AI coding assistant functionality.</li>
+  </ul>
+
+  <div class="callout">
+    <strong>Note:</strong> This changelog is also available in <a href="https://github.com/JonusNattapong/claudecode/blob/main/CHANGELOG.md">CHANGELOG.md</a> in the repository. Version numbers may skip due to internal releases.
+  </div>
+</main></div>
+<script src="js/main.js"></script>
+</body>
+</html>

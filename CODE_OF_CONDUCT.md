@@ -1,75 +1,318 @@
-# Contributor Covenant Code of Conduct
+# Contributing
 
-## Our Pledge
+Thank you for your interest in contributing.
 
-We as members, contributors, and leaders pledge to make participation in our community a harassment-free experience for everyone, regardless of age, body size, visible or invisible disability, ethnicity, sex characteristics, gender identity and expression, level of experience, education, socio-economic status, nationality, personal appearance, race, caste, color, religion, or sexual identity and orientation.
+This repository is an unofficial, community-maintained rebuild and extension project. It is not an official Anthropic product, distribution, or supported implementation.
 
-We pledge to act and interact in ways that contribute to an open, welcoming, diverse, inclusive, and healthy community.
+Please read `LICENSE.md` and `SECURITY.md` before contributing.
 
-## Our Standards
+## Scope of Contributions
 
-Examples of behavior that contributes to a positive environment for our community include:
+Contributions should be limited to material you have the right to submit and license.
 
-- Demonstrating empathy and kindness toward other people
-- Being respectful of differing opinions, viewpoints, and experiences
-- Giving and gracefully accepting constructive feedback
-- Accepting responsibility and apologizing to those affected by our mistakes, and learning from the experience
-- Focusing on what is best not just for us as individuals, but for the overall community
+Do not contribute:
 
-Examples of unacceptable behavior include:
+* Proprietary source code
+* Leaked or copied code
+* Private documentation
+* Credentials, API keys, tokens, or secrets
+* Material copied from Anthropic's proprietary products or private services
+* Code that violates third-party licenses or terms
 
-- The use of sexualized language or imagery, and sexual attention or advances of any kind
-- Trolling, insulting or derogatory comments, and personal or political attacks
-- Public or private harassment
-- Publishing others' private information, such as a physical or email address, without their explicit permission
-- Other conduct which could reasonably be considered inappropriate in a professional setting
+Contributor-authored modifications and original additions may be licensed under the terms described in `LICENSE.md`.
 
-## Enforcement Responsibilities
+## Getting Started
 
-Community leaders are responsible for clarifying and enforcing our standards of acceptable behavior and will take appropriate and fair corrective action in response to any behavior that they deem inappropriate, threatening, offensive, or harmful.
+### Prerequisites
 
-Community leaders have the right and responsibility to remove, edit, or reject comments, commits, code, wiki edits, issues, and other contributions that are not aligned to this Code of Conduct, and will communicate reasons for moderation decisions when appropriate.
+* Node.js >= 18.0.0
+* Bun >= 1.0.0
+* Git
 
-## Scope
+### Installation
 
-This Code of Conduct applies within all community spaces, and also applies when an individual is officially representing the community in public spaces. Examples of representing our community include using an official email address, posting via an official social media account, or acting as an appointed representative at an online or offline event.
+```bash
+git clone https://github.com/JonusNattapong/claudecode.git
+cd claudecode
 
-## Enforcement
+bun install
+bun run build
+bun run start
+```
 
-Instances of abusive, harassing, or otherwise unacceptable behavior may be reported to the community leaders responsible for enforcement. All complaints will be reviewed and investigated promptly and fairly.
+For development with watch mode:
 
-All community leaders are obligated to respect the privacy and security of the reporter of any incident.
+```bash
+bun run dev
+```
 
-## Enforcement Guidelines
+## Project Structure
 
-Community leaders will follow these Community Impact Guidelines in determining the consequences for any action they deem in violation of this Code of Conduct:
+```text
+claudecode/
+├── src/                      # Core CLI application
+│   ├── main.tsx              # Application entry point
+│   ├── cli/                  # CLI handlers
+│   ├── commands/             # CLI commands
+│   ├── services/             # Business logic and integrations
+│   │   ├── ai/               # AI provider system
+│   │   │   ├── providers/    # Provider implementations
+│   │   │   ├── ProviderManager.ts
+│   │   │   └── providerRegistry.ts
+│   │   ├── api/              # API clients and message handling
+│   │   ├── oauth/            # OAuth authentication flows
+│   │   ├── mcp/              # Model Context Protocol client
+│   │   ├── lsp/              # Language Server Protocol integration
+│   │   └── ...
+│   ├── components/           # Ink React UI components
+│   ├── tools/                # Tools available to the agent runtime
+│   └── types/                # TypeScript type definitions
+├── plugins/                  # Bundled plugin packages
+├── docs/                     # Documentation
+├── bin/                      # CLI entry wrappers
+├── dist/                     # Built output
+├── .claude-plugin/           # Plugin marketplace manifest
+├── package.json
+└── README.md
+```
 
-### 1. Correction
+## Development Workflow
 
-**Community Impact**: Use of inappropriate language or other behavior deemed unprofessional or unwelcome in the community.
+### 1. Make Changes
 
-**Consequence**: A private, written warning from community leaders, providing clarity around the nature of the violation and an explanation of why the behavior was inappropriate. A public apology may be requested.
+* Follow the existing TypeScript style.
+* Keep changes focused and reviewable.
+* Add or update tests when changing behavior.
+* Update documentation when changing commands, configuration, providers, or user-facing behavior.
 
-### 2. Warning
+### 2. Type Checking
 
-**Community Impact**: A violation through a single incident or series of actions.
+```bash
+npx tsc --noEmit
+```
 
-**Consequence**: A warning with consequences for continued behavior. No interaction with the people involved, including unsolicited interaction with those enforcing the Code of Conduct, for a specified period of time. This includes avoiding interactions in community spaces as well as external channels like social media. Violating these terms may lead to a temporary or permanent ban.
+### 3. Linting and Formatting
 
-### 3. Temporary Ban
+This project uses Biome.
 
-**Community Impact**: A serious violation of community standards, including sustained inappropriate behavior.
+```bash
+bun run lint:check
+bun run format:check
+```
 
-**Consequence**: A temporary ban from any sort of interaction or public communication with the community for a specified period of time. No public or private interaction with the people involved, including unsolicited interaction with those enforcing the Code of Conduct, is allowed during this period. Violating these terms may lead to a permanent ban.
+To apply fixes:
 
-### 4. Permanent Ban
+```bash
+bun run check
+```
 
-**Community Impact**: Demonstrating a pattern of violation of community standards, including sustained inappropriate behavior, harassment of an individual, or aggression toward or disparagement of classes of individuals.
+Or run individual fix commands:
 
-**Consequence**: A permanent ban from any sort of public interaction within the community.
+```bash
+bun run lint
+bun run format
+```
 
-## Attribution
+### 4. Testing
 
-This Code of Conduct is adapted from the [Contributor Covenant](https://www.contributor-covenant.org), version 2.1, available at [https://www.contributor-covenant.org/version/2/1/code_of_conduct.html](https://www.contributor-covenant.org/version/2/1/code_of_conduct.html).
+```bash
+bun test
+```
 
-Community Impact Guidelines were inspired by [Mozilla's code of conduct enforcement ladder](https://github.com/mozilla/diversity).
+Run a specific test file:
+
+```bash
+bun test path/to/test.ts
+```
+
+### 5. Build Verification
+
+```bash
+bun run build
+```
+
+After building, verify the CLI output:
+
+```bash
+node dist/main.js --help
+```
+
+If using the package binary locally, verify:
+
+```bash
+bun link
+clew --help
+```
+
+## Adding a New CLI Command
+
+1. Create a command under `src/commands/<name>/`.
+2. Use `.tsx` for Ink-based interactive commands.
+3. Use `.ts` for non-interactive command logic.
+4. Register the command in the appropriate command loader.
+5. Add help text and documentation.
+6. Add tests when practical.
+
+Example Ink command:
+
+```tsx
+import * as React from 'react'
+import { Box, Text } from '../../ink.js'
+
+type Props = {
+  onDone: (value: string) => void
+}
+
+export default function MyCommand({ onDone }: Props) {
+  return (
+    <Box>
+      <Text>My command output</Text>
+    </Box>
+  )
+}
+```
+
+## Adding a New Tool
+
+Tools live under `src/tools/`.
+
+1. Create a tool implementation in `src/tools/<ToolName>/index.ts`.
+2. Extend the existing tool base class or follow the current project tool pattern.
+3. Define an input schema.
+4. Implement execution behavior.
+5. Register the tool in the tool registry.
+6. Add permission handling if the tool reads files, writes files, runs commands, or accesses external services.
+7. Add tests for success and failure cases.
+
+Example:
+
+```ts
+import { z } from 'zod'
+import { Tool } from '../Tool.js'
+
+export class MyTool extends Tool {
+  inputSchema = z.object({
+    param: z.string(),
+  })
+
+  async execute({ param }: { param: string }) {
+    return {
+      ok: true,
+      value: param,
+    }
+  }
+}
+```
+
+## Adding a New AI Provider
+
+The provider system lives in `src/services/ai/`.
+
+1. Implement the provider under `src/services/ai/providers/<ProviderName>Provider.ts`.
+2. Implement the required provider interface methods:
+
+   * `streamMessages()`
+   * `stopGeneration()`
+   * `countTokens()`
+3. Use the OpenAI-compatible provider base when the target API supports OpenAI-style chat completions.
+4. Register the provider in `providerRegistry.ts`.
+5. Add provider metadata:
+
+   * Provider name
+   * Environment variable names
+   * Base URL
+   * Supported models
+   * Capabilities
+6. Add tests for model listing, request formatting, streaming behavior, and error handling.
+7. Update documentation in `docs/` and `README.md`.
+
+Manual verification:
+
+```bash
+clew --provider-select
+```
+
+Inside the CLI, verify provider commands such as:
+
+```text
+/provider list
+/provider models <provider-name>
+```
+
+## Plugin, MCP, and Tool Safety
+
+Changes that affect plugins, MCP servers, hooks, command execution, file access, or sandbox behavior require extra review.
+
+Before submitting those changes, check:
+
+* Permission prompts cannot be bypassed.
+* User-controlled input is not passed directly into shell commands.
+* File paths are normalized and constrained.
+* Secrets are not logged.
+* Tool output does not expose credentials.
+* Remote content cannot silently execute local code.
+* Defaults are conservative.
+
+## Code Style
+
+* Use TypeScript.
+* Prefer explicit types for exported functions and public interfaces.
+* Keep React/Ink components functional.
+* Use project-local utilities for logging and error handling.
+* Avoid adding large dependencies without justification.
+* Keep user-facing error messages clear and actionable.
+* Do not include secrets, tokens, local absolute paths, or private environment details in tests or fixtures.
+
+## Commit Messages
+
+Use conventional commits:
+
+```text
+feat: add provider selection command
+fix: prevent crash when API key is missing
+docs: update installation steps
+chore: update dependencies
+test: add provider registry tests
+```
+
+## Pull Request Checklist
+
+Before opening a pull request:
+
+* [ ] The change is focused and reviewable.
+* [ ] Tests pass with `bun test`.
+* [ ] Formatting and lint checks pass.
+* [ ] The project builds with `bun run build`.
+* [ ] Documentation has been updated if needed.
+* [ ] No secrets, credentials, copied proprietary code, or private files are included.
+* [ ] Security-sensitive changes include a clear explanation of risk and mitigation.
+
+## Reporting Bugs
+
+Before filing a bug, search existing issues.
+
+Include:
+
+* Operating system
+* Node.js version
+* Bun version
+* Package version or commit hash
+* Steps to reproduce
+* Expected behavior
+* Actual behavior
+* Relevant logs
+* Whether plugins, hooks, MCP servers, or custom providers were enabled
+
+Do not include API keys, tokens, private prompts, private repository content, or credentials in public issues.
+
+## Security Issues
+
+Do not open public issues for security vulnerabilities.
+
+Follow the private reporting process in `SECURITY.md`.
+
+## Questions and Discussions
+
+Use GitHub Discussions or issues for general questions, proposals, and design discussions.
+
+For security-sensitive topics, use the private vulnerability reporting process instead.

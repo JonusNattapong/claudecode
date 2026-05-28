@@ -68,6 +68,21 @@ const SPINNER_COLORS = [
   { label: 'White', value: 'white' as const },
 ];
 
+// ─── Helpers ───────────────────────────────────────────────────────────────────
+
+function cycleColor(
+  colors: ReadonlyArray<{ label: string; value: string }>,
+  current: string,
+  setter: (v: string) => void,
+  dir: number,
+) {
+  const idx = colors.findIndex(c => c.value === current);
+  const next = idx + dir;
+  if (next < 0) setter(colors[colors.length - 1]!.value);
+  else if (next >= colors.length) setter(colors[0]!.value);
+  else setter(colors[next]!.value);
+}
+
 // ─── Interactive Color Panel ─────────────────────────────────────────────────
 
 function ColorPanel({
@@ -81,20 +96,51 @@ function ColorPanel({
   const config = getGlobalConfig();
   const [selectedTab, setSelectedTab] = useState('prompt');
 
-  // Clawd colors
   const [bodyColor, setBodyColor] = useState<string>((config as any).clawdBodyColor ?? 'clawd_body');
   const [eyeColor, setEyeColor] = useState<string>((config as any).clawdEyeColor ?? 'clawd_eye');
   const [showHorns, setShowHorns] = useState<boolean>((config as any).showClawdHorns ?? true);
-  // Spinner color
   const [spinnerColor, setSpinnerColor] = useState<string>((config as any).spinnerColor ?? 'default');
-  // Focused pane within mascot tab: 'body' | 'eyes' | 'horns'
-  const [mascotPane, setMascotPane] = useState<'body' | 'eyes' | 'horns'>('body');
-  const [focusedBodyIdx, setFocusedBodyIdx] = useState(
-    CLAWD_BODY_COLORS.findIndex(c => c.value === ((config as any).clawdBodyColor ?? 'clawd_body')),
-  );
-  const [focusedEyeIdx, setFocusedEyeIdx] = useState(
-    CLAWD_EYE_COLORS.findIndex(c => c.value === ((config as any).clawdEyeColor ?? 'clawd_eye')),
-  );
+  const [mascotField, setMascotField] = useState<'body' | 'eye' | 'horns'>('body');
+
+  // Keyboard: cycle body/eye colors with ←→, Tab between fields
+  useInput((input, key) => {
+    if (selectedTab !== 'mascot') return;
+
+    if (key.tab) {
+      setMascotField(f => (f === 'body' ? 'eye' : f === 'eye' ? 'horns' : 'body'));
+      return;
+    }
+
+    if (mascotField === 'body') {
+      if (key.leftArrow) cycleColor(CLAWD_BODY_COLORS, bodyColor, setBodyColor, -1);
+      if (key.rightArrow) cycleColor(CLAWD_BODY_COLORS, bodyColor, setBodyColor, 1);
+      if (key.return) {
+        saveGlobalConfig(prev => ({ ...prev, clawdBodyColor: bodyColor }));
+        onDone(`Body color saved: ${bodyColor}`, { display: 'system' });
+      }
+      return;
+    }
+
+    if (mascotField === 'eye') {
+      if (key.leftArrow) cycleColor(CLAWD_EYE_COLORS, eyeColor, setEyeColor, -1);
+      if (key.rightArrow) cycleColor(CLAWD_EYE_COLORS, eyeColor, setEyeColor, 1);
+      if (key.return) {
+        saveGlobalConfig(prev => ({ ...prev, clawdEyeColor: eyeColor }));
+        onDone(`Eye color saved: ${eyeColor}`, { display: 'system' });
+      }
+      return;
+    }
+
+    if (mascotField === 'horns') {
+      if (key.return || key.leftArrow || key.rightArrow || key.upArrow || key.downArrow || input === ' ') {
+        setShowHorns(h => {
+          const next = !h;
+          saveGlobalConfig(prev => ({ ...prev, showClawdHorns: next }));
+          return next;
+        });
+      }
+    }
+  });
 
   const handleCancel = () => {
     setAppState(prev => ({
@@ -108,81 +154,6 @@ function ColorPanel({
     onDone('Color picker dismissed', { display: 'system' });
   };
 
-  // Keyboard navigation for mascot tab
-  useInput(
-    (input, key) => {
-      if (selectedTab !== 'mascot') return;
-
-      if (key.tab) {
-        setMascotPane(p => {
-          if (p === 'body') return 'eyes';
-          if (p === 'eyes') return 'horns';
-          return 'body';
-        });
-        return;
-      }
-
-      if (mascotPane === 'body') {
-        if (key.upArrow) {
-          setFocusedBodyIdx(i => {
-            const next = i <= 0 ? CLAWD_BODY_COLORS.length - 1 : i - 1;
-            setBodyColor(CLAWD_BODY_COLORS[next]!.value);
-            return next;
-          });
-          return;
-        }
-        if (key.downArrow) {
-          setFocusedBodyIdx(i => {
-            const next = i >= CLAWD_BODY_COLORS.length - 1 ? 0 : i + 1;
-            setBodyColor(CLAWD_BODY_COLORS[next]!.value);
-            return next;
-          });
-          return;
-        }
-        // Enter saves body color
-        if (key.return) {
-          saveGlobalConfig(prev => ({ ...prev, clawdBodyColor: bodyColor }));
-          return;
-        }
-      }
-
-      if (mascotPane === 'eyes') {
-        if (key.upArrow) {
-          setFocusedEyeIdx(i => {
-            const next = i <= 0 ? CLAWD_EYE_COLORS.length - 1 : i - 1;
-            setEyeColor(CLAWD_EYE_COLORS[next]!.value);
-            return next;
-          });
-          return;
-        }
-        if (key.downArrow) {
-          setFocusedEyeIdx(i => {
-            const next = i >= CLAWD_EYE_COLORS.length - 1 ? 0 : i + 1;
-            setEyeColor(CLAWD_EYE_COLORS[next]!.value);
-            return next;
-          });
-          return;
-        }
-        if (key.return) {
-          saveGlobalConfig(prev => ({ ...prev, clawdEyeColor: eyeColor }));
-          return;
-        }
-      }
-
-      if (mascotPane === 'horns') {
-        if (key.return || key.leftArrow || key.rightArrow || key.upArrow || key.downArrow || input === ' ') {
-          setShowHorns(h => {
-            const next = !h;
-            saveGlobalConfig(prev => ({ ...prev, showClawdHorns: next }));
-            return next;
-          });
-          return;
-        }
-      }
-    },
-    { isActive: true },
-  );
-
   return (
     <Dialog
       title="Color & Customization"
@@ -190,7 +161,7 @@ function ColorPanel({
       onCancel={handleCancel}
       hideInputGuide
     >
-      <Tabs selectedTab={selectedTab} onTabChange={setSelectedTab} defaultTab="prompt" useFullWidth navFromContent>
+      <Tabs selectedTab={selectedTab} onTabChange={setSelectedTab} defaultTab="prompt" useFullWidth navFromContent disableNavigation={selectedTab === 'mascot'}>
         <Tab title="Prompt Bar" id="prompt">
           <Box flexDirection="column" gap={1} marginTop={1}>
             <Select
@@ -255,68 +226,37 @@ function ColorPanel({
             {/* Clawd Preview */}
             <Box flexDirection="column" alignItems="center">
               <Clawd pose="default" showHorns={showHorns} bodyColor={bodyColor} eyeColor={eyeColor} />
-              <Text dimColor italic marginTop={0}>
-                Live preview
+              <Text dimColor italic>Live preview</Text>
+            </Box>
+
+            {/* Body & Eye Color — inline */}
+            <Box flexDirection="row" gap={3}>
+              <Text bold color={mascotField === 'body' ? 'suggestion' : undefined}>body</Text>
+              <Text
+                bold={mascotField === 'body'}
+                color={mascotField === 'body' ? 'suggestion' : bodyColor}
+              >
+                {mascotField === 'body' ? '▸' : ''} {CLAWD_BODY_COLORS.find(c => c.value === bodyColor)?.label ?? bodyColor}
+              </Text>
+              <Text bold color={mascotField === 'eye' ? 'suggestion' : undefined}>eye</Text>
+              <Text
+                bold={mascotField === 'eye'}
+                color={mascotField === 'eye' ? 'suggestion' : eyeColor}
+              >
+                {mascotField === 'eye' ? '▸' : ''} {CLAWD_EYE_COLORS.find(c => c.value === eyeColor)?.label ?? eyeColor}
               </Text>
             </Box>
 
-            <Divider />
-
-            {/* Body Color Selection */}
-            <Box flexDirection="column" gap={0}>
-              <Text bold color={mascotPane === 'body' ? 'suggestion' : undefined}>
-                {mascotPane === 'body' ? '▸ ' : '  '}Body Color
+            {/* Horns Toggle */}
+            <Box flexDirection="row" gap={2}>
+              <Text bold color={mascotField === 'horns' ? 'suggestion' : undefined}>horns</Text>
+              <Text
+                bold={mascotField === 'horns'}
+                color={mascotField === 'horns' ? 'suggestion' : (showHorns ? 'success' : undefined)}
+                dimColor={mascotField !== 'horns' && !showHorns}
+              >
+                {mascotField === 'horns' ? '▸' : ''} {showHorns ? 'Show' : 'Hide'}
               </Text>
-              {CLAWD_BODY_COLORS.map((c, idx) => (
-                <Box key={c.value} marginLeft={2}>
-                  <Text
-                    bold={idx === focusedBodyIdx && mascotPane === 'body'}
-                    color={idx === focusedBodyIdx && mascotPane === 'body' ? 'suggestion' : undefined}
-                  >
-                    {idx === focusedBodyIdx ? '> ' : '  '}
-                    {c.label}
-                    {idx === focusedBodyIdx && bodyColor === c.value ? '  ◄' : ''}
-                  </Text>
-                </Box>
-              ))}
-            </Box>
-
-            <Divider />
-
-            {/* Eye Color Selection */}
-            <Box flexDirection="column" gap={0}>
-              <Text bold color={mascotPane === 'eyes' ? 'suggestion' : undefined}>
-                {mascotPane === 'eyes' ? '▸ ' : '  '}Eye Color
-              </Text>
-              {CLAWD_EYE_COLORS.map((c, idx) => (
-                <Box key={c.value} marginLeft={2}>
-                  <Text
-                    bold={idx === focusedEyeIdx && mascotPane === 'eyes'}
-                    color={idx === focusedEyeIdx && mascotPane === 'eyes' ? 'suggestion' : undefined}
-                  >
-                    {idx === focusedEyeIdx ? '> ' : '  '}
-                    {c.label}
-                    {idx === focusedEyeIdx && eyeColor === c.value ? '  ◄' : ''}
-                  </Text>
-                </Box>
-              ))}
-            </Box>
-
-            <Divider />
-
-            {/* Horns Toggle Selection */}
-            <Box flexDirection="column" gap={0}>
-              <Text bold color={mascotPane === 'horns' ? 'suggestion' : undefined}>
-                {mascotPane === 'horns' ? '▸ ' : '  '}Horns Visibility
-              </Text>
-              <Box marginLeft={2}>
-                <Text
-                  bold={mascotPane === 'horns'}
-                  color={mascotPane === 'horns' ? 'suggestion' : undefined}
-                >
-                  {showHorns ? '[x] Show Horns' : '[ ] Show Horns'}
-                </Text>
-              </Box>
             </Box>
           </Box>
         </Tab>
@@ -325,17 +265,10 @@ function ColorPanel({
       {/* Footer */}
       <Box marginTop={1} justifyContent="center">
         <Text dimColor>
-          Tab switch tabs ·{' '}
-          {selectedTab === 'prompt'
-            ? '↑↓ select · Enter confirm'
-            : selectedTab === 'spinner'
-              ? '↑↓ select · Enter confirm'
-              : mascotPane === 'body'
-                ? '↑↓ body · Tab eyes'
-                : mascotPane === 'eyes'
-                  ? '↑↓ eyes · Tab horns'
-                  : 'Space/Enter/Arrows toggle horns · Tab body'}
-          {' · '}Enter save · Esc close
+          {selectedTab === 'mascot'
+            ? 'Tab switch field · ←→ cycle color · Enter save'
+            : 'Tab/←→ switch tabs · ↑↓ select · Enter confirm'}
+          {' · '}Esc close
         </Text>
       </Box>
     </Dialog>
@@ -349,7 +282,6 @@ export async function call(
   context: ToolUseContext & LocalJSXCommandContext,
   args: string,
 ): Promise<React.ReactNode | null> {
-  // Teammates cannot set their own color
   if (isTeammate()) {
     onDone('Cannot set color: This session is a swarm teammate. Teammate colors are assigned by the team leader.', {
       display: 'system',
@@ -357,11 +289,9 @@ export async function call(
     return null;
   }
 
-  // If arguments are provided, handle immediately without showing interactive UI
   if (args && args.trim() !== '') {
     const colorArg = args.trim().toLowerCase();
 
-    // Handle reset to default (gray)
     if (RESET_ALIASES.includes(colorArg as (typeof RESET_ALIASES)[number])) {
       const sessionId = getSessionId() as UUID;
       const fullPath = getTranscriptPath();
@@ -404,7 +334,6 @@ export async function call(
     return null;
   }
 
-  // No arguments provided — open interactive Color panel
   const currentColorSetting = context.getAppState().standaloneAgentContext?.color ?? 'default';
   return <ColorPanel onDone={onDone} initialColorSetting={currentColorSetting} />;
 }

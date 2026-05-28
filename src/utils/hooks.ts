@@ -338,6 +338,8 @@ export type AggregatedHookResult = {
   updatedMCPToolOutput?: unknown;
   permissionRequestResult?: PermissionRequestResult;
   watchPaths?: string[];
+  sessionTitle?: string;
+  reloadSkills?: boolean;
   elicitationResponse?: ElicitationResponse;
   elicitationResultResponse?: ElicitationResponse;
   retry?: boolean;
@@ -629,6 +631,12 @@ function processHookJSONOutput({
         result.initialUserMessage = json.hookSpecificOutput.initialUserMessage;
         if ('watchPaths' in json.hookSpecificOutput && json.hookSpecificOutput.watchPaths) {
           result.watchPaths = json.hookSpecificOutput.watchPaths;
+        }
+        if ('sessionTitle' in json.hookSpecificOutput && json.hookSpecificOutput.sessionTitle) {
+          result.sessionTitle = json.hookSpecificOutput.sessionTitle;
+        }
+        if ('reloadSkills' in json.hookSpecificOutput && json.hookSpecificOutput.reloadSkills) {
+          result.reloadSkills = json.hookSpecificOutput.reloadSkills;
         }
         break;
       case 'Setup':

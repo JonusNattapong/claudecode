@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Agent Teams & Sub-agents — Clew</title>
+  <meta name="description" content="Multi-agent coordination, sub-agent configuration, and agent orchestration in Clew.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+<header class="header"><div class="header-inner"><a href="index.html" class="logo"><span>Clew</span></a><nav class="header-nav"><a href="index.html">Home</a><a href="index.html#features">Features</a><a href="index.html#commands">Commands</a><a href="quick-start.html" class="active">Docs</a><a href="https://github.com/JonusNattapong/claudecode" target="_blank">GitHub</a></nav><button class="menu-btn" id="menuToggle" aria-label="Toggle navigation"><span></span><span></span><span></span></button></div></header>
+<div class="app"><aside class="sidebar" id="sidebar"></aside><div class="sidebar-overlay" id="sidebarOverlay"></div><main class="content">
+  <h1>Agent Teams & Sub-agents</h1>
+  <p class="section-subtitle">Orchestrate multiple AI agents working in parallel or sequence — each with its own model, tools, and workspace.</p>
+
+  <h2>Overview</h2>
+  <p>Clew supports multi-agent coordination through two complementary systems:</p>
+  <ul>
+    <li><strong>Agent Runtime</strong> (<code>src/agentRuntime/</code>) — Local-first orchestration engine for spawning, checkpointing, and executing complex multi-agent workflows with durable state.</li>
+    <li><strong>Agent View</strong> (<code>/agents</code>) — Interactive TUI dashboard for managing background sessions, dispatching tasks, and monitoring agent activity.</li>
+  </ul>
+
+  <h2>Agent Runtime</h2>
+  <p>The agent runtime is a durable orchestration engine stored in <code>src/agentRuntime/</code>:</p>
+
+  <h3>Core Components</h3>
+  <table>
+    <tr><th>Module</th><th>Role</th></tr>
+    <tr><td><code>orchestrator.ts</code></td><td>Drives agents through state graph transitions, checkpointing state to disk, handling manual/automatic pause/resume, and routing handoffs between agent profiles.</td></tr>
+    <tr><td><code>runStore.ts</code></td><td>Saves and loads execution runs locally (<code>.claude/runs/</code>) with secret scrubbing rules to prevent API key leakage into diagnostic logs.</td></tr>
+    <tr><td><code>toolGateway.ts</code></td><td>Multi-permission capability gateway validating sandbox access and halting guarded shell commands for human approval.</td></tr>
+    <tr><td><code>agentRegistry.ts</code></td><td>Markdown frontmatter parser for <code>.claude/agents/</code> configurations.</td></tr>
+    <tr><td><code>workflowRegistry.ts</code></td><td>YAML validator for <code>.claude/workflows/</code> DAG pipelines.</td></tr>
+    <tr><td><code>reportBuilder.ts</code></td><td>Generates standardized markdown summaries of agent steps, file changes, and test validations.</td></tr>
+  </table>
+
+  <h2>Agent View Dashboard</h2>
+  <p>Open the interactive agent dashboard with <code>/agents</code>:</p>
+  <pre><code>/agents                  # Open agent view dashboard
+/agents --cwd /project   # Open with specific working directory
+/agents --config         # Open configuration manager
+/agents --json           # Machine-readable output</code></pre>
+
+  <p>The dashboard provides:</p>
+  <ul>
+    <li><strong>Running/Library tabs</strong> — Switch between active sessions and saved agent configurations.</li>
+    <li><strong>Dispatch input</strong> — Type <code>/</code> for autocomplete suggestions from slash commands, bundled skills, project skills, and plugins. Each suggestion shows its source label (<code>[cmd]</code>, <code>[bundled]</code>, <code>[skill]</code>, <code>[plugin]</code>).</li>
+    <li><strong>PR column</strong> — Shows linked PRs per session (<code>PR #123</code> or <code>3 PRs</code>).</li>
+    <li><strong>Running indicator</strong> — <code>● N</code> badge showing count of active agent sessions.</li>
+  </ul>
+
+  <h2>/agent Command Suite</h2>
+  <p>Complete local agent management through slash commands:</p>
+  <table>
+    <tr><th>Command</th><th>Description</th></tr>
+    <tr><td><code>/agent run "&lt;prompt&gt;"</code></td><td>Start a workspace agent workflow with the given prompt.</td></tr>
+    <tr><td><code>/agent status</code></td><td>Display current background execution state and stats.</td></tr>
+    <tr><td><code>/agent trace</code></td><td>Show color-coded step-by-step task logs.</td></tr>
+    <tr><td><code>/agent pause</code></td><td>Pause an active agent execution loop.</td></tr>
+    <tr><td><code>/agent resume</code></td><td>Resume a paused agent execution.</td></tr>
+    <tr><td><code>/agent approvals</code></td><td>View pending guarded-command approvals.</td></tr>
+    <tr><td><code>/agent approve</code></td><td>Approve a specific guarded action.</td></tr>
+    <tr><td><code>/agent deny</code></td><td>Deny a specific guarded action.</td></tr>
+    <tr><td><code>/agent report</code></td><td>Print markdown diagnostic summary.</td></tr>
+    <tr><td><code>/agent doctor</code></td><td>Test agent configurations and workspace health.</td></tr>
+  </table>
+
+  <h2>Sub-agent Configuration</h2>
+  <p>Define custom sub-agents in <code>.claude/agents/</code> with Markdown frontmatter:</p>
+
+  <pre><code>---
+name: code-reviewer
+model: claude-sonnet-4-20250514
+description: Specialized code review agent
+tools:
+  - Read
+  - Grep
+  - Glob
+allowedPaths:
+  - src/
+systemPrompt: |
+  You are a code review specialist. Focus on correctness,
+  security, and adherence to project conventions.
+---
+</code></pre>
+
+  <h3>Agent Spec Fields</h3>
+  <table>
+    <tr><th>Field</th><th>Description</th></tr>
+    <tr><td><code>name</code></td><td>Unique agent identifier (used in @-mentions).</td></tr>
+    <tr><td><code>model</code></td><td>Model to use for this agent. Falls back to session model.</td></tr>
+    <tr><td><code>description</code></td><td>Shown in typeahead suggestions and agent lists.</td></tr>
+    <tr><td><code>tools</code></td><td>Whitelist of tools this agent can use. Omit for full access.</td></tr>
+    <tr><td><code>allowedPaths</code></td><td>Restrict file system access to specific directories.</td></tr>
+    <tr><td><code>systemPrompt</code></td><td>Custom system prompt for this agent.</td></tr>
+  </table>
+
+  <h2>Workflows</h2>
+  <p>Define multi-agent DAG pipelines in <code>.claude/workflows/</code> using YAML:</p>
+  <pre><code>name: pr-review-pipeline
+steps:
+  - id: lint
+    agent: linter
+    prompt: "Run linting on the changed files"
+  - id: review
+    agent: code-reviewer
+    prompt: "Review the diff for correctness and security"
+    depends_on: [lint]
+  - id: test
+    agent: test-runner
+    prompt: "Run the test suite"
+    depends_on: [lint]
+  - id: summary
+    agent: report-builder
+    prompt: "Compile findings into a review summary"
+    depends_on: [review, test]
+</code></pre>
+
+  <h2>Agent Team Coordination</h2>
+  <p>The orchestrator manages agent execution with these guarantees:</p>
+  <ul>
+    <li><strong>Checkpointing</strong> — State saved to disk after each step; resume after crash or manual pause.</li>
+    <li><strong>Handoffs</strong> — Agents can route work to other agent profiles mid-execution.</li>
+    <li><strong>Tool gating</strong> — <code>toolGateway.ts</code> enforces per-agent tool permissions and sandbox boundaries.</li>
+    <li><strong>Secret scrubbing</strong> — API keys and tokens are stripped from run logs automatically.</li>
+    <li><strong>Subagent isolation</strong> — Sub-agents cannot leak working directory changes back to the parent session.</li>
+  </ul>
+
+  <h2>Named Sub-agents in @-mentions</h2>
+  <p>Registered sub-agents appear in @-mention typeahead suggestions. Type <code>@</code> in the prompt input to see available agents alongside files and commands.</p>
+
+  <h2>Background Sessions</h2>
+  <pre><code>clew --bg                # Start a background session
+clew --bg --name "review" # Named background session
+clew ps                  # List background sessions
+clew attach              # Attach to a background session
+clew stop &lt;id&gt;           # Stop a background session</code></pre>
+
+  <div class="callout">
+    <strong>Related:</strong> <a href="daemon.html">Daemon Mode</a> for 24/7 autonomous agent operation with supervisor health checks and auto-respawn.
+  </div>
+</main></div>
+<script src="js/main.js"></script>
+</body>
+</html>

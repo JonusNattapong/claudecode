@@ -266,6 +266,7 @@ export function createSkillCommand({
     description,
     hasUserSpecifiedDescription,
     allowedTools,
+    disallowedTools,
     argumentHint,
     argNames: argumentNames.length > 0 ? argumentNames : undefined,
     whenToUse,

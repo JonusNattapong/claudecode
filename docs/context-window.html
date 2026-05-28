@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Context Window — Clew</title>
+  <meta name="description" content="Understanding the Clew context window — /context visualization, /compact compression, prompt caching, and context management strategies.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+<header class="header"><div class="header-inner"><a href="index.html" class="logo"><span>Clew</span></a><nav class="header-nav"><a href="index.html">Home</a><a href="index.html#features">Features</a><a href="index.html#commands">Commands</a><a href="quick-start.html" class="active">Docs</a><a href="https://github.com/JonusNattapong/claudecode" target="_blank">GitHub</a></nav><button class="menu-btn" id="menuToggle" aria-label="Toggle navigation"><span></span><span></span><span></span></button></div></header>
+<div class="app"><aside class="sidebar" id="sidebar"></aside><div class="sidebar-overlay" id="sidebarOverlay"></div><main class="content">
+
+<h1>Context Window</h1>
+<p class="section-subtitle">How Clew manages the context window — visualization, compaction, and caching.</p>
+
+<h2>Overview</h2>
+<p>The context window holds the current conversation history, system prompts, file contents, and tool results. Clew automatically manages context to stay within the model's limits.</p>
+
+<h2>Context Visualization</h2>
+<p>Use <code>/context</code> to see a visual breakdown of context usage:</p>
+
+<pre><code>> /context
+
+Context Usage: ■■■■■■■■■■░░░░ 78% (62k / 80k tokens)
+
+System Prompt    ■■■■■■■■■■  28%
+Conversation     ■■■■■■■■■■  35%
+File Contents    ■■■■■■■■■■  25%
+Tool Results     ■■■■■■■■■■  12%</code></pre>
+
+<h2>Context Compression</h2>
+<p><code>/compact</code> reduces context usage by:</p>
+<ul>
+  <li><strong>Log/trace snipping</strong> — removes verbose log output while keeping errors and key signals</li>
+  <li><strong>Failed-state consolidation</strong> — collapses repeated failed attempts into a summary</li>
+  <li><strong>Semantic turn pruning</strong> — removes turns that don't contribute to the current direction</li>
+  <li><strong>Tool result truncation</strong> — keeps only the essential parts of large tool outputs</li>
+</ul>
+
+<pre><code>> /compact
+Compacting context...
+■ Log/trace snipping    — removed 4.2k tokens
+■ Failed consolidation  — removed 1.8k tokens
+■ Turn pruning          — removed 3.1k tokens
+→ Saved 9.1k tokens (52% → 41%)</code></pre>
+
+<h2>Prompt Caching</h2>
+<p>Clew uses prompt caching automatically to reduce latency and costs. Key behaviors:</p>
+<ul>
+  <li>System prompt and project instructions are cached across turns</li>
+  <li>Switching models resets the cache (first turn after switch is slower)</li>
+  <li>CLAUDE.md changes take effect on the next session, not mid-session</li>
+  <li>KiloCompact runs automatically when context exceeds 80%</li>
+</ul>
+
+<h2>Context Budget</h2>
+<table>
+  <tr><th>Item</th><th>Approx. Tokens</th><th>Note</th></tr>
+  <tr><td>System prompt</td><td>3k–5k</td><td>Varies by provider and model</td></tr>
+  <tr><td>CLAUDE.md</td><td>0.5k–5k</td><td>Depends on file size</td></tr>
+  <tr><td>Project files (auto-loaded)</td><td>0k–8k</td><td>Contextually relevant files</td></tr>
+  <tr><td>Each file read</td><td>~file size</td><td>Read tool adds full file content</td></tr>
+  <tr><td>Each conversation turn</td><td>0.5k–3k</td><td>Prompt + response + tool results</td></tr>
+  <tr><td>/compact overhead</td><td>~200 tokens</td><td>Markers for decompression hooks</td></tr>
+</table>
+
+<h2>Best Practices</h2>
+<ul>
+  <li><strong>Compact proactively</strong> — run <code>/compact</code> before starting a new task in a long session</li>
+  <li><strong>Clear when switching domains</strong> — <code>/clear</code> gives a fresh context for unrelated tasks</li>
+  <li><strong>Use specific file paths</strong> — narrow reads save context compared to broad globs</li>
+  <li><strong>Monitor with /context</strong> — keep an eye on usage, especially during long sessions</li>
+</ul>
+
+<footer class="footer">
+  <span>Clew v2.1.178 — Open Source (MIT)</span>
+  <div class="footer-links">
+    <a href="https://github.com/JonusNattapong/claudecode">GitHub</a>
+    <a href="https://github.com/JonusNattapong/claudecode/issues">Issues</a>
+    <a href="https://npmjs.com/package/@jonusnattapong/claudecode">npm</a>
+  </div>
+</footer>
+</main></div>
+<script src="js/main.js"></script>
+</body>
+</html>

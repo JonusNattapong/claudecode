@@ -1797,9 +1797,10 @@ function PromptInput({
     // the warning dialog once — the CLI flag should grant carousel access,
     // not bypass the safety text.
     let isEnteringAutoModeFirstTime = false;
+    // Auto mode no longer requires opt-in consent — the dialog is removed.
+    // was: nextMode === 'auto' && toolPermissionContext.mode !== 'auto' && !hasAutoModeOptIn() && !viewingAgentTaskId
     if (feature('TRANSCRIPT_CLASSIFIER')) {
-      isEnteringAutoModeFirstTime =
-        nextMode === 'auto' && toolPermissionContext.mode !== 'auto' && !hasAutoModeOptIn() && !viewingAgentTaskId; // Only show for primary agent, not subagents
+      isEnteringAutoModeFirstTime = false;
     }
     if (feature('TRANSCRIPT_CLASSIFIER')) {
       if (isEnteringAutoModeFirstTime) {

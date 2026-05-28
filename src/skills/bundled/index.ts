@@ -3,6 +3,7 @@ import { shouldAutoEnableClaudeInChrome } from 'src/utils/claudeInChrome/setup.j
 import { registerBatchSkill } from './batch.js';
 import { registerClaudeInChromeSkill } from './claudeInChrome.js';
 import { registerCodeReviewSkill } from './code-review.js';
+import { registerSimplifySkill } from './simplify.js';
 import { registerCommitSkill } from './commit.js';
 import { registerDebugSkill } from './debug.js';
 import { registerKeybindingsSkill } from './keybindings.js';
@@ -32,6 +33,7 @@ export function initBundledSkills(): void {
   registerSkillifySkill();
   registerRememberSkill();
   registerCodeReviewSkill();
+  registerSimplifySkill();
   registerBatchSkill();
   registerStuckSkill();
   registerScraplingSkill();

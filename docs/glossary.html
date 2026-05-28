@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Glossary — Clew</title>
+  <meta name="description" content="Key terms and concepts in Clew — agent loop, compaction, CLAUDE.md, hooks, MCP, and more.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+<header class="header"><div class="header-inner"><a href="index.html" class="logo"><span>Clew</span></a><nav class="header-nav"><a href="index.html">Home</a><a href="index.html#features">Features</a><a href="index.html#commands">Commands</a><a href="quick-start.html" class="active">Docs</a><a href="https://github.com/JonusNattapong/claudecode" target="_blank">GitHub</a></nav><button class="menu-btn" id="menuToggle" aria-label="Toggle navigation"><span></span><span></span><span></span></button></div></header>
+<div class="app"><aside class="sidebar" id="sidebar"></aside><div class="sidebar-overlay" id="sidebarOverlay"></div><main class="content">
+  <h1>Glossary</h1>
+  <p class="section-subtitle">Key terms and concepts used throughout Clew.</p>
+
+  <dl class="glossary">
+
+    <dt id="agent-loop">Agent Loop</dt>
+    <dd>The core processing cycle: receive user input → build context → send to model → receive response → execute tool calls → repeat. The agent loop continues until the model produces a text-only response or the user interrupts.
+      <br>See: <a href="agent-teams.html">Agent Teams & Sub-agents</a></dd>
+
+    <dt id="agent-runtime">Agent Runtime</dt>
+    <dd>The orchestration engine (<code>src/agentRuntime/</code>) that spawns, checkpoints, and executes multi-agent workflows with durable state. Includes orchestrator, run store, tool gateway, and registries.
+      <br>See: <a href="agent-teams.html">Agent Teams & Sub-agents</a></dd>
+
+    <dt id="auto-compact">Auto-Compact</dt>
+    <dd>Automated context window management that compresses conversation history when approaching the model's token limit. Prevents context overflow in long sessions.
+      <br>See: <a href="context-window.html">Context Window</a></dd>
+
+    <dt id="bridge">Bridge Mode</dt>
+    <dd>WebSocket-based remote collaboration system enabling session sharing, team onboarding, and access from mobile/web clients.
+      <br>See: <a href="features/bridge-mode.html">Bridge Mode</a></dd>
+
+    <dt id="claude-md">CLAUDE.md</dt>
+    <dd>Project-level instruction files that define repository-specific rules, conventions, and context. Loaded automatically and injected into the system prompt. Supports nested files for subdirectories.
+      <br>See: <a href="configuration.html">Configuration</a></dd>
+
+    <dt id="compaction">Compaction</dt>
+    <dd>The process of reducing conversation context size to stay within model token limits. Includes KiloCompact (local log/trace snipping and failed-state consolidation) and semantic turn pruning.
+      <br>Commands: <code>/compact</code></dd>
+
+    <dt id="context-window">Context Window</dt>
+    <dd>The maximum number of tokens a model can process in a single request. Clew displays current usage as a percentage and a segmented bar showing token distribution across system prompt, tools, rules, chat, and sub-agents.
+      <br>Commands: <code>/context</code></dd>
+
+    <dt id="coordinator">Coordinator Mode</dt>
+    <dd>A mode where Clew delegates work to sub-agents, each handling a portion of the task. The coordinator splits the problem, spawns workers, collects results, and synthesizes the final output.
+      <br>See: <a href="agent-teams.html">Agent Teams & Sub-agents</a></dd>
+
+    <dt id="daemon">Daemon Mode</dt>
+    <dd>Background process that runs 24/7, picks tasks from a queue, spawns worker sessions, monitors execution, and retries on failure. Managed by supervisor with health checks and auto-respawn.
+      <br>Commands: <code>/daemon start|stop|status|restart</code><br>
+      See: <a href="daemon.html">Daemon Mode</a></dd>
+
+    <dt id="dead-letter">Dead Letter</dt>
+    <dd>A task status indicating the task has exhausted its retry count. Dead-lettered tasks are preserved for manual inspection and can be requeued with <code>/task requeue</code>.
+      <br>See: <a href="scheduled-tasks.html">Scheduled Tasks</a></dd>
+
+    <dt id="hooks">Hooks</dt>
+    <dd>Custom scripts that fire at specific points in the execution lifecycle. Hook points: <code>PreToolUse</code>, <code>PostToolUse</code>, <code>PreBash</code>, <code>PostPrompt</code>, <code>PreAcceptEdit</code>, <code>PermissionDenied</code>.
+      <br>See: <a href="hooks.html">Hooks</a></dd>
+
+    <dt id="kilocompact">KiloCompact</dt>
+    <dd>Local context compaction engine that collapses verbose directory trees, glob outputs, stack traces, and large text dumps. Consolidates redundant failed tool runs. Applies keyword-based semantic pruning while preserving protected turns.
+      <br>See: <a href="#compaction">Compaction</a></dd>
+
+    <dt id="mcp">MCP (Model Context Protocol)</dt>
+    <dd>An open protocol for connecting AI models to external tools, resources, and prompts. Clew supports MCP servers for extended capabilities like database access, API integrations, and custom tools.
+      <br>Commands: <code>/mcp</code><br>
+      See: <a href="mcp.html">MCP</a></dd>
+
+    <dt id="permission-modes">Permission Modes</dt>
+    <dd>Tiered system controlling when the AI must ask before executing tools. Modes: <code>default</code>, <code>ask</code>, <code>plan</code>, <code>auto</code>, <code>acceptEdits</code>, <code>bypassPermissions</code>, <code>dontAsk</code>.
+      <br>Commands: <code>/permissions</code><br>
+      See: <a href="permission-model.html">Permission Model</a></dd>
+
+    <dt id="plugin">Plugin</dt>
+    <dd>Packaged extensions that add commands, agents, skills, hooks, and MCP servers. Loaded from user and bundled plugin locations. Managed through the marketplace system.
+      <br>Commands: <code>/plugin</code><br>
+      See: <a href="plugins.html">Plugins</a></dd>
+
+    <dt id="provider">Provider</dt>
+    <dd>An AI model API service. Clew supports 27 providers including Anthropic, OpenAI, Google Gemini, DeepSeek, OpenRouter, Ollama, xAI, Mistral, and Groq.
+      <br>Commands: <code>/provider</code><br>
+      See: <a href="providers.html">Providers</a></dd>
+
+    <dt id="session">Session</dt>
+    <dd>A single conversation instance with its own model, provider, context, and history. Sessions can be saved, listed, restored, and shared via bridge mode.
+      <br>Commands: <code>/resume</code></dd>
+
+    <dt id="skill">Skill</dt>
+    <dd>Reusable procedures, checklists, and domain workflows packaged with prompts and tool configurations. Can be user-defined or come from plugins.
+      <br>Commands: <code>/skill</code><br>
+      See: <a href="skills.html">Skills</a></dd>
+
+    <dt id="sub-agent">Sub-agent</dt>
+    <dd>An AI agent spawned by the main session to handle a specific subtask. Each sub-agent can have its own model, tools, allowed paths, and system prompt. Sub-agents are isolated — they cannot leak working directory changes to the parent.
+      <br>See: <a href="agent-teams.html">Agent Teams & Sub-agents</a></dd>
+
+    <dt id="supervisor">Supervisor</dt>
+    <dd>A process manager that monitors the Clew daemon, performs health checks every 30 seconds, and auto-respawns on crash. Also manages inter-process communication between sessions.
+      <br>See: <a href="daemon.html">Daemon Mode</a></dd>
+
+    <dt id="task-queue">Task Queue</dt>
+    <dd>File-backed priority queue (<code>~/.claude/daemon/tasks.json</code>) for autonomous task execution. Supports priorities, scheduling, dependency chains, tags, leasing, retry with exponential backoff, and dead-letter handling.
+      <br>See: <a href="scheduled-tasks.html">Scheduled Tasks</a></dd>
+
+    <dt id="tools">Tools</dt>
+    <dd>Built-in capabilities the AI can invoke: Read, Write, Edit, Glob, Grep, Bash, Web Search, Research, MCP, Agent, Task, Monitor, and more. 65+ tools available.
+      <br>Commands: <code>/tools</code><br>
+      See: <a href="tools.html">Tools</a></dd>
+
+    <dt id="workflow">Workflow</dt>
+    <dd>A YAML-defined DAG pipeline of agent steps with dependencies. Workflows define multi-step processes where later steps depend on earlier ones completing successfully.
+      <br>See: <a href="agent-teams.html">Agent Teams & Sub-agents</a></dd>
+
+  </dl>
+</main></div>
+<script src="js/main.js"></script>
+</body>
+</html>

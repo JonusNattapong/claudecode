@@ -3,18 +3,18 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Commands — Claudevil</title>
-  <meta name="description" content="Complete reference for all slash commands in Claudevil — built-in commands, skills, and plugin commands.">
+  <title>Commands — Clew</title>
+  <meta name="description" content="Complete reference for all slash commands in Clew — built-in commands, skills, and plugin commands.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
-<header class="header"><div class="header-inner"><a href="index.html" class="logo"><span>Claudevil</span></a><nav class="header-nav"><a href="index.html">Home</a><a href="index.html#features">Features</a><a href="index.html#commands">Commands</a><a href="quick-start.html" class="active">Docs</a><a href="https://github.com/JonusNattapong/claudecode" target="_blank">GitHub</a></nav><button class="menu-btn" id="menuToggle" aria-label="Toggle navigation"><span></span><span></span><span></span></button></div></header>
+<header class="header"><div class="header-inner"><a href="index.html" class="logo"><span>Clew</span></a><nav class="header-nav"><a href="index.html">Home</a><a href="index.html#features">Features</a><a href="index.html#commands">Commands</a><a href="quick-start.html" class="active">Docs</a><a href="https://github.com/JonusNattapong/claudecode" target="_blank">GitHub</a></nav><button class="menu-btn" id="menuToggle" aria-label="Toggle navigation"><span></span><span></span><span></span></button></div></header>
 <div class="app"><aside class="sidebar" id="sidebar"></aside><div class="sidebar-overlay" id="sidebarOverlay"></div><main class="content">
   <h1>Commands</h1>
-  <p class="section-subtitle">Claudevil ships with 80+ built-in slash commands plus dynamically loaded skills and plugin commands. Commands can be <strong>local</strong> (terminal execution), <strong>prompt</strong> (text expanded to the model), or <strong>local-jsx</strong> (Ink UI panels).</p>
+  <p class="section-subtitle">Clew ships with 80+ built-in slash commands plus dynamically loaded skills and plugin commands. Commands can be <strong>local</strong> (terminal execution), <strong>prompt</strong> (text expanded to the model), or <strong>local-jsx</strong> (Ink UI panels).</p>
 
   <div class="callout callout-tip">
     <strong>Discovery</strong>
@@ -46,7 +46,7 @@
     <tr><td><code>/cost</code></td><td>Show the total cost and duration of the current session</td></tr>
     <tr><td><code>/usage</code></td><td>Show plan usage limits</td></tr>
     <tr><td><code>/usage-credits</code></td><td>Configure usage credits to keep working when limits are hit</td></tr>
-    <tr><td><code>/stats</code></td><td>Show your Claudevil usage statistics and activity</td></tr>
+    <tr><td><code>/stats</code></td><td>Show your Clew usage statistics and activity</td></tr>
     <tr><td><code>/rate-limit-options</code></td><td>Show options when rate limit is reached</td></tr>
     <tr><td><code>/upgrade</code></td><td>Upgrade to Max for higher rate limits and more Opus</td></tr>
   </table>
@@ -69,7 +69,8 @@
     <tr><th>Command</th><th>Description</th></tr>
     <tr><td><code>/plugin</code></td><td>Manage plugins — list, install, remove</td></tr>
     <tr><td><code>/plugin-details</code></td><td>Show plugin component inventory, hooks, MCP servers, and per-session token cost</td></tr>
-    <tr><td><code>/reload-plugins</code></td><td>Activate pending plugin changes in the current session</td></tr>
+    <tr><td><code>/reload-plugins</code></td><td>Refresh plugin configuration and activate pending plugin changes</td></tr>
+    <tr><td><code>/reload-skills</code></td><td>Re-scan and reload all skills (project, user, plugin, and bundled)</td></tr>
     <tr><td><code>/mcp</code></td><td>Manage MCP servers</td></tr>
     <tr><td><code>/skill</code></td><td>List available skills or show skill details</td></tr>
     <tr><td><code>/skills</code></td><td>List available skills</td></tr>
@@ -78,21 +79,21 @@
   <h2>Agents</h2>
   <table>
     <tr><th>Command</th><th>Description</th></tr>
-    <tr><td><code>/agent</code></td><td>Manage Claudevil AI Agents execution, state checkpoints, and approvals</td></tr>
+    <tr><td><code>/agent</code></td><td>Manage Clew AI Agents execution, state checkpoints, and approvals</td></tr>
     <tr><td><code>/agents</code></td><td>Manage agent configurations</td></tr>
     <tr><td><code>/tasks</code></td><td>List and manage background tasks</td></tr>
     <tr><td><code>/daemon</code></td><td>Open an interactive 24/7 autonomous daemon control panel; subcommands still support start/stop/status/restart</td></tr>
     <tr><td><code>/task</code></td><td>Create scheduled tasks with an interactive form; subcommands still manage the autonomous task queue</td></tr>
     <tr><td><code>/loop</code></td><td>Run a prompt or slash command on a recurring interval (e.g. <code>/loop 5m /check-deploy</code>)</td></tr>
-    <tr><td><code>/autofix-pr</code></td><td>Fix CI errors and address review comments on a PR using Claudevil on the web</td></tr>
+    <tr><td><code>/autofix-pr</code></td><td>Fix CI errors and address review comments on a PR using Clew on the web</td></tr>
   </table>
 
   <h2>System &amp; Diagnostics</h2>
   <table>
     <tr><th>Command</th><th>Description</th></tr>
     <tr><td><code>/help</code></td><td>Show help and available commands</td></tr>
-    <tr><td><code>/status</code></td><td>Show Claudevil status including version, model, account, API connectivity, and tool statuses</td></tr>
-    <tr><td><code>/doctor</code></td><td>Diagnose and verify your Claudevil installation and settings</td></tr>
+    <tr><td><code>/status</code></td><td>Show Clew status including version, model, account, API connectivity, and tool statuses</td></tr>
+    <tr><td><code>/doctor</code></td><td>Diagnose and verify your Clew installation and settings</td></tr>
     <tr><td><code>/exit</code></td><td>Exit the REPL</td></tr>
     <tr><td><code>/version</code></td><td>Show version</td></tr>
     <tr><td><code>/release-notes</code></td><td>View release notes</td></tr>
@@ -104,7 +105,7 @@
     <tr><th>Command</th><th>Description</th></tr>
     <tr><td><code>/config</code></td><td>Open config panel</td></tr>
     <tr><td><code>/theme</code></td><td>Change the theme</td></tr>
-    <tr><td><code>/color</code></td><td>Set the prompt bar color for this session</td></tr>
+    <tr><td><code>/color</code></td><td>Set prompt bar color and toggle mascot horns visibility</td></tr>
     <tr><td><code>/keybindings</code></td><td>Open or create your keybindings configuration file</td></tr>
     <tr><td><code>/scroll-speed</code></td><td>Set mouse wheel scroll speed multiplier (1-20)</td></tr>
     <tr><td><code>/output-style</code></td><td>Deprecated: use /config to change output style</td></tr>
@@ -148,15 +149,15 @@
     <tr><td><code>/buddy</code></td><td>Configure your AI companion (Buddy)</td></tr>
     <tr><td><code>/desktop</code></td><td>Continue the current session in Claude Desktop</td></tr>
     <tr><td><code>/mobile</code></td><td>Show QR code to download the Claude mobile app</td></tr>
-    <tr><td><code>/powerup</code></td><td>Interactive lessons teaching Claudevil features with animated demos</td></tr>
-    <tr><td><code>/feedback</code></td><td>Submit feedback about Claudevil</td></tr>
+    <tr><td><code>/powerup</code></td><td>Interactive lessons teaching Clew features with animated demos</td></tr>
+    <tr><td><code>/feedback</code></td><td>Submit feedback about Clew</td></tr>
     <tr><td><code>/onboarding</code></td><td>Run the interactive onboarding wizard</td></tr>
     <tr><td><code>/team-onboarding</code></td><td>Generate a teammate ramp-up guide from your local usage</td></tr>
     <tr><td><code>/add-dir</code></td><td>Add a new working directory</td></tr>
     <tr><td><code>/goal</code></td><td>Set a session goal</td></tr>
     <tr><td><code>/heapdump</code></td><td>Dump the JS heap to ~/Desktop</td></tr>
-    <tr><td><code>/stickers</code></td><td>Order Claudevil stickers</td></tr>
-    <tr><td><code>/thinkback</code></td><td>Your 2025 Claudevil Year in Review</td></tr>
+    <tr><td><code>/stickers</code></td><td>Order Clew stickers</td></tr>
+    <tr><td><code>/thinkback</code></td><td>Your 2025 Clew Year in Review</td></tr>
   </table>
 
   <h2>Feature-Gated Commands</h2>
@@ -173,7 +174,7 @@
   </table>
 
   <h2>Interactive Autocomplete</h2>
-  <p>Claudevil features an inline ghost text system that predicts the next argument as you type commands:</p>
+  <p>Clew features an inline ghost text system that predicts the next argument as you type commands:</p>
   <ul>
     <li>Type <code>/goal</code> followed by a space → inline ghost text shows <code>[condition]</code> in dim text after the cursor</li>
     <li>Press <kbd>Tab</kbd> or <kbd>→</kbd> (Right Arrow) to accept the ghost text and fill the placeholder</li>
@@ -198,10 +199,10 @@
     <li><strong>MCP skills</strong> — From MCP servers (when <code>MCP_SKILLS</code> feature is enabled)</li>
     <li><strong>Dynamic skills</strong> — Discovered during file operations</li>
   </ul>
-  <p>Use <code>/reload-plugins</code> to reload plugin-provided commands without restarting. Remote-safe and bridge-safe commands have explicit allowlists in <code>src/commands.ts</code>.</p>
+  <p>Use <code>/reload-plugins</code> to reload plugin-provided commands and <code>/reload-skills</code> to re-scan all skills without restarting. Remote-safe and bridge-safe commands have explicit allowlists in <code>src/commands.ts</code>.</p>
 
   <footer class="footer">
-    <span>Claudevil v2.1.165 — Open Source (MIT)</span>
+    <span>Clew v2.1.178 — Open Source (MIT)</span>
     <div class="footer-links">
       <a href="https://github.com/JonusNattapong/claudecode">GitHub</a>
       <a href="https://github.com/JonusNattapong/claudecode/issues">Issues</a>

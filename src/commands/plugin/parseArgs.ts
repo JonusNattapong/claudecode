@@ -12,6 +12,7 @@ export type ParsedCommand =
       type: 'marketplace';
       action?: 'add' | 'remove' | 'update' | 'list';
       target?: string;
+      scope?: 'user' | 'project' | 'local';
     };
 
 export function parsePluginArgs(args?: string): ParsedCommand {
@@ -78,14 +79,29 @@ export function parsePluginArgs(args?: string): ParsedCommand {
     case 'marketplace':
     case 'market': {
       const action = parts[1]?.toLowerCase();
-      const target = parts.slice(2).join(' ');
+      const targetParts: string[] = [];
+      let scope: 'user' | 'project' | 'local' | undefined;
+
+      for (let i = 2; i < parts.length; i++) {
+        const part = parts[i]!;
+        if (part === '--scope' && parts[i + 1]) {
+          const scopeVal = parts[i + 1]!.toLowerCase();
+          if (scopeVal === 'user' || scopeVal === 'project' || scopeVal === 'local') {
+            scope = scopeVal;
+          }
+          i++;
+        } else {
+          targetParts.push(part);
+        }
+      }
+      const target = targetParts.join(' ');
 
       switch (action) {
         case 'add':
-          return { type: 'marketplace', action: 'add', target };
+          return { type: 'marketplace', action: 'add', target, scope };
         case 'remove':
         case 'rm':
-          return { type: 'marketplace', action: 'remove', target };
+          return { type: 'marketplace', action: 'remove', target, scope };
         case 'update':
           return { type: 'marketplace', action: 'update', target };
         case 'list':

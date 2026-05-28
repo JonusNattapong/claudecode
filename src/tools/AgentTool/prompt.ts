@@ -1,7 +1,7 @@
 import { getFeatureValue_CACHED_MAY_BE_STALE } from '../../services/analytics/growthbook.js';
 import { getSubscriptionType } from '../../utils/auth.js';
 import { hasEmbeddedSearchTools } from '../../utils/embeddedTools.js';
-import { isEnvDefinedFalsy, isEnvTruthy } from '../../utils/envUtils.js';
+import { isBareMode, isEnvDefinedFalsy, isEnvTruthy } from '../../utils/envUtils.js';
 import { isTeammate } from '../../utils/teammate.js';
 import { isInProcessTeammate } from '../../utils/teammateContext.js';
 import { FILE_READ_TOOL_NAME } from '../FileReadTool/prompt.js';
@@ -190,7 +190,8 @@ assistant: "I'm going to use the ${AGENT_TOOL_NAME} tool to launch the greeting-
   // attachment (see attachments.ts) instead of inline here. This keeps the
   // tool description static across MCP/plugin/permission changes so the
   // tools-block prompt cache doesn't bust every time an agent loads.
-  const listViaAttachment = shouldInjectAgentListInMessages();
+  // Fall back to inline when attachments won't be delivered (--bare mode).
+  const listViaAttachment = isBareMode() ? false : shouldInjectAgentListInMessages();
 
   const agentListSection = listViaAttachment
     ? `Available agent types are listed in <system-reminder> messages in the conversation.`

@@ -151,18 +151,28 @@ function SpinnerWithVerbInner({
 
       thinkingStartRef.current = null;
 
-      // Show "thinking..." for remaining time if < 2s elapsed, then show duration
-      const showDuration = (): void => {
-        setThinkingStatus(duration);
-        // Clear after 2s
-        clearStatusTimer = setTimeout(setThinkingStatus, 2000, null);
-      };
-
-      if (remainingThinkingTime > 0) {
-        showDurationTimer = setTimeout(showDuration, remainingThinkingTime);
+      if (mode === 'tool-use') {
+        // Don't show "thought for Ns" while a tool is running — clear immediately
+        setThinkingStatus(null);
       } else {
-        showDuration();
+        // Show "thinking..." for remaining time if < 2s elapsed, then show duration
+        const showDuration = (): void => {
+          setThinkingStatus(duration);
+          // Clear after 2s
+          clearStatusTimer = setTimeout(setThinkingStatus, 2000, null);
+        };
+
+        if (remainingThinkingTime > 0) {
+          showDurationTimer = setTimeout(showDuration, remainingThinkingTime);
+        } else {
+          showDuration();
+        }
       }
+    } else if (mode === 'tool-use') {
+      // Reset thinking status when switching to tool-use (e.g., after a tool completes
+      // and thinking resumes, start with a fresh 'thinking' indicator)
+      thinkingStartRef.current = null;
+      setThinkingStatus(null);
     }
 
     return () => {
@@ -250,13 +260,17 @@ function SpinnerWithVerbInner({
   // When leader is idle but teammates are running (and we're viewing the leader),
   // show a static dim idle display instead of the animated spinner — otherwise
   // useStalledAnimation detects no new tokens after 3s and turns the spinner red.
+  const backgroundRunningCount = runningTeammates.filter(t => t.isBackground).length;
   if (leaderIsIdle && hasRunningTeammates && !foregroundedTeammate) {
+    const statusText = backgroundRunningCount > 0
+      ? `Waiting for ${backgroundRunningCount} background agent${backgroundRunningCount > 1 ? 's' : ''}/workflow${backgroundRunningCount > 1 ? 's' : ''} to finish`
+      : 'Idle';
     return (
       <Box flexDirection="column" width="100%" alignItems="flex-start">
         <Box flexDirection="row" flexWrap="wrap" marginTop={1} width="100%">
           <Text dimColor>
-            {TEARDROP_ASTERISK} Idle
-            {!allIdle && ' · teammates running'}
+            {TEARDROP_ASTERISK} {statusText}
+            {!allIdle && backgroundRunningCount === 0 && ' · teammates running'}
           </Text>
         </Box>
         {showSpinnerTree && (

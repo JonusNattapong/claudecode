@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Error Reference — Clew</title>
+  <meta name="description" content="Common Clew errors and how to fix them — API errors, configuration issues, permission failures, and runtime problems.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+<header class="header"><div class="header-inner"><a href="index.html" class="logo"><span>Clew</span></a><nav class="header-nav"><a href="index.html">Home</a><a href="index.html#features">Features</a><a href="index.html#commands">Commands</a><a href="quick-start.html" class="active">Docs</a><a href="https://github.com/JonusNattapong/claudecode" target="_blank">GitHub</a></nav><button class="menu-btn" id="menuToggle" aria-label="Toggle navigation"><span></span><span></span><span></span></button></div></header>
+<div class="app"><aside class="sidebar" id="sidebar"></aside><div class="sidebar-overlay" id="sidebarOverlay"></div><main class="content">
+
+<h1>Error Reference</h1>
+<p class="section-subtitle">Common errors, their causes, and solutions.</p>
+
+<h2>API &amp; Provider Errors</h2>
+<table>
+  <tr><th>Error</th><th>Cause</th><th>Fix</th></tr>
+  <tr>
+    <td><code>No API key found for provider</code></td>
+    <td>Missing environment variable for the selected provider</td>
+    <td>Set the appropriate API key (e.g. <code>export OPENAI_API_KEY=sk-...</code>)</td>
+  </tr>
+  <tr>
+    <td><code>401 Unauthorized</code></td>
+    <td>Invalid or expired API key</td>
+    <td>Verify your API key is correct and hasn't expired</td>
+  </tr>
+  <tr>
+    <td><code>429 Rate Limited</code></td>
+    <td>Too many requests</td>
+    <td>Wait and retry, or switch to a different provider/model</td>
+  </tr>
+  <tr>
+    <td><code>Model not found</code></td>
+    <td>The model name doesn't exist or isn't available for your API key</td>
+    <td>Run <code>/model list</code> to see available models</td>
+  </tr>
+  <tr>
+    <td><code>Context length exceeded</code></td>
+    <td>Conversation exceeds model's context window</td>
+    <td>Run <code>/compact</code> or <code>/clear</code> to free context</td>
+  </tr>
+</table>
+
+<h2>Installation &amp; Launch Errors</h2>
+<table>
+  <tr><th>Error</th><th>Cause</th><th>Fix</th></tr>
+  <tr>
+    <td><code>command not found: clew</code></td>
+    <td>Binary not in PATH</td>
+    <td>Verify npm global bin is in PATH, or install with <code>bun install -g</code></td>
+  </tr>
+  <tr>
+    <td><code>Bun not found</code></td>
+    <td>clew requires Bun at runtime</td>
+    <td>Install Bun from <a href="https://bun.sh">bun.sh</a></td>
+  </tr>
+  <tr>
+    <td><code>Export named '...' not found</code></td>
+    <td>Running from source with missing exports</td>
+    <td>Run <code>bun run build</code> first, or check for compile errors</td>
+  </tr>
+  <tr>
+    <td><code>Cannot find module</code></td>
+    <td>Missing dependencies</td>
+    <td>Run <code>bun install</code> to install dependencies</td>
+  </tr>
+</table>
+
+<h2>Configuration Errors</h2>
+<table>
+  <tr><th>Error</th><th>Cause</th><th>Fix</th></tr>
+  <tr>
+    <td><code>Invalid settings.json</code></td>
+    <td>JSON syntax error in settings file</td>
+    <td>Validate the file with <code>bun run jsonlint</code> or check for trailing commas</td>
+  </tr>
+  <tr>
+    <td><code>Hook command failed</code></td>
+    <td>A hook shell command exited with non-zero code</td>
+    <td>Run the hook command manually to debug. Check <code>/doctor</code> for hook status</td>
+  </tr>
+  <tr>
+    <td><code>Plugin load failed</code></td>
+    <td>Plugin manifest invalid or missing dependencies</td>
+    <td>Run <code>/plugin list</code> to see which plugins failed. Check plugin logs</td>
+  </tr>
+  <tr>
+    <td><code>MCP server connection failed</code></td>
+    <td>MCP server command or URL is unreachable</td>
+    <td>Verify the server is running. Check <code>/mcp list</code> for connection status</td>
+  </tr>
+</table>
+
+<h2>Runtime Errors</h2>
+<table>
+  <tr><th>Error</th><th>Cause</th><th>Fix</th></tr>
+  <tr>
+    <td><code>Permission denied</code></td>
+    <td>Tool execution blocked by permission rules</td>
+    <td>Press <kbd>Shift</kbd>+<kbd>Tab</kbd> to cycle permission modes, or use <code>/permissions</code></td>
+  </tr>
+  <tr>
+    <td><code>Tool execution timeout</code></td>
+    <td>A tool took too long to complete</td>
+    <td>Check if the command is hung. Increase timeout in tool config if needed</td>
+  </tr>
+  <tr>
+    <td><code>Bridge connection lost</code></td>
+    <td>WebSocket disconnected</td>
+    <td>Run <code>/bridge reconnect</code> to reconnect</td>
+  </tr>
+  <tr>
+    <td><code>Session not found</code></td>
+    <td>Trying to resume a session that doesn't exist</td>
+    <td>Use <code>/resume</code> to see the list of available sessions</td>
+  </tr>
+</table>
+
+<h2>Diagnostics</h2>
+<p>Run <code>/doctor</code> at any time to run automated diagnostics:</p>
+<pre><code>> /doctor
+✓ Environment check passed
+✓ API key configured (OpenAI)
+✓ Settings file valid
+✓ Hooks: 3 configured, all OK
+✓ Plugin: 5 loaded, 0 errors
+! MCP: 1 server unreachable
+→ Run /mcp list for details</code></pre>
+
+<p>For more detailed debugging, launch with <code>clew --debug</code> or set <code>DEBUG=1</code>.</p>
+
+<h2>Report an Issue</h2>
+<p>If you encounter a bug not listed here, please report it on <a href="https://github.com/JonusNattapong/claudecode/issues">GitHub Issues</a> with:</p>
+<ul>
+  <li>Clew version (<code>clew --version</code>)</li>
+  <li>OS and terminal emulator</li>
+  <li>Steps to reproduce</li>
+  <li>Full error output (run with <code>--debug</code>)</li>
+</ul>
+
+<footer class="footer">
+  <span>Clew v2.1.178 — Open Source (MIT)</span>
+  <div class="footer-links">
+    <a href="https://github.com/JonusNattapong/claudecode">GitHub</a>
+    <a href="https://github.com/JonusNattapong/claudecode/issues">Issues</a>
+    <a href="https://npmjs.com/package/@jonusnattapong/claudecode">npm</a>
+  </div>
+</footer>
+</main></div>
+<script src="js/main.js"></script>
+</body>
+</html>
