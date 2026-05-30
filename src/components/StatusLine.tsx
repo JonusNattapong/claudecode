@@ -43,6 +43,7 @@ import { createBaseHookInput, executeStatusLineCommand } from '../utils/hooks.js
 import { decodeHtmlEntities } from '../utils/htmlEntities.js';
 import { getLastAssistantMessage } from '../utils/messages.js';
 import { getRuntimeMainLoopModel, type ModelName, renderModelName } from '../utils/model/model.js';
+import { getFullGoalState } from '../utils/sessionGoalState.js';
 import { getCurrentSessionTitle } from '../utils/sessionStorage.js';
 import { doesMostRecentAssistantMessageExceed200k, getCurrentUsage } from '../utils/tokens.js';
 import { getCurrentWorktreeSession } from '../utils/worktree.js';
@@ -180,8 +181,8 @@ const CLAUDE_THEME = {
   mcp: '#C6A0F6',
 } as const;
 
-const BAR_FREE_HEX = CLAUDE_THEME.surface;
-const CONTEXT_HEART_COUNT = 6;
+const _BAR_FREE_HEX = CLAUDE_THEME.surface;
+const _CONTEXT_HEART_COUNT = 6;
 const CLAUDE_DOT = chalk.hex(CLAUDE_THEME.subtle)(' · ');
 
 function claudeMuted(text: string): string {
@@ -207,19 +208,8 @@ function claudePill(text: string): string {
 }
 
 /** Render remaining context as six hearts. */
-function renderContextHearts(usedPercentage: number | null | undefined): string {
-  if (usedPercentage === null || usedPercentage === undefined) {
-    return chalk.hex(CLAUDE_THEME.success)('◈'.repeat(CONTEXT_HEART_COUNT));
-  }
-
-  const remainingFraction = Math.max(0, 1 - Math.min(100, Math.max(0, usedPercentage)) / 100);
-  const filledHearts = Math.round(remainingFraction * CONTEXT_HEART_COUNT);
-  const heartColor =
-    filledHearts <= 1 ? CLAUDE_THEME.danger : filledHearts <= 2 ? CLAUDE_THEME.warning : CLAUDE_THEME.success;
-  return (
-    chalk.hex(heartColor)('◈'.repeat(filledHearts)) +
-    chalk.hex(BAR_FREE_HEX)('◇'.repeat(CONTEXT_HEART_COUNT - filledHearts))
-  );
+function renderContextHearts(_usedPercentage: number | null | undefined): string {
+  return '';
 }
 
 interface ToolActivity {
@@ -485,6 +475,8 @@ function StatusLineInner({
   const additionalWorkingDirectories = useAppState(s => s.toolPermissionContext.additionalWorkingDirectories);
   const sessionGoal = useAppState(s => s.sessionGoal);
   const sessionGoalStartTime = useAppState(s => s.sessionGoalStartTime);
+  const sessionGoalTurnCount = useAppState(s => s.sessionGoalTurnCount);
+  const sessionGoalPaused = useAppState(s => s.sessionGoalPaused);
   const statusLineText = useAppState(s => s.statusLineText);
   const setAppState = useSetAppState();
   const settings = useSettings();
@@ -656,7 +648,7 @@ function StatusLineInner({
 
     const contextWindowSize = getContextWindowForModel(runtimeModel, getSdkBetas());
     const contextPercentages = calculateContextPercentages(usageForContext, contextWindowSize);
-    const duration = getTotalDuration();
+    const _duration = getTotalDuration();
     let usedPercentage = contextPercentages.used ?? 0;
 
     // During streaming the assistant message has no token usage yet,
@@ -697,14 +689,41 @@ function StatusLineInner({
     if (sessionGoal) {
       const elapsedMs = sessionGoalStartTime ? Date.now() - sessionGoalStartTime : 0;
       const elapsedStr = formatCompactDuration(elapsedMs);
-      if (permissionMode === 'bypassPermissions') {
-        const text = `◎ /goal active (${elapsedStr})`;
+      const turns = sessionGoalTurnCount ?? 0;
+      const isPaused = sessionGoalPaused ?? false;
+
+      // Build a richer goal label with turn count
+      const icon = isPaused ? '⏸' : '◎';
+      const statusLabel = isPaused ? 'paused' : 'active';
+      const turnsStr = turns > 0 ? ` · ${turns}t` : '';
+
+      // Progress indicator for bounded goals
+      let progressStr = '';
+      const goalState = getFullGoalState();
+      if (goalState?.maxTurns && turns > 0) {
+        const ratio = turns / goalState.maxTurns;
+        const filled = Math.round(ratio * 6);
+        const empty = 6 - filled;
+        const bar = '▰'.repeat(filled) + '▱'.repeat(empty);
+        progressStr = ` ${bar}`;
+      }
+
+      const text = `${icon} /goal ${statusLabel} (${elapsedStr}${turnsStr}${progressStr})`;
+
+      if (isPaused) {
+        sessionGoalDisplay = claudePill(text);
+      } else if (permissionMode === 'bypassPermissions') {
+        // Color based on progress toward limits
+        let color = CLAUDE_THEME.accent;
+        if (goalState?.maxTurns) {
+          const ratio = turns / goalState.maxTurns;
+          if (ratio > 0.85) color = CLAUDE_THEME.danger;
+          else if (ratio > 0.65) color = CLAUDE_THEME.warning;
+        }
         sessionGoalDisplay =
-          chalk.hex(CLAUDE_THEME.subtle)('[') +
-          chalk.hex(CLAUDE_THEME.accent)(text) +
-          chalk.hex(CLAUDE_THEME.subtle)(']');
+          chalk.hex(CLAUDE_THEME.subtle)('[') + chalk.hex(color)(text) + chalk.hex(CLAUDE_THEME.subtle)(']');
       } else {
-        sessionGoalDisplay = claudePill(`◎ /goal active (${elapsedStr})`);
+        sessionGoalDisplay = claudePill(text);
       }
     }
     // Only show MCPs count (rules/hooks/duration removed from statusline)

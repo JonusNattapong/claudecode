@@ -11,6 +11,8 @@ import {
   watchQueue,
 } from '../services/autonomous/taskQueue.js';
 import { formatDuration, truncateToWidth } from '../utils/format.js';
+import { getFullGoalState } from '../utils/sessionGoalState.js';
+import { ProgressBar } from './design-system/ProgressBar.js';
 import { OffscreenFreeze } from './OffscreenFreeze.js';
 import { SpinnerGlyph } from './Spinner/SpinnerGlyph.js';
 
@@ -139,6 +141,109 @@ function TaskRow({ task }: { task: TaskQueueEntry }) {
   );
 }
 
+/** Render a goal progress section with progress bars */
+function GoalProgressSection({
+  goalTurns,
+  elapsed,
+  isLoading,
+  frame,
+}: {
+  goalTurns: number | undefined;
+  elapsed: string | null;
+  isLoading: boolean;
+  frame: number;
+}): React.ReactNode {
+  const goalState = getFullGoalState();
+  const turns = goalTurns ?? 0;
+  const isPaused = goalState?.paused ?? false;
+  const tokens = goalState?.evalTokens ?? 0;
+
+  // Compute time-based progress
+  let timeProgress: { elapsed: number; max: number } | null = null;
+  if (goalState?.maxMinutes && goalState.setAt) {
+    const totalPausedMs = goalState.totalPausedMs ?? 0;
+    const activeElapsedMs = Date.now() - goalState.setAt - totalPausedMs;
+    timeProgress = {
+      elapsed: activeElapsedMs / 60_000,
+      max: goalState.maxMinutes,
+    };
+  }
+
+  return (
+    <Box flexDirection="column">
+      {/* Turn progress bar */}
+      {goalState?.maxTurns ? (
+        <Box flexDirection="row" gap={1} alignItems="center">
+          <Text dimColor> Turns</Text>
+          <ProgressBar
+            ratio={turns / goalState.maxTurns}
+            width={20}
+            fillColor={
+              turns / goalState.maxTurns > 0.85 ? 'error' : turns / goalState.maxTurns > 0.65 ? 'warning' : 'suggestion'
+            }
+          />
+          <Text dimColor>
+            {turns}/{goalState.maxTurns}
+          </Text>
+        </Box>
+      ) : null}
+
+      {/* Time progress bar */}
+      {timeProgress ? (
+        <Box flexDirection="row" gap={1} alignItems="center">
+          <Text dimColor> Time </Text>
+          <ProgressBar
+            ratio={timeProgress.elapsed / timeProgress.max}
+            width={20}
+            fillColor={
+              timeProgress.elapsed / timeProgress.max > 0.85
+                ? 'error'
+                : timeProgress.elapsed / timeProgress.max > 0.65
+                  ? 'warning'
+                  : 'suggestion'
+            }
+          />
+          <Text dimColor>
+            {Math.round(timeProgress.elapsed)}/{timeProgress.max}m
+          </Text>
+        </Box>
+      ) : null}
+
+      {/* Evaluator feedback */}
+      {goalState?.lastReason ? (
+        <Text dimColor>
+          {'  '}💬 {truncateToWidth(goalState.lastReason, 100)}
+        </Text>
+      ) : null}
+
+      {/* Eval stats */}
+      {tokens > 0 ? (
+        <Text dimColor>
+          {'  '}📊 Eval tokens: {tokens.toLocaleString()}
+        </Text>
+      ) : null}
+
+      {/* Status line */}
+      <Box>
+        {isPaused ? (
+          <Text color="warning">⏸ Goal paused — /goal resume to continue</Text>
+        ) : (
+          <>
+            {isLoading ? <SpinnerGlyph frame={frame} messageColor="warning" /> : <Text>○</Text>}
+            <Text dimColor>
+              {' '}
+              {isLoading ? 'Working toward goal...' : 'Goal not yet met... continuing'}
+              {elapsed ? ` (${elapsed}` : ''}
+              {turns > 0 ? ` · ${turns} turns` : ''}
+              {elapsed ? ' · esc to interrupt)' : ''}
+            </Text>
+          </>
+        )}
+      </Box>
+    </Box>
+  );
+}
+
 export function AutonomousExecutionAccordion({ goal, goalStartedAt, goalTurns, isLoading }: Props): React.ReactNode {
   const [tasks, setTasks] = useState<TaskQueueEntry[]>([]);
   const [daemon, setDaemon] = useState<DaemonSnapshot | null>(null);
@@ -168,7 +273,7 @@ export function AutonomousExecutionAccordion({ goal, goalStartedAt, goalTurns, i
       unwatch();
       clearInterval(timer);
     };
-  }, []);
+  }, [refresh]);
 
   const visibleTasks = useMemo(() => getVisibleTasks(tasks), [tasks]);
   const active = Boolean(goal) || Boolean(daemon?.running) || visibleTasks.length > 0;
@@ -189,7 +294,7 @@ export function AutonomousExecutionAccordion({ goal, goalStartedAt, goalTurns, i
         {goal ? (
           <Text>
             <Text color="suggestion">◎</Text>
-            <Text> Goal set: </Text>
+            <Text> Goal: </Text>
             <Text bold>{truncateToWidth(goal, 96)}</Text>
           </Text>
         ) : null}
@@ -211,16 +316,7 @@ export function AutonomousExecutionAccordion({ goal, goalStartedAt, goalTurns, i
           </Box>
         ) : null}
         {goal ? (
-          <Box>
-            {isLoading ? <SpinnerGlyph frame={frame} messageColor="warning" /> : <Text>○</Text>}
-            <Text dimColor>
-              {' '}
-              {isLoading ? 'Claude is working toward the goal...' : 'Goal not yet met... continuing'}
-              {elapsed ? ` (${elapsed}` : ''}
-              {goalTurns !== undefined ? ` · ${goalTurns} turns` : ''}
-              {elapsed ? ' · esc to interrupt)' : ''}
-            </Text>
-          </Box>
+          <GoalProgressSection goalTurns={goalTurns} elapsed={elapsed} isLoading={isLoading} frame={frame} />
         ) : visibleTasks.length === 0 ? (
           <Text dimColor>✓ No queued daemon tasks</Text>
         ) : null}

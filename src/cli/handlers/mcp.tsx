@@ -40,6 +40,17 @@ import { getPlatform } from '../../utils/platform.js';
 import { cliError, cliOk } from '../exit.js';
 
 async function checkMcpServerHealth(name: string, server: ScopedMcpServerConfig): Promise<string> {
+  // Local-scope servers from .mcp.json require explicit approval before connecting.
+  // When listing/getting servers in piped (non-interactive) mode, show pending status
+  // instead of auto-approving and connecting.
+  if (server.scope === 'local') {
+    const projectConfig = getCurrentProjectConfig();
+    const enabledServers = projectConfig.enabledMcpjsonServers ?? [];
+    if (!enabledServers.includes(name)) {
+      return '⏸ Pending approval';
+    }
+  }
+
   try {
     const result = await connectToServer(name, server);
     if (result.type === 'connected') {

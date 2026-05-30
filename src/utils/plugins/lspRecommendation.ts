@@ -16,6 +16,7 @@ import { getGlobalConfig, saveGlobalConfig } from '../config.js';
 import { logForDebugging } from '../debug.js';
 import { isPluginInstalled } from './installedPluginsManager.js';
 import { getMarketplace, loadKnownMarketplacesConfig } from './marketplaceManager.js';
+import { isMarketplaceAllowedForSuggestions } from './pluginPolicy.js';
 import { ALLOWED_OFFICIAL_MARKETPLACE_NAMES, type PluginMarketplaceEntry } from './schemas.js';
 
 /**
@@ -242,6 +243,12 @@ export async function getMatchingLspPlugins(filePath: string): Promise<LspPlugin
     // Filter: not already installed
     if (isPluginInstalled(pluginId)) {
       logForDebugging(`[lspRecommendation] Skipping ${pluginId} (already installed)`);
+      continue;
+    }
+
+    // Filter: marketplace allowed for suggestions by policy
+    if (!isMarketplaceAllowedForSuggestions(info.marketplaceName)) {
+      logForDebugging(`[lspRecommendation] Skipping ${pluginId} (marketplace ${info.marketplaceName} blocked by policy suggestion allowlist)`);
       continue;
     }
 

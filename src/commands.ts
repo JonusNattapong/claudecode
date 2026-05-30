@@ -119,6 +119,7 @@ import chrome from './commands/chrome/index.js';
 import ant from './commands/ant/index.js';
 import stickers from './commands/stickers/index.js';
 import goal from './commands/goal/index.js';
+import bg from './commands/bg/index.js';
 import daemonCmd from './commands/daemon/index.js';
 import dashboard from './commands/dashboard/index.js';
 import taskCmd from './commands/task/index.js';
@@ -229,6 +230,7 @@ const COMMANDS = memoize((): Command[] => [
   agents,
   ant,
   autofixPr,
+  bg,
   branch,
   btw,
   capabilities,

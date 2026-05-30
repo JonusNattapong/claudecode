@@ -9,6 +9,50 @@ This project follows a practical changelog format based on:
 - `Security` for permission, sandbox, auth, and trust-related hardening
 - `Internal` for tests, types, refactors, and developer-facing implementation work
 
+## [2.1.180] - 2026-05-30
+
+### Added
+
+- **`!bg <command>` — Background shell tasks** — Shell commands prefixed with `!bg` now spawn as persistent background agent sessions visible in the `claude agents` dashboard. Commands execute asynchronously with live status tracking (running/completed/failed), exit code display, and stderr capture. (BgShellTask.ts, processUserInput.ts)
+- **Dispatch input autocomplete** — Agent view dispatch input now shows inline suggestions for `@agent`, `/skill`, `#PR`, `a:filter`, and `s:state` syntax with Tab to accept and arrow key navigation. (useAgentDispatchAutocomplete.ts, AgentViewDashboard.tsx)
+- **`l` keybinding to logout/stop agent sessions** — Press `l` on a selected session in the agent dashboard to stop it (first press) and delete it (second press within 2s). Added to the shortcuts help overlay. (AgentViewDashboard.tsx, AgentViewShortcutsHelp.tsx)
+- **Width-aware PR column display** — Agent session rows now show PR information scaled to terminal width: narrow (&lt;80) shows status dot only, medium (80-119) shows `#number + dot`, wide (≥120) shows `#number + title + status label + dot`. Peek panel shows PR number and status label inline. (AgentViewRow.tsx, AgentViewPeekPanel.tsx, AgentViewDashboard.tsx)
+
+### Internal
+
+- **README.md, docs/commands.html, docs/index.html** — Updated with new background shell commands, dispatch autocomplete, PR column display, and agent logout features.
+
+### Added
+
+- **`disallowed-tools` in skill frontmatter** — Skills can now declare `disallowed-tools` (e.g., `Bash`, `Edit`) in YAML frontmatter to restrict tool access while the skill is active. Parsed by `parseSkillFrontmatterFields` and enforced via `alwaysDenyRules` in the SkillTool context modifier. (frontmatterParser.ts, command.ts, loadSkillsDir.ts, SkillTool.ts)
+- **`/code-review --fix`** — Code review command now supports `--fix` flag to apply findings directly to the working tree instead of just reporting them. (code-review.ts)
+- **`/simplify` rework** — Redefined as cleanup-only review (reuse, simplification, efficiency, altitude) with over-engineering/abstraction-level alignment detection via a new 4th "Altitude" agent. No longer does full bug hunting. (simplify.ts)
+- **`MessageDisplay` hook event** — New hook event that fires before assistant message display. Hooks can transform or suppress text. Includes schema (`MessageDisplayHookInputSchema`), generated types, and `executeMessageDisplayHooks` function. (coreTypes.ts, coreSchemas.ts, coreTypes.generated.d.ts, hooks.ts)
+- **SessionStart hook `reloadSkills` & `sessionTitle`** — SessionStart hooks can return `reloadSkills: true` (triggers `clearSkillCaches()`) and `sessionTitle` (auto-names sessions). Parsed from `hookSpecificOutput` in hooks.ts and surfaced via `takeReloadSkills()`/`takeSessionTitle()` in sessionStart.ts.
+- **Plugin `skipLfs` support** — New `skipLfs: boolean` option on `github` and `git` marketplace source types. When set, `GIT_LFS_SKIP_SMUDGE=1` is passed to git clone/subprocesses to skip LFS file downloads. (schemas.ts, marketplaceManager.ts, pluginLoader.ts)
+- **MCP subprocess `CLAUDECODE=1`** — Stdio MCP servers and subprocesses now receive `CLAUDECODE=1` in their environment for session-aware behavior. (subprocessEnv.ts)
+- **MCP list/get pending approval** — `claude mcp list` and `claude mcp get` display `⏸ Pending approval` for unapproved local-scope (.mcp.json) servers instead of auto-connecting when piped. (mcp.tsx)
+
+### Changed
+
+- **Model picker behavior** — Enter now saves selection as global default, press `s` for session-only override. This matches upstream IDE behavior. (ModelPicker.tsx)
+- **Skill `simplify` alias removed from code-review** — `/simplify` is now a standalone cleanup skill, separate from `/code-review` bug hunting.
+
+### Fixed
+
+- **Stale "& for background" hint in shortcuts panel** — Removed the hint text from `PromptInputHelpMenu.tsx` since this shortcut no longer exists.
+- **Loading spinner showing "still thinking" while tool running** — Reset thinking status immediately on tool transitions instead of lingering for up to 2 seconds.
+- **Focus mode spurious "N messages hidden" count** — Added `hiddenMessageCount > 0` guard to prevent showing the truncation divider when no messages are actually hidden.
+- **`claude plugin marketplace remove --scope`** — Added `--scope user|project|local` flag to match the interface on other marketplace commands. (main.tsx, plugins.ts, marketplaceManager.ts)
+- **Effort-change confirmation dialog on empty conversation** — Added `messages.length > 0` guard to prevent showing the effort callout when there are no messages yet.
+
+### Internal
+
+- **PLAN.md updated** — Full implementation status tracking across all 20 sections with markers (✅ Done, ⚠️ Already existed, ❌ Requires Anthropic infra, 🔲 Not started)
+- **README.md updated** — Added new features to highlights and commands sections
+- **docs/index.html, docs/skills.html, docs/commands.html** — Updated with new features, examples, and version bumps
+- **All 20 docs HTML files** — Version updated from v2.1.165 → v2.1.178
+
 ## [2.1.173] - 2026-05-26
 
 ### Fixed

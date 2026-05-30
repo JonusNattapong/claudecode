@@ -1,11 +1,3 @@
-/**
- * Plugin policy checks backed by managed settings (policySettings).
- *
- * Kept as a leaf module (only imports settings) to avoid circular dependencies
- * — marketplaceHelpers.ts imports marketplaceManager.ts which transitively
- * reaches most of the plugin subsystem.
- */
-
 import { getSettingsForSource } from '../settings/settings.js';
 
 /**
@@ -17,4 +9,24 @@ import { getSettingsForSource } from '../settings/settings.js';
 export function isPluginBlockedByPolicy(pluginId: string): boolean {
   const policyEnabled = getSettingsForSource('policySettings')?.enabledPlugins;
   return policyEnabled?.[pluginId] === false;
+}
+
+/**
+ * Get the allowed marketplaces for plugin suggestions from managed settings.
+ * Returns null if no restrictions are in place.
+ */
+export function getPluginSuggestionMarketplaces(): string[] | null {
+  const policySettings = getSettingsForSource('policySettings');
+  return policySettings?.pluginSuggestionMarketplaces ?? null;
+}
+
+/**
+ * Check if a marketplace is allowed for plugin suggestions.
+ */
+export function isMarketplaceAllowedForSuggestions(marketplaceName: string): boolean {
+  const allowed = getPluginSuggestionMarketplaces();
+  if (!allowed) {
+    return true; // No restrictions
+  }
+  return allowed.includes(marketplaceName);
 }

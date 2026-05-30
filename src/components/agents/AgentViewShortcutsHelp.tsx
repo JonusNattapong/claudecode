@@ -21,6 +21,7 @@ const SHORTCUTS: ShortcutEntry[] = [
   { keys: 'Ctrl+S', action: 'Switch grouping (state / directory)' },
   { keys: 'Ctrl+G', action: 'Open dispatch prompt in $EDITOR' },
   { keys: 'Ctrl+X', action: 'Stop session (×2 to delete)' },
+  { keys: 'l', action: 'Logout/stop selected session (×2 to confirm)' },
   { keys: 'Ctrl+C', action: 'Clear input (×2 to exit)' },
   { keys: 'Tab', action: 'Browse subagents / apply suggestion' },
   { keys: 'Shift+↑ / Shift+↓', action: 'Reorder selected session' },

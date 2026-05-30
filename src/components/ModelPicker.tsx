@@ -49,8 +49,9 @@ import { SearchBox } from './SearchBox.js';
 export type Props = {
   initial: string | null;
   sessionModel?: ModelSetting;
-  onSelect: (model: string | null, effort: EffortLevel | undefined) => void;
-  /** Press `d` in the picker to persist the focused model as the default for new sessions. */
+  /** Press `s` in the picker to use the focused model for this session only. */
+  onSelect?: (model: string | null, effort: EffortLevel | undefined) => void;
+  /** Press Enter to persist the focused model as the default for new sessions. Falls back to onSelect if not provided. */
   onSetDefault?: (model: string | null, effort: EffortLevel | undefined) => void;
   onCancel?: () => void;
   isStandaloneCommand?: boolean;
@@ -342,14 +343,14 @@ export function ModelPicker(t0) {
       if (
         !isSearchActive &&
         isStandaloneCommand &&
-        onSetDefault &&
-        (input === 'd' || input === 'D') &&
+        onSelect &&
+        (input === 's' || input === 'S') &&
         !key.ctrl &&
         !key.meta
       ) {
         const modelValue = resolveOptionModel(effectiveFocusedValue);
         const selectedEffort = hasToggledEffort && modelValue && modelSupportsEffort(modelValue) ? effort : undefined;
-        onSetDefault(effectiveFocusedValue === NO_PREFERENCE ? null : effectiveFocusedValue, selectedEffort);
+        onSelect(effectiveFocusedValue === NO_PREFERENCE ? null : effectiveFocusedValue, selectedEffort);
       }
     },
     {
@@ -416,20 +417,24 @@ export function ModelPicker(t0) {
       const selectedModel = resolveOptionModel(value_0);
       const selectedEffort =
         hasToggledEffort && selectedModel && modelSupportsEffort(selectedModel) ? effort : undefined;
-      if (value_0 === NO_PREFERENCE) {
-        onSelect(null, selectedEffort);
-        return;
+      const handler = onSetDefault ?? onSelect;
+      if (handler) {
+        if (value_0 === NO_PREFERENCE) {
+          handler(null, selectedEffort);
+          return;
+        }
+        handler(value_0, selectedEffort);
       }
-      onSelect(value_0, selectedEffort);
     };
     $[35] = effort;
     $[36] = hasToggledEffort;
-    $[37] = onSelect;
-    $[38] = setAppState;
-    $[39] = skipSettingsWrite;
-    $[40] = t14;
+    $[37] = onSetDefault;
+    $[38] = onSelect;
+    $[39] = setAppState;
+    $[40] = skipSettingsWrite;
+    $[41] = t14;
   } else {
-    t14 = $[40];
+    t14 = $[41];
   }
   const handleSelect = t14;
   const baseHeaderText = headerText ?? getDefaultHeaderText();
@@ -547,7 +552,7 @@ export function ModelPicker(t0) {
           ) : (
             <Byline>
               <KeyboardShortcutHint shortcut="Enter" action="confirm" />
-              {onSetDefault && <KeyboardShortcutHint shortcut="d" action="set default for new sessions" />}
+              {onSelect && <KeyboardShortcutHint shortcut="s" action="use for this session only" />}
               <ConfigurableShortcutHint action="select:cancel" context="Select" fallback="Esc" description="exit" />
             </Byline>
           )}

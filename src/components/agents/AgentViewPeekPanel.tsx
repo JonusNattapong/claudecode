@@ -11,7 +11,7 @@ import type { LocalAgentTaskState } from '../../tasks/LocalAgentTask/LocalAgentT
 import { Divider } from '../design-system/Divider.js';
 import { PermissionRequest } from '../permissions/PermissionRequest.js';
 import TextInput from '../TextInput.js';
-import { formatTimeAgo, getActivityPreview } from './AgentViewRow.js';
+import { formatTimeAgo, getActivityPreview, getPRStatusLabel } from './AgentViewRow.js';
 import { isWaitingForInput } from './utils.js';
 
 type Props = {
@@ -54,9 +54,10 @@ export function AgentViewPeekPanel({
         <Box flexDirection="row" justifyContent="space-between">
           <Box flexDirection="row" gap={2}>
             <Text bold>{(task as any).customName ?? task.agentType ?? 'Agent'}</Text>
-            {(task as any).prUrl && (
+            {(task as any)._prInfo && (
               <Text dimColor>
-                {figures.arrowRight} PR: {(task as any).prUrl}
+                {figures.arrowRight} PR #{((task as any)._prInfo as any)?.number ?? ''}{' '}
+                {getPRStatusLabel(((task as any)._prInfo as any)?.status ?? 'pending_checks')}
               </Text>
             )}
           </Box>

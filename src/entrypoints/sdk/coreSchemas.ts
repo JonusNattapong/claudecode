@@ -345,6 +345,7 @@ export const HOOK_EVENTS = [
   'InstructionsLoaded',
   'CwdChanged',
   'FileChanged',
+  'MessageDisplay',
 ] as const;
 
 export const HookEventSchema = lazySchema(() => z.enum(HOOK_EVENTS));
@@ -722,6 +723,19 @@ export const SessionEndHookInputSchema = lazySchema(() =>
   ),
 );
 
+export const MessageDisplayHookInputSchema = lazySchema(() =>
+  BaseHookInputSchema().and(
+    z.object({
+      hook_event_name: z.literal('MessageDisplay'),
+      turn_id: z.string().describe('The turn ID'),
+      message_id: z.string().describe('The message ID'),
+      position: z.number().describe('Position within the message'),
+      text_delta: z.string().describe('The new text delta being displayed'),
+      is_final_delta: z.boolean().describe('Whether this is the final delta'),
+    }),
+  ),
+);
+
 export const HookInputSchema = lazySchema(() =>
   z.union([
     PreToolUseHookInputSchema(),
@@ -732,6 +746,7 @@ export const HookInputSchema = lazySchema(() =>
     UserPromptSubmitHookInputSchema(),
     SessionStartHookInputSchema(),
     SessionEndHookInputSchema(),
+    MessageDisplayHookInputSchema(),
     StopHookInputSchema(),
     StopFailureHookInputSchema(),
     SubagentStartHookInputSchema(),

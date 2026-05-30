@@ -39,6 +39,12 @@ export type GoalState = {
   endedAt?: number;
   /** The stashed permission mode before the goal started */
   preGoalMode?: PermissionMode;
+  /** Whether the goal is currently paused */
+  paused?: boolean;
+  /** When the goal was paused (timestamp) */
+  pausedAt?: number;
+  /** Total accumulated pause time in ms */
+  totalPausedMs?: number;
 };
 
 let currentGoal: string | null = null;

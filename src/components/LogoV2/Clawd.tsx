@@ -1,7 +1,7 @@
 import type * as React from 'react';
 import { Box, Text } from '../../ink.js';
-import { env } from '../../utils/env.js';
 import { getGlobalConfig } from '../../utils/config.js';
+import { env } from '../../utils/env.js';
 
 export type ClawdPose =
   | 'default'
@@ -74,68 +74,6 @@ const APPLE_EYES: Record<ClawdPose, string> = {
   'arms-up': ' ▗   ▖ ',
 };
 
-function LegacyWindowsClawd({ pose, showHorns, bodyColor, eyeColor }: Props): React.ReactNode {
-  const bc = bodyColor ?? 'clawd_body';
-  const ec = eyeColor ?? 'clawd_eye';
-
-  const tHorn = showHorns ? <Text color={bc}>{'  ^   ^  '}</Text> : null;
-
-  let r1: React.ReactNode;
-  if (pose === 'look-left') {
-    r1 = (
-      <Text>
-        <Text color={bc}>{'  '}</Text>
-        <Text color={ec}>{'█'}</Text>
-        <Text color={bc}> </Text>
-        <Text color={ec}>{'█'}</Text>
-        <Text color={bc}>{'████'}</Text>
-      </Text>
-    );
-  } else if (pose === 'look-right') {
-    r1 = (
-      <Text>
-        <Text color={bc}>{'  ████'}</Text>
-        <Text color={ec}>{'█'}</Text>
-        <Text color={bc}> </Text>
-        <Text color={ec}>{'█'}</Text>
-        <Text color={bc}> </Text>
-      </Text>
-    );
-  } else if (pose === 'arms-up') {
-    r1 = (
-      <Text>
-        <Text color={bc}>{'\\ █'}</Text>
-        <Text color={ec}>{'█'}</Text>
-        <Text color={bc}>{'██'}</Text>
-        <Text color={ec}>{'█'}</Text>
-        <Text color={bc}>{'█/'}</Text>
-      </Text>
-    );
-  } else {
-    r1 = (
-      <Text>
-        <Text color={bc}>{'  █'}</Text>
-        <Text color={ec}>{'█'}</Text>
-        <Text color={bc}>{'██'}</Text>
-        <Text color={ec}>{'█'}</Text>
-        <Text color={bc}>{'█ '}</Text>
-      </Text>
-    );
-  }
-
-  const t10 = <Text color={bc}>{pose === 'arms-up' ? '  █████  ' : ' ███████ '}</Text>;
-  const t11 = <Text color={bc}>{'  ^   ^  '}</Text>;
-
-  return (
-    <Box flexDirection="column">
-      {tHorn}
-      {r1}
-      {t10}
-      {t11}
-    </Box>
-  );
-}
-
 export function Clawd({ pose = 'default', showHorns, bodyColor, eyeColor }: Props = {}): React.ReactNode {
   const config = getGlobalConfig();
   const shouldShowHorns = showHorns ?? (config as any).showClawdHorns ?? true;
@@ -144,14 +82,6 @@ export function Clawd({ pose = 'default', showHorns, bodyColor, eyeColor }: Prop
 
   if (env.terminal === 'Apple_Terminal') {
     return <AppleTerminalClawd pose={pose} showHorns={shouldShowHorns} bodyColor={bc} eyeColor={ec} />;
-  }
-
-  const isLegacyWindows =
-    env.platform === 'win32' &&
-    !['windows-terminal', 'vscode', 'cursor', 'windsurf', 'antigravity'].includes(env.terminal ?? '');
-
-  if (isLegacyWindows) {
-    return <LegacyWindowsClawd pose={pose} showHorns={shouldShowHorns} bodyColor={bc} eyeColor={ec} />;
   }
 
   const p = POSES[pose];

@@ -558,6 +558,36 @@ async function processUserInputBase(
     : [];
   queryCheckpoint('query_attachment_loading_end');
 
+  // Shell commands via `! <command>` prefix
+  // `!bg <command>` spawns a background task visible in `claude agents`
+  if (inputString !== null && mode === 'prompt' && inputString.trim().startsWith('!')) {
+    const rawCommand = inputString.trim();
+    const shellCommand = rawCommand.slice(1).trim();
+    if (shellCommand) {
+      // Check for !bg prefix — background shell command
+      const bgPrefix = shellCommand.match(/^bg\s+(.*)/);
+      if (bgPrefix) {
+        const bgCommand = bgPrefix[1]!.trim();
+        if (bgCommand) {
+          const { startBgShellCommand } = await import('../../tasks/BgShellTask.js');
+          const taskId = startBgShellCommand(bgCommand, context.setAppState);
+          return {
+            messages: [createUserMessage({
+              content: `Background shell started: ${bgCommand}`,
+            })],
+            shouldQuery: false,
+          };
+        }
+      }
+
+      const { processBashCommand } = await import('./processBashCommand.js');
+      return addImageMetadataMessage(
+        await processBashCommand(shellCommand, precedingInputBlocks, attachmentMessages, context, setToolJSX, true),
+        imageMetadataTexts,
+      );
+    }
+  }
+
   // Bash commands
   if (inputString !== null && mode === 'bash') {
     const { processBashCommand } = await import('./processBashCommand.js');

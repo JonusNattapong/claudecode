@@ -243,6 +243,7 @@ export const outputSchema = lazySchema(() => {
     success: z.boolean().describe('Whether the skill is valid'),
     commandName: z.string().describe('The name of the skill'),
     allowedTools: z.array(z.string()).optional().describe('Tools allowed by this skill'),
+    disallowedTools: z.array(z.string()).optional().describe('Tools disallowed by this skill'),
     model: z.string().optional().describe('Model override if specified'),
     status: z.literal('inline').optional().describe('Execution status'),
   });
@@ -552,6 +553,7 @@ export const SkillTool: Tool<InputSchema, Output, Progress> = buildTool({
 
     // Extract metadata from the command
     const allowedTools = processedCommand.allowedTools || [];
+    const disallowedTools = processedCommand.disallowedTools || [];
     const model = processedCommand.model;
     const effort = command?.type === 'prompt' ? command.effort : undefined;
 
@@ -649,6 +651,7 @@ export const SkillTool: Tool<InputSchema, Output, Progress> = buildTool({
         success: true,
         commandName,
         allowedTools: allowedTools.length > 0 ? allowedTools : undefined,
+        disallowedTools: disallowedTools.length > 0 ? disallowedTools : undefined,
         model,
       },
       newMessages,
@@ -656,7 +659,7 @@ export const SkillTool: Tool<InputSchema, Output, Progress> = buildTool({
         let modifiedContext = ctx;
 
         // Update allowed tools if specified
-        if (allowedTools.length > 0) {
+        if (allowedTools.length > 0 || disallowedTools.length > 0) {
           // Capture the current getAppState to chain modifications properly
           const previousGetAppState = modifiedContext.getAppState;
           modifiedContext = {
@@ -671,9 +674,19 @@ export const SkillTool: Tool<InputSchema, Output, Progress> = buildTool({
                   ...appState.toolPermissionContext,
                   alwaysAllowRules: {
                     ...appState.toolPermissionContext.alwaysAllowRules,
-                    command: [
-                      ...new Set([...(appState.toolPermissionContext.alwaysAllowRules.command || []), ...allowedTools]),
-                    ],
+                    command: allowedTools.length > 0
+                      ? [
+                          ...new Set([...(appState.toolPermissionContext.alwaysAllowRules.command || []), ...allowedTools]),
+                        ]
+                      : appState.toolPermissionContext.alwaysAllowRules.command,
+                  },
+                  alwaysDenyRules: {
+                    ...appState.toolPermissionContext.alwaysDenyRules,
+                    command: disallowedTools.length > 0
+                      ? [
+                          ...new Set([...(appState.toolPermissionContext.alwaysDenyRules.command || []), ...disallowedTools]),
+                        ]
+                      : appState.toolPermissionContext.alwaysDenyRules.command,
                   },
                 },
               };

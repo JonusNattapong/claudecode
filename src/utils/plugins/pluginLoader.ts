@@ -458,7 +458,7 @@ export async function installFromNpm(
  * @param ref - Optional branch or tag to checkout
  * @param sha - Optional specific commit SHA to checkout
  */
-export async function gitClone(gitUrl: string, targetPath: string, ref?: string, sha?: string): Promise<void> {
+export async function gitClone(gitUrl: string, targetPath: string, ref?: string, sha?: string, skipLfs?: boolean): Promise<void> {
   // Use --recurse-submodules to initialize submodules
   // Always start with shallow clone for efficiency
   const args = ['clone', '--depth', '1', '--recurse-submodules', '--shallow-submodules'];
@@ -476,7 +476,9 @@ export async function gitClone(gitUrl: string, targetPath: string, ref?: string,
   args.push(gitUrl, targetPath);
 
   const cloneStarted = performance.now();
-  const cloneResult = await execFileNoThrow(gitExe(), args);
+  const cloneResult = await execFileNoThrow(gitExe(), args, {
+    env: skipLfs ? { ...process.env, GIT_LFS_SKIP_SMUDGE: '1' } : undefined,
+  });
 
   // When both ref and sha are specified, the ref may no longer exist upstream
   // (deleted branch, removed tag). Retry without --branch since sha pins the
@@ -568,9 +570,9 @@ export async function gitClone(gitUrl: string, targetPath: string, ref?: string,
 /**
  * Install a plugin from a git URL
  */
-async function installFromGit(gitUrl: string, targetPath: string, ref?: string, sha?: string): Promise<void> {
+async function installFromGit(gitUrl: string, targetPath: string, ref?: string, sha?: string, skipLfs?: boolean): Promise<void> {
   const safeUrl = validateGitUrl(gitUrl);
-  await gitClone(safeUrl, targetPath, ref, sha);
+  await gitClone(safeUrl, targetPath, ref, sha, skipLfs);
   const refMessage = ref ? ` (ref: ${ref})` : '';
   logForDebugging(`Cloned repository from ${safeUrl}${refMessage} to ${targetPath}`);
 }
@@ -578,7 +580,7 @@ async function installFromGit(gitUrl: string, targetPath: string, ref?: string, 
 /**
  * Install a plugin from GitHub
  */
-async function installFromGitHub(repo: string, targetPath: string, ref?: string, sha?: string): Promise<void> {
+async function installFromGitHub(repo: string, targetPath: string, ref?: string, sha?: string, skipLfs?: boolean): Promise<void> {
   if (!/^[a-zA-Z0-9-_.]+\/[a-zA-Z0-9-_.]+$/.test(repo)) {
     throw new Error(`Invalid GitHub repository format: ${repo}. Expected format: owner/repo`);
   }
@@ -586,7 +588,7 @@ async function installFromGitHub(repo: string, targetPath: string, ref?: string,
   const preferHttps =
     isEnvTruthy(process.env.CLAUDE_CODE_REMOTE) || isEnvTruthy(process.env.CLAUDE_CODE_PLUGIN_PREFER_HTTPS);
   const gitUrl = preferHttps ? `https://github.com/${repo}.git` : `git@github.com:${repo}.git`;
-  return installFromGit(gitUrl, targetPath, ref, sha);
+  return installFromGit(gitUrl, targetPath, ref, sha, skipLfs);
 }
 
 /**
@@ -835,10 +837,10 @@ export async function cachePlugin(
           });
           break;
         case 'github':
-          await installFromGitHub(source.repo, tempPath, source.ref, source.sha);
+          await installFromGitHub(source.repo, tempPath, source.ref, source.sha, source.skipLfs);
           break;
         case 'url':
-          await installFromGit(source.url, tempPath, source.ref, source.sha);
+          await installFromGit(source.url, tempPath, source.ref, source.sha, source.skipLfs);
           break;
         case 'git-subdir':
           gitCommitSha = await installFromGitSubdir(source.url, tempPath, source.path, source.ref, source.sha);

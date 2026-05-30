@@ -38,8 +38,14 @@ Key Highlights:
 - **Runtime Model Swapping** — Switch models or providers on-the-fly using the `/model` slash command.
 - **Tool-Driven Workflows** — Automatically read, search, edit, and write files, execute shell commands, query LSPs, browser automation, and run MCP tools.
 - **Plugin Hooks System** — Intercept and hook into prompts, shell executions, tool invocations, and file editing actions.
-- **Dynamic Skills** — Load capabilities from bundled sources and custom project-level `.claude/skills/` directories.
-- **Agents & Supervisor** — Orchestrate deep research, coding, and multi-agent coordination.
+- **Dynamic Skills** — Load capabilities from bundled sources and custom project-level `.claude/skills/` directories. Skills can declare `disallowed-tools` in frontmatter to restrict tool access while active.
+- **`/code-review --fix`** — Review changed code for correctness bugs at chosen effort level; `--fix` applies findings directly. `/simplify` runs a cleanup-only review (reuse, efficiency, altitude) with auto-fix.
+- **Hook Events** — Extensible hook system including `SessionStart` (set session title, trigger skill reload), `MessageDisplay` (transform/suppress assistant text before display), and `PreToolUse`/`PostToolUse`.
+- **Model Picker** — Select a model to save as global default; press `s` for session-only override.
+- **Plugin `skipLfs`** — Skip Git LFS downloads for plugin marketplace sources with `skipLfs: true`.
+- **Local Perplexity Research Engine** — Native, local-first RAG web search & scraping pipeline. Zero-API-key text discovery via DuckDuckGo and concurrent stealth web scraping via Python Scrapling + Trafilatura to bypass Cloudflare/Turnstile. Triggered instantly using `/research <query>` (e.g., `/research React 19 release notes`).
+- **Agents & Supervisor** — Orchestrate deep research, coding, and multi-agent coordination. Interactive agent dashboard (`/agents`) with grouped session views (state/directory), AI-generated summaries, PR column display, dispatch autocomplete, session pin/rename/reorder, peek panel, and keyboard shortcuts.
+- **Background Shell Commands** — Run long-lived shell commands as persistent background agent tasks using `!bg <command>`. Tasks appear in the agent dashboard with live status, exit codes, and stderr capture.
 - **Durable Agent Runtime & Orchestrator (PLAN I)** — A highly resilient, 100% offline-friendly agent runtime featuring automated checkpoint recovery and interactive user approvals for sensitive commands.
 - **Scheduled Tasks** — Create one-shot or recurring automation tasks via the interactive `/task` panel, backed by durable storage (`.claude/scheduled_tasks.json`).
 - **Sessions & Bridge** — Save context, pause/resume tasks across sessions, and enable remote workspace collaboration.
@@ -108,12 +114,14 @@ Provider Configuration Overview: [docs/providers.html](docs/providers.html)
 ## Frequently Used Commands
 
 ```text
-/model      Switch models or providers at runtime
+/model      Switch models or providers at runtime (Enter=save default, s=session-only)
 /status     Show provider session and context status
 /doctor     Run diagnostic tests and auto-fixes
 /context    Inspect detail of the active context window
 /compact    Compress and prune conversation history
 /mcp        Manage Model Context Protocol (MCP) servers
+/code-review  Review changed code for bugs (--fix to apply, --comment for PR comments)
+/simplify   Cleanup-only review (reuse, efficiency, altitude) with auto-fix
 /plugin     Manage plugins and lifecycle hooks
 /bridge     Configure bridge mode for remote collaboration
 /agent      Manage background agent workflows (run, status, trace, approvals, report)

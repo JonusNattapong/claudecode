@@ -39,10 +39,12 @@ import {
   AgentViewGroupHeader,
   AgentViewRow,
   getTaskCategory,
+  type PRDisplayInfo,
   type PRStatus,
   type TaskCategory,
 } from './AgentViewRow.js';
 import { AgentViewShortcutsHelp } from './AgentViewShortcutsHelp.js';
+import { useAgentDispatchAutocomplete } from '../../hooks/useAgentDispatchAutocomplete.js';
 import { isWaitingForInput } from './utils.js';
 
 type GroupMode = 'state' | 'directory';
@@ -380,6 +382,25 @@ export function AgentViewDashboard({ onBack, onDispatch, cwd }: Props) {
       return false;
     });
   }, [flatList, filterText, parsedFilter, toolUseConfirmQueue]);
+
+  // Autocomplete for dispatch input (must be after backgroundTasks definition)
+  const activeInput = dispatchText || filterText;
+  const activeCursor = dispatchText ? dispatchCursor : cursorOffset;
+  const autocompleteSources = React.useMemo(
+    () => ({
+      agents: agents.map((a: any) => ({
+        name: a.name ?? a.agentType ?? '',
+        description: a.description ?? '',
+      })),
+      skills: [],
+      prNumbers: backgroundTasks
+        .map(t => (t as any)._prInfo?.number)
+        .filter((n: number | undefined): n is number => n !== undefined),
+      agentNames: agents.map((a: any) => a.agentType ?? a.name ?? '').filter(Boolean),
+    }),
+    [agents, backgroundTasks],
+  );
+  const autocomplete = useAgentDispatchAutocomplete(activeInput, activeCursor, autocompleteSources);
 
   const selectedTask = filteredList[selectedIndex]?.task;
 
@@ -720,8 +741,33 @@ export function AgentViewDashboard({ onBack, onDispatch, cwd }: Props) {
       return;
     }
 
-    // Tab: browse subagents / apply suggestion
+    // l: logout/stop the selected session (with confirmation)
+    if (input === 'l' && selectedTask && mode === 'browse' && !filterText) {
+      const currentIndex = selectedIndex;
+      if (stopConfirmIndex === currentIndex) {
+        // Second press within 2s — confirm logout/delete
+        handleDeleteTask(selectedTask.id);
+        setStopConfirmIndex(null);
+        if (stopConfirmTimer) clearTimeout(stopConfirmTimer);
+        setStopConfirmTimer(null);
+      } else {
+        // First press — stop
+        handleStopTask(selectedTask.id);
+        setStopConfirmIndex(currentIndex);
+      }
+      return;
+    }
+
+    // Tab: accept autocomplete suggestion / browse subagents
     if (key.tab) {
+      if (autocomplete.suggestions.length > 0 && dispatchText) {
+        const result = autocomplete.accept(dispatchText, dispatchCursor);
+        if (result) {
+          setDispatchText(result.text);
+          setDispatchCursor(result.offset);
+        }
+        return;
+      }
       if (selectedTask && isWaitingForInput(selectedTask)) {
         // Apply suggested reply
         setReplyText('Continue with the task');
@@ -732,6 +778,20 @@ export function AgentViewDashboard({ onBack, onDispatch, cwd }: Props) {
         setMode('dispatch');
       }
       return;
+    }
+
+    // Up/down: navigate autocomplete suggestions when showing
+    if (autocomplete.suggestions.length > 0 && dispatchText) {
+      if (key.upArrow) {
+        const { setSelectedIndex } = autocomplete;
+        setSelectedIndex((prev: number) => Math.max(0, prev - 1));
+        return;
+      }
+      if (key.downArrow) {
+        const { setSelectedIndex, suggestions } = autocomplete;
+        setSelectedIndex((prev: number) => Math.min(suggestions.length - 1, prev + 1));
+        return;
+      }
     }
 
     // Shift+↑ / Shift+↓ : reorder
@@ -813,7 +873,7 @@ export function AgentViewDashboard({ onBack, onDispatch, cwd }: Props) {
                   const lt = task as LocalAgentTaskState;
                   const flatIdx = flatList.findIndex(item => item.task?.id === lt.id);
                   const isSelected = flatIdx === selectedIndex;
-                  const prInfo = (lt as any)._prInfo;
+                  const prInfo = (lt as any)._prInfo as PRDisplayInfo | undefined;
 
                   return (
                     <AgentViewRow
@@ -824,6 +884,7 @@ export function AgentViewDashboard({ onBack, onDispatch, cwd }: Props) {
                       prCount={prInfo ? 1 : 0}
                       prStatus={prInfo?.status as PRStatus | null}
                       prUrl={prInfo?.url as string | null}
+                      prDisplayInfo={prInfo ?? null}
                       width={contentWidth}
                     />
                   );
@@ -891,6 +952,30 @@ export function AgentViewDashboard({ onBack, onDispatch, cwd }: Props) {
         />
       </Box>
       <Text dimColor>{divider}</Text>
+
+      {/* Autocomplete suggestions dropdown */}
+      {autocomplete.suggestions.length > 0 && dispatchText && (
+        <Box flexDirection="column" marginBottom={1}>
+          {autocomplete.suggestions.map((sug, i) => {
+            const isSelected = i === autocomplete.selectedIndex;
+            return (
+              <Box key={`${sug.type}-${sug.text}`} flexDirection="row" gap={1}>
+                <Text color={(isSelected ? 'cyan' : 'dim') as any}>
+                  {isSelected ? '▸' : ' '}
+                </Text>
+                <Text bold={isSelected} color={(isSelected ? 'text' : 'dim') as any}>
+                  {autocomplete.prefix}{sug.text}
+                </Text>
+                <Text dimColor>{sug.description}</Text>
+              </Box>
+            );
+          })}
+          <Text dimColor>
+            tab to accept · ↑↓ to navigate
+          </Text>
+        </Box>
+      )}
+
       <Text dimColor>enter to open · space to reply · ctrl+x to delete</Text>
 
       {shortcutsHelpOpen && <AgentViewShortcutsHelp onClose={() => setShortcutsHelpOpen(false)} />}

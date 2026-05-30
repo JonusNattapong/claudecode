@@ -2,7 +2,7 @@ import type { ResearchMode, ResearchPlan, ResearchSourceType } from './types.js'
 
 export function createResearchPlan(query: string, mode: ResearchMode): ResearchPlan {
   const subQuestions: string[] = [];
-  const sourceStrategy: ResearchSourceType[] = ['local_repo', 'local_wiki', 'local_memory'];
+  const sourceStrategy: ResearchSourceType[] = ['local_repo', 'local_wiki', 'local_memory', 'web'];
   const doneCriteria: string[] = [];
   const risks: string[] = [];
 

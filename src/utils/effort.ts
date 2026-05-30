@@ -7,9 +7,7 @@ import { getAPIProvider } from './model/providers.js';
 import { get3PModelCapabilityOverride } from './model/modelSupportOverrides.js';
 import { getAntModelOverrideConfig, resolveAntModel } from './model/antModels.js';
 import { isEnvTruthy } from './envUtils.js';
-import type { EffortLevel } from 'src/entrypoints/sdk/runtimeTypes.js';
-
-export type { EffortLevel };
+export type EffortLevel = 'low' | 'medium' | 'high' | 'xhigh' | 'max';
 
 export const EFFORT_LEVELS = ['low', 'medium', 'high', 'xhigh', 'max'] as const satisfies readonly EffortLevel[];
 

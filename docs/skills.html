@@ -41,6 +41,38 @@
 /skills           # List available skills
 /skill-name       # Invoke a specific skill directly</code></pre>
 
+  <h2>Skill Frontmatter</h2>
+  <p>Skills support YAML frontmatter for metadata and configuration:</p>
+  <pre><code>---
+name: my-skill
+description: Does focused text work
+allowed-tools:
+  - Read
+  - Grep
+disallowed-tools:
+  - Bash
+  - Edit
+hooks:
+  PreToolUse:
+    - matcher: Bash
+      hooks:
+        - type: command
+          command: echo "About to run bash"
+model: claude-sonnet-4-6
+effort: high
+user-invocable: true
+context: fork
+---</code></pre>
+  <p>Key frontmatter fields:</p>
+  <ul>
+    <li><code>allowed-tools</code> — Restrict which tools the model can use while this skill is active</li>
+    <li><code>disallowed-tools</code> — Explicitly block tools (e.g., <code>Bash</code>, <code>Edit</code>) for read-only skills</li>
+    <li><code>hooks</code> — Register PreToolUse, PostToolUse, or MessageDisplay hooks for the skill</li>
+    <li><code>model</code> — Override the model used when this skill runs</li>
+    <li><code>effort</code> — Set effort level (low, medium, high, xhigh, max)</li>
+    <li><code>context</code> — <code>inline</code> (default) expands into current conversation; <code>fork</code> runs as sub-agent</li>
+  </ul>
+
   <h2>Creating a Skill</h2>
   <pre><code>mkdir -p ~/.claude/skills/my-skill
 touch ~/.claude/skills/my-skill/SKILL.md
@@ -66,7 +98,7 @@ touch ~/.claude/skills/my-skill/SKILL.md
   </div>
 
   <footer class="footer">
-    <span>Claudevil v2.1.165 — Open Source (MIT)</span>
+    <span>Claudevil v2.1.180 — Open Source (MIT)</span>
     <div class="footer-links">
       <a href="https://github.com/JonusNattapong/claudecode">GitHub</a>
       <a href="https://github.com/JonusNattapong/claudecode/issues">Issues</a>

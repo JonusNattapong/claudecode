@@ -94,6 +94,11 @@ export function subprocessEnv(): NodeJS.ProcessEnv {
     env.CLAUDE_CODE_SESSION_ID = sessionId;
   }
 
+  // Set CLAUDECODE=1 so MCP stdio servers and other subprocesses can detect
+  // they are running inside Claude Code and adapt behavior accordingly
+  // (e.g., session-aware logging, telemetry, conditional logic).
+  env.CLAUDECODE = '1';
+
   // Propagate CLAUDE_EFFORT so subprocess hooks and scripts can adapt their
   // behavior to the current effort level (e.g., skip expensive validation at
   // low effort, run exhaustive checks at high effort).

@@ -310,10 +310,7 @@ function ColorPanel({
                 {mascotPane === 'horns' ? '▸ ' : '  '}Horns Visibility
               </Text>
               <Box marginLeft={2}>
-                <Text
-                  bold={mascotPane === 'horns'}
-                  color={mascotPane === 'horns' ? 'suggestion' : undefined}
-                >
+                <Text bold={mascotPane === 'horns'} color={mascotPane === 'horns' ? 'suggestion' : undefined}>
                   {showHorns ? '[x] Show Horns' : '[ ] Show Horns'}
                 </Text>
               </Box>

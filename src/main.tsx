@@ -3926,6 +3926,7 @@ async function run(): Promise<CommanderCommand> {
         sessionGoal: hasActiveGoal ? goalState.goal : undefined,
         sessionGoalStartTime: hasActiveGoal ? (goalState.setAt ?? Date.now()) : undefined,
         sessionGoalTurnCount: hasActiveGoal ? (goalState.turnCount ?? 0) : undefined,
+        sessionGoalPaused: hasActiveGoal ? (goalState.paused ?? false) : undefined,
         agent: mainThreadAgentDefinition?.agentType,
         agentDefinitions,
         mcp: {
@@ -5531,12 +5532,14 @@ async function run(): Promise<CommanderCommand> {
     .command('remove <name>')
     .alias('rm')
     .description('Remove a configured marketplace')
+    .option('--scope <scope>', 'Remove from specific scope: user (default), project, or local')
     .addOption(coworkOption())
     .action(
       async (
         name: string,
         options: {
           cowork?: boolean;
+          scope?: string;
         },
       ) => {
         const { marketplaceRemoveHandler } = await import('./cli/handlers/plugins.js');

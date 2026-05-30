@@ -40,7 +40,7 @@
   <h2>Model &amp; Provider</h2>
   <table>
     <tr><th>Command</th><th>Description</th></tr>
-    <tr><td><code>/model</code></td><td>Switch model or provider at runtime</td></tr>
+    <tr><td><code>/model</code></td><td>Switch model or provider (Enter=save default, <code>s</code>=session-only)</td></tr>
     <tr><td><code>/provider-select</code></td><td>Show or change the active AI provider and model</td></tr>
     <tr><td><code>/effort</code></td><td>Set effort level for model usage (low, medium, high, max)</td></tr>
     <tr><td><code>/cost</code></td><td>Show the total cost and duration of the current session</td></tr>
@@ -60,7 +60,7 @@
     <tr><td><code>/privacy-settings</code></td><td>View and update your privacy settings</td></tr>
     <tr><td><code>/datadog</code></td><td>Manage individual telemetry and analytics settings (Datadog, Anthropic, Global)</td></tr>
     <tr><td><code>/capabilities</code></td><td>Show available system capabilities (git, tmux, browser, network, shells)</td></tr>
-    <tr><td><code>/hooks</code></td><td>View hook configurations for tool events</td></tr>
+    <tr><td><code>/hooks</code></td><td>View hook configurations for tool events (PreToolUse, PostToolUse, MessageDisplay, SessionStart)</td></tr>
     <tr><td><code>/sandbox-toggle</code></td><td>Toggle sandbox mode for tool execution</td></tr>
   </table>
 
@@ -70,7 +70,9 @@
     <tr><td><code>/plugin</code></td><td>Manage plugins — list, install, remove</td></tr>
     <tr><td><code>/plugin-details</code></td><td>Show plugin component inventory, hooks, MCP servers, and per-session token cost</td></tr>
     <tr><td><code>/reload-plugins</code></td><td>Activate pending plugin changes in the current session</td></tr>
-    <tr><td><code>/mcp</code></td><td>Manage MCP servers</td></tr>
+    <tr><td><code>/mcp</code></td><td>Manage MCP servers (<code>list</code> shows pending approval for unapproved .mcp.json servers)</td></tr>
+    <tr><td><code>/code-review</code></td><td>Review changed code for correctness bugs (low/medium/high effort; <code>--fix</code> applies changes, <code>--comment</code> posts PR comments)</td></tr>
+    <tr><td><code>/simplify</code></td><td>Cleanup-only code review (reuse, efficiency, altitude) with auto-fix</td></tr>
     <tr><td><code>/skill</code></td><td>List available skills or show skill details</td></tr>
     <tr><td><code>/skills</code></td><td>List available skills</td></tr>
   </table>
@@ -79,7 +81,8 @@
   <table>
     <tr><th>Command</th><th>Description</th></tr>
     <tr><td><code>/agent</code></td><td>Manage Claudevil AI Agents execution, state checkpoints, and approvals</td></tr>
-    <tr><td><code>/agents</code></td><td>Manage agent configurations</td></tr>
+    <tr><td><code>/agents</code></td><td>Open interactive agent dashboard with grouped sessions, PR columns, dispatch autocomplete, AI summaries, and keyboard shortcuts</td></tr>
+    <tr><td><code>!bg &lt;command&gt;</code></td><td>Run a shell command as a persistent background agent task, visible in the agents dashboard with live status tracking</td></tr>
     <tr><td><code>/tasks</code></td><td>List and manage background tasks</td></tr>
     <tr><td><code>/daemon</code></td><td>Open an interactive 24/7 autonomous daemon control panel; subcommands still support start/stop/status/restart</td></tr>
     <tr><td><code>/task</code></td><td>Create scheduled tasks with an interactive form; subcommands still manage the autonomous task queue</td></tr>
@@ -201,7 +204,7 @@
   <p>Use <code>/reload-plugins</code> to reload plugin-provided commands without restarting. Remote-safe and bridge-safe commands have explicit allowlists in <code>src/commands.ts</code>.</p>
 
   <footer class="footer">
-    <span>Claudevil v2.1.165 — Open Source (MIT)</span>
+    <span>Claudevil v2.1.180 — Open Source (MIT)</span>
     <div class="footer-links">
       <a href="https://github.com/JonusNattapong/claudecode">GitHub</a>
       <a href="https://github.com/JonusNattapong/claudecode/issues">Issues</a>

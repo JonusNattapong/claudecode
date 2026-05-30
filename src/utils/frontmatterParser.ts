@@ -45,6 +45,10 @@ export type FrontmatterData = {
   // Agent type to use when forked (e.g., 'Bash', 'general-purpose')
   // Only applicable when context is 'fork'
   agent?: string | null;
+  // Tools to disallow while this skill is active.
+  // Accepts a comma-separated string or a YAML list of strings.
+  // When set, the listed tools are unavailable to the model while the skill is active.
+  'disallowed-tools'?: string | string[] | null;
   // Glob patterns for file paths this skill applies to. Accepts either a
   // comma-separated string or a YAML list of strings.
   // When set, the skill is only activated when the model touches matching files

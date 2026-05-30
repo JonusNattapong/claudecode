@@ -61,6 +61,7 @@ import type {
   HookEvent,
   HookInput,
   HookJSONOutput,
+  MessageDisplayHookInput,
   NotificationHookInput,
   PostToolUseHookInput,
   PostToolUseFailureHookInput,
@@ -320,6 +321,8 @@ export interface HookResult {
   elicitationResponse?: ElicitationResponse;
   watchPaths?: string[];
   elicitationResultResponse?: ElicitationResponse;
+  reloadSkills?: boolean;
+  sessionTitle?: string;
   retry?: boolean;
   hook: HookCommand | HookCallback | FunctionHook;
 }
@@ -340,6 +343,8 @@ export type AggregatedHookResult = {
   watchPaths?: string[];
   elicitationResponse?: ElicitationResponse;
   elicitationResultResponse?: ElicitationResponse;
+  reloadSkills?: boolean;
+  sessionTitle?: string;
   retry?: boolean;
 };
 
@@ -360,6 +365,8 @@ function hasMeaningfulHookResult(result: AggregatedHookResult): boolean {
     result.watchPaths ||
     result.elicitationResponse ||
     result.elicitationResultResponse ||
+    result.reloadSkills ||
+    result.sessionTitle ||
     result.retry ||
     result.preventContinuation ||
     result.permissionBehavior ||
@@ -629,6 +636,12 @@ function processHookJSONOutput({
         result.initialUserMessage = json.hookSpecificOutput.initialUserMessage;
         if ('watchPaths' in json.hookSpecificOutput && json.hookSpecificOutput.watchPaths) {
           result.watchPaths = json.hookSpecificOutput.watchPaths;
+        }
+        if ('reloadSkills' in json.hookSpecificOutput && json.hookSpecificOutput.reloadSkills) {
+          result.reloadSkills = true;
+        }
+        if ('sessionTitle' in json.hookSpecificOutput && json.hookSpecificOutput.sessionTitle) {
+          result.sessionTitle = String(json.hookSpecificOutput.sessionTitle);
         }
         break;
       case 'Setup':
@@ -3747,6 +3760,57 @@ export async function* executeSessionStartHooks(
     signal,
     timeoutMs,
     forceSyncExecution,
+  });
+}
+
+/**
+ * Execute message display hooks if configured.
+ * These fire before an assistant message delta is displayed to the user,
+ * allowing hooks to transform or suppress the text.
+ * @param turnId The turn ID
+ * @param messageId The message ID
+ * @param position Position within the message
+ * @param textDelta The new text delta being displayed
+ * @param isFinalDelta Whether this is the final delta
+ * @param toolUseContext ToolUseContext for hook execution
+ * @param requestPrompt Optional prompt request function
+ * @returns Async generator that yields progress messages and hook results
+ */
+export async function* executeMessageDisplayHooks(
+  turnId: string,
+  messageId: string,
+  position: number,
+  textDelta: string,
+  isFinalDelta: boolean,
+  toolUseContext: ToolUseContext,
+  requestPrompt?: (
+    sourceName: string,
+    toolInputSummary?: string | null,
+  ) => (request: PromptRequest) => Promise<PromptResponse>,
+): AsyncGenerator<AggregatedHookResult> {
+  const appState = toolUseContext.getAppState();
+  const sessionId = toolUseContext.agentId ?? getSessionId();
+  if (!hasHookForEvent('MessageDisplay', appState, sessionId)) {
+    return;
+  }
+
+  const hookInput: MessageDisplayHookInput = {
+    ...createBaseHookInput(undefined, undefined, toolUseContext),
+    hook_event_name: 'MessageDisplay',
+    turn_id: turnId,
+    message_id: messageId,
+    position,
+    text_delta: textDelta,
+    is_final_delta: isFinalDelta,
+  };
+
+  yield* executeHooks({
+    hookInput,
+    toolUseID: randomUUID(),
+    signal: toolUseContext.abortController.signal,
+    timeoutMs: TOOL_HOOK_EXECUTION_TIMEOUT_MS,
+    toolUseContext,
+    requestPrompt,
   });
 }
 

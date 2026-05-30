@@ -1,11 +1,12 @@
-import { c as _c } from "react/compiler-runtime";
 import * as React from 'react';
 import { useEffect, useState } from 'react';
+import { c as _c } from 'react/compiler-runtime';
 import { UP_ARROW } from '../../constants/figures.js';
 import { Box, Text } from '../../ink.js';
 import { getGlobalConfig, saveGlobalConfig } from '../../utils/config.js';
 import { isOpus1mMergeEnabled } from '../../utils/model/model.js';
 import { AnimatedAsterisk } from './AnimatedAsterisk.js';
+
 const MAX_SHOW_COUNT = 6;
 export function shouldShowOpus1mMergeNotice(): boolean {
   return isOpus1mMergeEnabled() && (getGlobalConfig().opus1mMergeNoticeSeenCount ?? 0) < MAX_SHOW_COUNT;
@@ -27,7 +28,7 @@ export function Opus1mMergeNotice() {
         }
         return {
           ...prev,
-          opus1mMergeNoticeSeenCount: newCount
+          opus1mMergeNoticeSeenCount: newCount,
         };
       });
     };
@@ -44,8 +45,13 @@ export function Opus1mMergeNotice() {
     return null;
   }
   let t2;
-  if ($[3] === Symbol.for("react.memo_cache_sentinel")) {
-    t2 = <Box paddingLeft={2}><AnimatedAsterisk char={UP_ARROW} /><Text dimColor={true}>{" "}Opus now defaults to 1M context · 5x more room, same pricing</Text></Box>;
+  if ($[3] === Symbol.for('react.memo_cache_sentinel')) {
+    t2 = (
+      <Box paddingLeft={2}>
+        <AnimatedAsterisk char={UP_ARROW} />
+        <Text dimColor={true}> Opus now defaults to 1M context · 5x more room, same pricing</Text>
+      </Box>
+    );
     $[3] = t2;
   } else {
     t2 = $[3];

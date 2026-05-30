@@ -1,62 +1,496 @@
-import { feature } from 'bun:bundle';
 import type * as React from 'react';
-import type { LocalJSXCommandContext } from '../../commands.js';
-import { ContextStats } from '../../components/ContextStats.js';
-import { microcompactMessages } from '../../services/compact/microCompact.js';
-import type { LocalJSXCommandOnDone } from '../../types/command.js';
+import { Box, Text } from '../../ink.js';
+import { Dialog } from '../../components/design-system/Dialog.js';
+import type { LocalJSXCommandCall } from '../../types/command.js';
 import type { Message } from '../../types/message.js';
-import { analyzeContextUsage } from '../../utils/analyzeContext.js';
-import { getMessagesAfterCompactBoundary } from '../../utils/messages.js';
+import { collectContextData } from './context-noninteractive.js';
 
-/**
- * Apply the same context transforms query.ts does before the API call, so
- * /context shows what the model actually sees rather than the REPL's raw
- * history. Without projectView the token count overcounts by however much
- * was collapsed — user sees "180k, 3 spans collapsed" when the API sees 120k.
- */
-function toApiView(messages: Message[]): Message[] {
-  let view = getMessagesAfterCompactBoundary(messages);
-  if (feature('CONTEXT_COLLAPSE')) {
-    /* eslint-disable @typescript-eslint/no-require-imports */
-    const { projectView } =
-      require('../../services/contextCollapse/operations.js') as typeof import('../../services/contextCollapse/operations.js');
-    /* eslint-enable @typescript-eslint/no-require-imports */
-    view = projectView(view);
+type ContextStatsProps = {
+  data: any;
+  onClose?: () => void;
+};
+
+type UsageItem = {
+  key: string;
+  label: string;
+  tokens: number;
+  color: string;
+};
+
+type DetailItem = {
+  name: string;
+  path?: string;
+  tokens: number;
+};
+
+const CELL = '◉';
+const GRID_COLUMNS = 10;
+const GRID_ROWS = 8;
+const GRID_SIZE = GRID_COLUMNS * GRID_ROWS;
+
+const COLORS = {
+  prompt: '#9ca3af',
+  tools: '#9ca3af',
+  mcp: '#22d3ee',
+  toolUse: '#818cf8',
+  memory: '#fb923c',
+  messages: '#c084fc',
+  overflow: '#f87171',
+};
+
+function readNumber(data: any, paths: string[], fallback = 0): number {
+  for (const path of paths) {
+    const value = path.split('.').reduce((obj, key) => obj?.[key], data);
+
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      return value;
+    }
   }
-  return view;
+
+  return fallback;
 }
 
-export async function call(onDone: LocalJSXCommandOnDone, context: LocalJSXCommandContext): Promise<React.ReactNode> {
-  const {
-    messages,
-    getAppState,
-    options: { mainLoopModel, tools },
-  } = context;
-  const apiView = toApiView(messages);
+function readString(data: any, paths: string[], fallback = ''): string {
+  for (const path of paths) {
+    const value = path.split('.').reduce((obj, key) => obj?.[key], data);
 
-  // Apply microcompact to get accurate representation of messages sent to API
-  const { messages: compactedMessages } = await microcompactMessages(apiView);
+    if (typeof value === 'string' && value.length > 0) {
+      return value;
+    }
+  }
 
-  // Get terminal width for responsive sizing
-  const terminalWidth = process.stdout.columns || 80;
-  const appState = getAppState();
+  return fallback;
+}
 
-  // Analyze context with compacted messages
-  // Pass original messages as last parameter for accurate API usage extraction
-  const data = await analyzeContextUsage(
-    compactedMessages,
-    mainLoopModel,
-    async () => appState.toolPermissionContext,
-    tools,
-    appState.agentDefinitions,
-    terminalWidth,
-    context,
-    // Pass full context for system prompt calculation
-    undefined,
-    // mainThreadAgentDefinition
-    apiView, // Original messages for API usage extraction
+function formatTokens(tokens: number): string {
+  if (!Number.isFinite(tokens)) return '0';
+
+  if (tokens >= 1_000_000) {
+    return `${(tokens / 1_000_000).toFixed(1)}m`;
+  }
+
+  if (tokens >= 1_000) {
+    return `${(tokens / 1_000).toFixed(1)}k`;
+  }
+
+  return String(Math.round(tokens));
+}
+
+function formatPercent(tokens: number, limit: number): string {
+  if (!limit) return '0%';
+  return `${((tokens / limit) * 100).toFixed(1)}%`;
+}
+
+function detectLimit(data: any, model: string): number {
+  const explicit = readNumber(data, [
+    'contextLimit',
+    'maxContextTokens',
+    'modelLimit',
+    'limit',
+    'maxTokens',
+  ]);
+
+  if (explicit > 0) return explicit;
+
+  const lower = model.toLowerCase();
+
+  if (lower.includes('opus')) return 200_000;
+  if (lower.includes('sonnet')) return 200_000;
+  if (lower.includes('haiku')) return 200_000;
+
+  return 200_000;
+}
+
+function buildUsage(data: any): UsageItem[] {
+  return [
+    {
+      key: 'systemPrompt',
+      label: 'System prompt',
+      color: COLORS.prompt,
+      tokens: readNumber(data, [
+        'systemPromptTokens',
+        'systemPrompt',
+        'categories.systemPrompt.tokens',
+        'breakdown.systemPrompt.tokens',
+        'usage.systemPrompt.tokens',
+      ]),
+    },
+    {
+      key: 'systemTools',
+      label: 'System tools',
+      color: COLORS.tools,
+      tokens: readNumber(data, [
+        'systemToolsTokens',
+        'systemTools',
+        'categories.systemTools.tokens',
+        'breakdown.systemTools.tokens',
+        'usage.systemTools.tokens',
+      ]),
+    },
+    {
+      key: 'mcpTools',
+      label: 'MCP tools',
+      color: COLORS.mcp,
+      tokens: readNumber(data, [
+        'mcpToolsTokens',
+        'mcpTools',
+        'categories.mcpTools.tokens',
+        'breakdown.mcpTools.tokens',
+        'usage.mcpTools.tokens',
+      ]),
+    },
+    {
+      key: 'toolUse',
+      label: 'Tool use & results',
+      color: COLORS.toolUse,
+      tokens: readNumber(data, [
+        'toolUseTokens',
+        'toolUseAndResultsTokens',
+        'toolUseAndResults',
+        'toolResultsTokens',
+        'categories.toolUse.tokens',
+        'categories.toolUseAndResults.tokens',
+        'breakdown.toolUse.tokens',
+        'breakdown.toolUseAndResults.tokens',
+        'usage.toolUse.tokens',
+      ]),
+    },
+    {
+      key: 'memoryFiles',
+      label: 'Memory files',
+      color: COLORS.memory,
+      tokens: readNumber(data, [
+        'memoryFilesTokens',
+        'memoryTokens',
+        'memoryFiles',
+        'categories.memoryFiles.tokens',
+        'breakdown.memoryFiles.tokens',
+        'usage.memoryFiles.tokens',
+      ]),
+    },
+    {
+      key: 'messages',
+      label: 'Messages',
+      color: COLORS.messages,
+      tokens: readNumber(data, [
+        'messageTokens',
+        'messagesTokens',
+        'messages',
+        'categories.messages.tokens',
+        'breakdown.messages.tokens',
+        'usage.messages.tokens',
+      ]),
+    },
+  ];
+}
+
+function normalizeDetails(value: any): DetailItem[] {
+  if (!Array.isArray(value)) return [];
+
+  return value
+    .map((item) => {
+      if (typeof item === 'string') {
+        return {
+          name: item,
+          tokens: 0,
+        };
+      }
+
+      const path = item.path ?? item.filePath ?? item.location ?? item.id;
+      const name = item.name ?? item.label ?? path ?? 'Unknown';
+
+      return {
+        name,
+        path,
+        tokens:
+          item.tokens ??
+          item.tokenCount ??
+          item.estimatedTokens ??
+          item.count ??
+          0,
+      };
+    })
+    .filter((item) => item.name);
+}
+
+function readDetails(data: any, paths: string[]): DetailItem[] {
+  for (const path of paths) {
+    const value = path.split('.').reduce((obj, key) => obj?.[key], data);
+    const details = normalizeDetails(value);
+
+    if (details.length > 0) {
+      return details;
+    }
+  }
+
+  return [];
+}
+
+function makeCells(items: UsageItem[], total: number, limit: number): UsageItem[] {
+  const cells: UsageItem[] = [];
+
+  for (const item of items) {
+    if (item.tokens <= 0) continue;
+
+    const count = Math.max(1, Math.round((item.tokens / Math.max(total, limit)) * GRID_SIZE));
+
+    for (let i = 0; i < count; i++) {
+      cells.push(item);
+    }
+  }
+
+  while (cells.length < GRID_SIZE) {
+    cells.push({
+      key: 'empty',
+      label: 'Empty',
+      tokens: 0,
+      color: '#52525b',
+    });
+  }
+
+  if (cells.length > GRID_SIZE) {
+    cells.length = GRID_SIZE;
+  }
+
+  if (total > limit) {
+    const overflowCells = Math.min(
+      GRID_SIZE,
+      Math.max(1, Math.round(((total - limit) / limit) * GRID_SIZE)),
+    );
+
+    for (let i = GRID_SIZE - overflowCells; i < GRID_SIZE; i++) {
+      cells[i] = {
+        key: 'overflow',
+        label: 'Overflow',
+        tokens: total - limit,
+        color: COLORS.overflow,
+      };
+    }
+  }
+
+  return cells;
+}
+
+function TokenGrid({
+  items,
+  total,
+  limit,
+}: {
+  items: UsageItem[];
+  total: number;
+  limit: number;
+}): React.ReactNode {
+  const cells = makeCells(items, total, limit);
+  const rows = [];
+
+  for (let row = 0; row < GRID_ROWS; row++) {
+    const rowCells = cells.slice(row * GRID_COLUMNS, row * GRID_COLUMNS + GRID_COLUMNS);
+
+    rows.push(
+      <Box key={row} flexDirection="row">
+        {row === 0 ? (
+          <Text color="#a1a1aa">└ </Text>
+        ) : (
+          <Text>  </Text>
+        )}
+
+        {rowCells.map((cell, index) => (
+          <Text key={`${row}-${index}`} color={cell.color}>
+            {CELL}{' '}
+          </Text>
+        ))}
+      </Box>,
+    );
+  }
+
+  return (
+    <Box flexDirection="column">
+      {rows}
+
+      <Box marginLeft={2} marginTop={1}>
+        <Text color="#a1a1aa">
+          tokens ({Math.round((total / limit) * 100)}%)
+        </Text>
+      </Box>
+    </Box>
   );
-
-  return <ContextStats data={data} onClose={onDone} />;
 }
-//# sourceMappingURL=data:application/json;charset=utf-8;base64,eyJ2ZXJzaW9uIjozLCJuYW1lcyI6WyJmZWF0dXJlIiwiUmVhY3QiLCJMb2NhbEpTWENvbW1hbmRDb250ZXh0IiwiQ29udGV4dFZpc3VhbGl6YXRpb24iLCJtaWNyb2NvbXBhY3RNZXNzYWdlcyIsIkxvY2FsSlNYQ29tbWFuZE9uRG9uZSIsIk1lc3NhZ2UiLCJhbmFseXplQ29udGV4dFVzYWdlIiwiZ2V0TWVzc2FnZXNBZnRlckNvbXBhY3RCb3VuZGFyeSIsInJlbmRlclRvQW5zaVN0cmluZyIsInRvQXBpVmlldyIsIm1lc3NhZ2VzIiwidmlldyIsInByb2plY3RWaWV3IiwicmVxdWlyZSIsImNhbGwiLCJvbkRvbmUiLCJjb250ZXh0IiwiUHJvbWlzZSIsIlJlYWN0Tm9kZSIsImdldEFwcFN0YXRlIiwib3B0aW9ucyIsIm1haW5Mb29wTW9kZWwiLCJ0b29scyIsImFwaVZpZXciLCJjb21wYWN0ZWRNZXNzYWdlcyIsInRlcm1pbmFsV2lkdGgiLCJwcm9jZXNzIiwic3Rkb3V0IiwiY29sdW1ucyIsImFwcFN0YXRlIiwiZGF0YSIsInRvb2xQZXJtaXNzaW9uQ29udGV4dCIsImFnZW50RGVmaW5pdGlvbnMiLCJ1bmRlZmluZWQiLCJvdXRwdXQiXSwic291cmNlcyI6WyJjb250ZXh0LnRzeCJdLCJzb3VyY2VzQ29udGVudCI6WyJpbXBvcnQgeyBmZWF0dXJlIH0gZnJvbSAnYnVuOmJ1bmRsZSdcbmltcG9ydCAqIGFzIFJlYWN0IGZyb20gJ3JlYWN0J1xuaW1wb3J0IHR5cGUgeyBMb2NhbEpTWENvbW1hbmRDb250ZXh0IH0gZnJvbSAnLi4vLi4vY29tbWFuZHMuanMnXG5pbXBvcnQgeyBDb250ZXh0VmlzdWFsaXphdGlvbiB9IGZyb20gJy4uLy4uL2NvbXBvbmVudHMvQ29udGV4dFZpc3VhbGl6YXRpb24uanMnXG5pbXBvcnQgeyBtaWNyb2NvbXBhY3RNZXNzYWdlcyB9IGZyb20gJy4uLy4uL3NlcnZpY2VzL2NvbXBhY3QvbWljcm9Db21wYWN0LmpzJ1xuaW1wb3J0IHR5cGUgeyBMb2NhbEpTWENvbW1hbmRPbkRvbmUgfSBmcm9tICcuLi8uLi90eXBlcy9jb21tYW5kLmpzJ1xuaW1wb3J0IHR5cGUgeyBNZXNzYWdlIH0gZnJvbSAnLi4vLi4vdHlwZXMvbWVzc2FnZS5qcydcbmltcG9ydCB7IGFuYWx5emVDb250ZXh0VXNhZ2UgfSBmcm9tICcuLi8uLi91dGlscy9hbmFseXplQ29udGV4dC5qcydcbmltcG9ydCB7IGdldE1lc3NhZ2VzQWZ0ZXJDb21wYWN0Qm91bmRhcnkgfSBmcm9tICcuLi8uLi91dGlscy9tZXNzYWdlcy5qcydcbmltcG9ydCB7IHJlbmRlclRvQW5zaVN0cmluZyB9IGZyb20gJy4uLy4uL3V0aWxzL3N0YXRpY1JlbmRlci5qcydcblxuLyoqXG4gKiBBcHBseSB0aGUgc2FtZSBjb250ZXh0IHRyYW5zZm9ybXMgcXVlcnkudHMgZG9lcyBiZWZvcmUgdGhlIEFQSSBjYWxsLCBzb1xuICogL2NvbnRleHQgc2hvd3Mgd2hhdCB0aGUgbW9kZWwgYWN0dWFsbHkgc2VlcyByYXRoZXIgdGhhbiB0aGUgUkVQTCdzIHJhd1xuICogaGlzdG9yeS4gV2l0aG91dCBwcm9qZWN0VmlldyB0aGUgdG9rZW4gY291bnQgb3ZlcmNvdW50cyBieSBob3dldmVyIG11Y2hcbiAqIHdhcyBjb2xsYXBzZWQg4oCUIHVzZXIgc2VlcyBcIjE4MGssIDMgc3BhbnMgY29sbGFwc2VkXCIgd2hlbiB0aGUgQVBJIHNlZXMgMTIway5cbiAqL1xuZnVuY3Rpb24gdG9BcGlWaWV3KG1lc3NhZ2VzOiBNZXNzYWdlW10pOiBNZXNzYWdlW10ge1xuICBsZXQgdmlldyA9IGdldE1lc3NhZ2VzQWZ0ZXJDb21wYWN0Qm91bmRhcnkobWVzc2FnZXMpXG4gIGlmIChmZWF0dXJlKCdDT05URVhUX0NPTExBUFNFJykpIHtcbiAgICAvKiBlc2xpbnQtZGlzYWJsZSBAdHlwZXNjcmlwdC1lc2xpbnQvbm8tcmVxdWlyZS1pbXBvcnRzICovXG4gICAgY29uc3QgeyBwcm9qZWN0VmlldyB9ID1cbiAgICAgIHJlcXVpcmUoJy4uLy4uL3NlcnZpY2VzL2NvbnRleHRDb2xsYXBzZS9vcGVyYXRpb25zLmpzJykgYXMgdHlwZW9mIGltcG9ydCgnLi4vLi4vc2VydmljZXMvY29udGV4dENvbGxhcHNlL29wZXJhdGlvbnMuanMnKVxuICAgIC8qIGVzbGludC1lbmFibGUgQHR5cGVzY3JpcHQtZXNsaW50L25vLXJlcXVpcmUtaW1wb3J0cyAqL1xuICAgIHZpZXcgPSBwcm9qZWN0Vmlldyh2aWV3KVxuICB9XG4gIHJldHVybiB2aWV3XG59XG5cbmV4cG9ydCBhc3luYyBmdW5jdGlvbiBjYWxsKFxuICBvbkRvbmU6IExvY2FsSlNYQ29tbWFuZE9uRG9uZSxcbiAgY29udGV4dDogTG9jYWxKU1hDb21tYW5kQ29udGV4dCxcbik6IFByb21pc2U8UmVhY3QuUmVhY3ROb2RlPiB7XG4gIGNvbnN0IHtcbiAgICBtZXNzYWdlcyxcbiAgICBnZXRBcHBTdGF0ZSxcbiAgICBvcHRpb25zOiB7IG1haW5Mb29wTW9kZWwsIHRvb2xzIH0sXG4gIH0gPSBjb250ZXh0XG5cbiAgY29uc3QgYXBpVmlldyA9IHRvQXBpVmlldyhtZXNzYWdlcylcblxuICAvLyBBcHBseSBtaWNyb2NvbXBhY3QgdG8gZ2V0IGFjY3VyYXRlIHJlcHJlc2VudGF0aW9uIG9mIG1lc3NhZ2VzIHNlbnQgdG8gQVBJXG4gIGNvbnN0IHsgbWVzc2FnZXM6IGNvbXBhY3RlZE1lc3NhZ2VzIH0gPSBhd2FpdCBtaWNyb2NvbXBhY3RNZXNzYWdlcyhhcGlWaWV3KVxuXG4gIC8vIEdldCB0ZXJtaW5hbCB3aWR0aCBmb3IgcmVzcG9uc2l2ZSBzaXppbmdcbiAgY29uc3QgdGVybWluYWxXaWR0aCA9IHByb2Nlc3Muc3Rkb3V0LmNvbHVtbnMgfHwgODBcblxuICBjb25zdCBhcHBTdGF0ZSA9IGdldEFwcFN0YXRlKClcblxuICAvLyBBbmFseXplIGNvbnRleHQgd2l0aCBjb21wYWN0ZWQgbWVzc2FnZXNcbiAgLy8gUGFzcyBvcmlnaW5hbCBtZXNzYWdlcyBhcyBsYXN0IHBhcmFtZXRlciBmb3IgYWNjdXJhdGUgQVBJIHVzYWdlIGV4dHJhY3Rpb25cbiAgY29uc3QgZGF0YSA9IGF3YWl0IGFuYWx5emVDb250ZXh0VXNhZ2UoXG4gICAgY29tcGFjdGVkTWVzc2FnZXMsXG4gICAgbWFpbkxvb3BNb2RlbCxcbiAgICBhc3luYyAoKSA9PiBhcHBTdGF0ZS50b29sUGVybWlzc2lvbkNvbnRleHQsXG4gICAgdG9vbHMsXG4gICAgYXBwU3RhdGUuYWdlbnREZWZpbml0aW9ucyxcbiAgICB0ZXJtaW5hbFdpZHRoLFxuICAgIGNvbnRleHQsIC8vIFBhc3MgZnVsbCBjb250ZXh0IGZvciBzeXN0ZW0gcHJvbXB0IGNhbGN1bGF0aW9uXG4gICAgdW5kZWZpbmVkLCAvLyBtYWluVGhyZWFkQWdlbnREZWZpbml0aW9uXG4gICAgYXBpVmlldywgLy8gT3JpZ2luYWwgbWVzc2FnZXMgZm9yIEFQSSB1c2FnZSBleHRyYWN0aW9uXG4gIClcblxuICAvLyBSZW5kZXIgdG8gQU5TSSBzdHJpbmcgdG8gcHJlc2VydmUgY29sb3JzIGFuZCBwYXNzIHRvIG9uRG9uZSBsaWtlIGxvY2FsIGNvbW1hbmRzIGRvXG4gIGNvbnN0IG91dHB1dCA9IGF3YWl0IHJlbmRlclRvQW5zaVN0cmluZyg8Q29udGV4dFZpc3VhbGl6YXRpb24gZGF0YT17ZGF0YX0gLz4pXG4gIG9uRG9uZShvdXRwdXQpXG4gIHJldHVybiBudWxsXG59XG4iXSwibWFwcGluZ3MiOiJBQUFBLFNBQVNBLE9BQU8sUUFBUSxZQUFZO0FBQ3BDLE9BQU8sS0FBS0MsS0FBSyxNQUFNLE9BQU87QUFDOUIsY0FBY0Msc0JBQXNCLFFBQVEsbUJBQW1CO0FBQy9ELFNBQVNDLG9CQUFvQixRQUFRLDBDQUEwQztBQUMvRSxTQUFTQyxvQkFBb0IsUUFBUSx3Q0FBd0M7QUFDN0UsY0FBY0MscUJBQXFCLFFBQVEsd0JBQXdCO0FBQ25FLGNBQWNDLE9BQU8sUUFBUSx3QkFBd0I7QUFDckQsU0FBU0MsbUJBQW1CLFFBQVEsK0JBQStCO0FBQ25FLFNBQVNDLCtCQUErQixRQUFRLHlCQUF5QjtBQUN6RSxTQUFTQyxrQkFBa0IsUUFBUSw2QkFBNkI7O0FBRWhFO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBLFNBQVNDLFNBQVNBLENBQUNDLFFBQVEsRUFBRUwsT0FBTyxFQUFFLENBQUMsRUFBRUEsT0FBTyxFQUFFLENBQUM7RUFDakQsSUFBSU0sSUFBSSxHQUFHSiwrQkFBK0IsQ0FBQ0csUUFBUSxDQUFDO0VBQ3BELElBQUlYLE9BQU8sQ0FBQyxrQkFBa0IsQ0FBQyxFQUFFO0lBQy9CO0lBQ0EsTUFBTTtNQUFFYTtJQUFZLENBQUMsR0FDbkJDLE9BQU8sQ0FBQyw4Q0FBOEMsQ0FBQyxJQUFJLE9BQU8sT0FBTyw4Q0FBOEMsQ0FBQztJQUMxSDtJQUNBRixJQUFJLEdBQUdDLFdBQVcsQ0FBQ0QsSUFBSSxDQUFDO0VBQzFCO0VBQ0EsT0FBT0EsSUFBSTtBQUNiO0FBRUEsT0FBTyxlQUFlRyxJQUFJQSxDQUN4QkMsTUFBTSxFQUFFWCxxQkFBcUIsRUFDN0JZLE9BQU8sRUFBRWYsc0JBQXNCLENBQ2hDLEVBQUVnQixPQUFPLENBQUNqQixLQUFLLENBQUNrQixTQUFTLENBQUMsQ0FBQztFQUMxQixNQUFNO0lBQ0pSLFFBQVE7SUFDUlMsV0FBVztJQUNYQyxPQUFPLEVBQUU7TUFBRUMsYUFBYTtNQUFFQztJQUFNO0VBQ2xDLENBQUMsR0FBR04sT0FBTztFQUVYLE1BQU1PLE9BQU8sR0FBR2QsU0FBUyxDQUFDQyxRQUFRLENBQUM7O0VBRW5DO0VBQ0EsTUFBTTtJQUFFQSxRQUFRLEVBQUVjO0VBQWtCLENBQUMsR0FBRyxNQUFNckIsb0JBQW9CLENBQUNvQixPQUFPLENBQUM7O0VBRTNFO0VBQ0EsTUFBTUUsYUFBYSxHQUFHQyxPQUFPLENBQUNDLE1BQU0sQ0FBQ0MsT0FBTyxJQUFJLEVBQUU7RUFFbEQsTUFBTUMsUUFBUSxHQUFHVixXQUFXLENBQUMsQ0FBQzs7RUFFOUI7RUFDQTtFQUNBLE1BQU1XLElBQUksR0FBRyxNQUFNeEIsbUJBQW1CLENBQ3BDa0IsaUJBQWlCLEVBQ2pCSCxhQUFhLEVBQ2IsWUFBWVEsUUFBUSxDQUFDRSxxQkFBcUIsRUFDMUNULEtBQUssRUFDTE8sUUFBUSxDQUFDRyxnQkFBZ0IsRUFDekJQLGFBQWEsRUFDYlQsT0FBTztFQUFFO0VBQ1RpQixTQUFTO0VBQUU7RUFDWFYsT0FBTyxDQUFFO0VBQ1gsQ0FBQzs7RUFFRDtFQUNBLE1BQU1XLE1BQU0sR0FBRyxNQUFNMUIsa0JBQWtCLENBQUMsQ0FBQyxvQkFBb0IsQ0FBQyxJQUFJLENBQUMsQ0FBQ3NCLElBQUksQ0FBQyxHQUFHLENBQUM7RUFDN0VmLE1BQU0sQ0FBQ21CLE1BQU0sQ0FBQztFQUNkLE9BQU8sSUFBSTtBQUNiIiwiaWdub3JlTGlzdCI6W119
+
+function UsageLine({
+  item,
+  limit,
+}: {
+  item: UsageItem;
+  limit: number;
+}): React.ReactNode {
+  return (
+    <Box>
+      <Text color={item.color}>{CELL} </Text>
+      <Text color="#d4d4d8">{item.label}: </Text>
+      <Text color="#71717a">
+        {formatTokens(item.tokens)} tokens ({formatPercent(item.tokens, limit)})
+      </Text>
+    </Box>
+  );
+}
+
+function DetailSection({
+  title,
+  command,
+  items,
+}: {
+  title: string;
+  command: string;
+  items: DetailItem[];
+}): React.ReactNode {
+  if (items.length === 0) return null;
+
+  return (
+    <Box flexDirection="column" marginTop={2}>
+      <Box>
+        <Text color="#d4d4d8" bold>
+          {title}
+        </Text>
+        <Text color="#71717a"> · </Text>
+        <Text color="#a1a1aa">{command}</Text>
+      </Box>
+
+      {items.map((item, index) => (
+        <Box key={`${item.name}-${index}`} marginLeft={1}>
+          <Text color="#71717a">└ </Text>
+          <Text color="#a1a1aa">{item.name}</Text>
+
+          {item.path && item.path !== item.name ? (
+            <Text color="#71717a"> ({item.path})</Text>
+          ) : null}
+
+          {item.tokens > 0 ? (
+            <Text color="#71717a">: {formatTokens(item.tokens)} tokens</Text>
+          ) : null}
+        </Box>
+      ))}
+    </Box>
+  );
+}
+
+export function ContextStats({
+  data,
+}: ContextStatsProps): React.ReactNode {
+  const model = readString(data, [
+    'model',
+    'modelName',
+    'mainLoopModel',
+    'metadata.model',
+  ], 'claude-opus-4-1-20250805');
+
+  const limit = detectLimit(data, model);
+  const usage = buildUsage(data);
+
+  const calculatedTotal = usage.reduce((sum, item) => sum + item.tokens, 0);
+
+  const total = readNumber(data, [
+    'totalTokens',
+    'tokens',
+    'usedTokens',
+    'contextTokens',
+    'currentTokens',
+  ], calculatedTotal);
+
+  const memoryFiles = readDetails(data, [
+    'memoryFileDetails',
+    'memoryFilesDetail',
+    'memoryFilesDetails',
+    'memoryFilesList',
+    'files.memory',
+    'details.memoryFiles',
+  ]);
+
+  const mcpTools = readDetails(data, [
+    'mcpToolDetails',
+    'mcpToolsDetails',
+    'mcpToolsList',
+    'tools.mcp',
+    'details.mcpTools',
+  ]);
+
+  return (
+    <Box flexDirection="column" paddingX={1}>
+      <Box flexDirection="row">
+        <Box width={33}>
+          <TokenGrid items={usage} total={total} limit={limit} />
+        </Box>
+
+        <Box flexDirection="column" marginLeft={2}>
+          <Text color="#d4d4d8" bold>
+            Context Usage
+          </Text>
+
+          <Box>
+            <Text color="#71717a">
+              {model} · {formatTokens(total)}/{formatTokens(limit)}
+            </Text>
+          </Box>
+
+          <Box height={1} />
+
+          {usage.map((item) => (
+            <UsageLine key={item.key} item={item} limit={limit} />
+          ))}
+        </Box>
+      </Box>
+
+      <DetailSection
+        title="Memory files"
+        command="/memory"
+        items={memoryFiles}
+      />
+
+      <DetailSection
+        title="MCP tools"
+        command="/mcp"
+        items={mcpTools}
+      />
+    </Box>
+  );
+}
+
+export const call: LocalJSXCommandCall = async (onDone, context, _args) => {
+  const messages: Message[] = (context as any).messages ?? context.getAppState().messages ?? [];
+
+  const contextData = await collectContextData({
+    messages,
+    getAppState: context.getAppState,
+    options: {
+      mainLoopModel: context.options.mainLoopModel,
+      tools: context.options.tools,
+      agentDefinitions: context.options.agentDefinitions,
+      customSystemPrompt: context.options.customSystemPrompt,
+      appendSystemPrompt: context.options.appendSystemPrompt,
+    },
+  });
+
+  // Map ContextData categories array to flat object keys ContextStats expects
+  const catMap: Record<string, { tokens: number }> = {};
+  for (const cat of contextData.categories) {
+    const key = cat.name.replace(/[\s&]+/g, '');
+    catMap[key] = { tokens: cat.tokens };
+  }
+
+  const data = {
+    model: contextData.model,
+    totalTokens: contextData.totalTokens,
+    categories: catMap,
+    memoryFileDetails: contextData.memoryFiles,
+    mcpToolDetails: contextData.mcpTools,
+  };
+
+  return (
+    <Dialog
+      title="Context Usage"
+      onCancel={() => onDone('Context dismissed', { display: 'system' })}
+      inputGuide={() => <Text>Press Esc to close</Text>}
+    >
+      <ContextStats data={data} />
+    </Dialog>
+  );
+};

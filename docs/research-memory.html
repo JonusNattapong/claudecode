@@ -50,17 +50,19 @@
     <tr><td>Dossier Generation</td><td>Produces structured research dossiers with summaries, evidence, and references</td></tr>
     <tr><td>Truth Checking</td><td>Validates factual claims against source material</td></tr>
     <tr><td>Source Ranking</td><td>Ranks sources by relevance, authority, and recency</td></tr>
+    <tr><td>Web Discovery</td><td>API-keyless high-speed DuckDuckGo search queries for real-time web context</td></tr>
+    <tr><td>Stealth Scraping</td><td>Concurrently scrapes web page HTML and parses it to clean Markdown using Python Scrapling & Trafilatura stealth fetchers, bypassing Cloudflare & Turnstile</td></tr>
   </table>
 
   <h3>Research Workflow</h3>
   <ol>
-    <li><strong>Query</strong> — Natural language research question or topic</li>
-    <li><strong>Gather</strong> — Collects information from local files, wiki, memory, and web</li>
+    <li><strong>Query Trigger</strong> — Triggered using <code>/research &lt;query&gt;</code> directly bypassing subcommand requirements (e.g. <code>/research React 19 release notes</code>)</li>
+    <li><strong>Gather</strong> — Collects information from local files, wiki, memory, and crawls/scrapes real-time web pages concurrently</li>
     <li><strong>Analyze</strong> — Cross-references, verifies claims, extracts citations</li>
     <li><strong>Synthesize</strong> — Produces a structured report with evidence and sources</li>
   </ol>
 
-  <pre><code>/research "What are the current performance bottlenecks in the API layer?"
+  <pre><code>/research "React 19 release notes"
 
   # Result: structured dossier with citations, evidence, and ranked sources</code></pre>
 
@@ -103,7 +105,7 @@
   </table>
 
   <footer class="footer">
-    <span>Claudevil v2.1.165 — Open Source (MIT)</span>
+    <span>Claudevil v2.1.180 — Open Source (MIT)</span>
     <div class="footer-links">
       <a href="https://github.com/JonusNattapong/claudecode">GitHub</a>
       <a href="https://github.com/JonusNattapong/claudecode/issues">Issues</a>

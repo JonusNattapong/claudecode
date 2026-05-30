@@ -33,6 +33,26 @@ export function AssistantThinkingMessage({
   const label = '∴ Thinking';
 
   if (!shouldShowFullThinking) {
+    const lines = thinking.split('\n');
+    const isLongEnough = thinking.length >= 150 || lines.length >= 3;
+
+    if (isLongEnough) {
+      const summaryLines = lines.slice(0, 10);
+      const hasMore = lines.length > 10 || thinking.length > 1000;
+      const summaryText = summaryLines.join('\n') + (hasMore ? '\n...' : '');
+
+      return (
+        <Box flexDirection="column" gap={0} marginTop={addMargin ? 1 : 0} width="100%">
+          <Text dimColor italic>
+            {label} (collapsed) <CtrlOToExpand />
+          </Text>
+          <Box paddingLeft={2} marginTop={0}>
+            <Markdown dimColor>{summaryText}</Markdown>
+          </Box>
+        </Box>
+      );
+    }
+
     return (
       <Box marginTop={addMargin ? 1 : 0}>
         <Text dimColor italic>

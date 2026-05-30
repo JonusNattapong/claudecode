@@ -215,7 +215,7 @@ export async function* handleStopHooks(
               hasOutput = true;
             } else if (attachment.type === 'hook_success') {
               // Check if successful hook produced any stdout/stderr
-              if ((attachment.stdout && attachment.stdout.trim()) || (attachment.stderr && attachment.stderr.trim())) {
+              if (attachment.stdout?.trim() || attachment.stderr?.trim()) {
                 hasOutput = true;
               }
             }
@@ -421,10 +421,11 @@ export async function* handleStopHooks(
     // Only runs on main thread (not subagents) and when goal is active
     if (!toolUseContext.agentId && querySource.startsWith('repl_main_thread')) {
       const goalState = getFullGoalState();
-      if (goalState && goalState.goal && !goalState.achieved) {
+      if (goalState?.goal && !goalState.achieved && !goalState.paused) {
         const allMessages = [...messagesForQuery, ...assistantMessages];
         const turnCount = toolUseContext.getAppState().sessionGoalTurnCount ?? 0;
         const startTime = goalState.setAt ?? Date.now();
+        const totalPausedMs = goalState.totalPausedMs ?? 0;
 
         try {
           const result = await evaluateGoal(
@@ -447,15 +448,21 @@ export async function* handleStopHooks(
             // Goal achieved — record and let session end naturally
             updateGoalState({ achieved: true, endedAt: Date.now() });
             logForDebugging(`[goal] achieved: ${result.reason}`);
-            const elapsed = formatDuration(Date.now() - startTime, {
+            const activeElapsed = Date.now() - startTime - totalPausedMs;
+            const elapsed = formatDuration(activeElapsed, {
               hideTrailingZeros: true,
               mostSignificantOnly: true,
             });
             const tokens = (goalState.evalTokens ?? 0) + result.inputTokens + result.outputTokens;
-            const tokenText = tokens > 0 ? ` · ${tokens.toLocaleString()} tokens` : '';
-            yield createSystemMessage(`✓ Goal achieved (${elapsed} · ${turnCount} turns${tokenText})`, 'info');
+            const tokenText = tokens > 0 ? ` · ${tokens.toLocaleString()} eval tokens` : '';
+
+            // Rich achievement summary
+            yield createSystemMessage(
+              `✓ Goal achieved!\n  "${goalState.goal}"\n  ⏱ ${elapsed} · 🔄 ${turnCount} turns${tokenText}`,
+              'info',
+            );
             if (result.reason) {
-              yield createSystemMessage(result.reason, 'info');
+              yield createSystemMessage(`  💬 ${result.reason}`, 'info');
             }
 
             const restoredMode = goalState.preGoalMode;
@@ -464,6 +471,7 @@ export async function* handleStopHooks(
               sessionGoal: undefined,
               sessionGoalStartTime: undefined,
               sessionGoalTurnCount: undefined,
+              sessionGoalPaused: undefined,
               toolPermissionContext: restoredMode
                 ? {
                     ...prev.toolPermissionContext,
@@ -472,15 +480,25 @@ export async function* handleStopHooks(
                 : prev.toolPermissionContext,
             }));
             if (restoredMode) {
-              yield createSystemMessage(`◎ Restored permission mode to '${restoredMode}'`, 'info');
+              yield createSystemMessage(`  🔒 Permission mode restored to '${restoredMode}'`, 'info');
             }
           } else {
-            // Goal not met — inject nudge to continue working
+            // Goal not met — inject nudge with progress context
             logForDebugging(`[goal] not met: ${result.reason}`);
+
+            // Build progress string
+            let progressStr = '';
+            if (goalState.maxTurns) {
+              const pct = Math.round((turnCount / goalState.maxTurns) * 100);
+              progressStr = ` [${turnCount}/${goalState.maxTurns} turns · ${pct}%]`;
+            } else if (turnCount > 0) {
+              progressStr = ` [${turnCount} turns]`;
+            }
+
             yield createSystemMessage(
               result.reason
-                ? `○ Goal not yet met... continuing · ${result.reason}`
-                : '○ Goal not yet met... continuing',
+                ? `○ Goal in progress${progressStr} · ${result.reason}`
+                : `○ Goal in progress${progressStr} · continuing...`,
               'info',
             );
           }

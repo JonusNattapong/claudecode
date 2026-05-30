@@ -829,7 +829,7 @@ const MessagesImpl = ({
       {!hideLogo && !(renderRange && renderRange[0] > 0) && <LogoHeader agentDefinitions={agentDefinitions} />}
 
       {/* Truncation indicator */}
-      {hasTruncatedMessages && (
+      {hasTruncatedMessages && hiddenMessageCount > 0 && (
         <Divider
           title={`${toggleShowAllShortcut} to show ${chalk.bold(hiddenMessageCount)} previous messages`}
           width={columns}

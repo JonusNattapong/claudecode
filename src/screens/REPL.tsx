@@ -1224,6 +1224,19 @@ export function REPL({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Warning for deprecated CLAUDE_CODE_OPUS_4_6_FAST_MODE_OVERRIDE
+  useEffect(() => {
+    if (process.env.CLAUDE_CODE_OPUS_4_6_FAST_MODE_OVERRIDE) {
+      addNotification({
+        key: 'opus-4-6-override-deprecation',
+        text: 'Warning: CLAUDE_CODE_OPUS_4_6_FAST_MODE_OVERRIDE is deprecated and will be removed in a future release. Fast mode defaults to Opus 4.7/4.8.',
+        priority: 'medium',
+        color: 'warning',
+        timeoutMs: 0x7fffffff, // Persist indefinitely during the session
+      });
+    }
+  }, [addNotification]);
+
   const [showUndercoverCallout, setShowUndercoverCallout] = useState(false);
   useEffect(() => {
     if ('external' === 'ant') {
@@ -2189,6 +2202,7 @@ export function REPL({
             sessionGoal: hasActiveGoal ? goalState.goal : undefined,
             sessionGoalStartTime: hasActiveGoal ? (goalState.setAt ?? Date.now()) : undefined,
             sessionGoalTurnCount: hasActiveGoal ? (goalState.turnCount ?? 0) : undefined,
+            sessionGoalPaused: hasActiveGoal ? (goalState.paused ?? false) : undefined,
             toolPermissionContext: {
               ...transitionedContext,
               mode: nextPermissionMode,
@@ -2450,7 +2464,8 @@ export function REPL({
     if ('external' === 'ant' && allowDialogsWithAnimation && showUndercoverCallout) return 'undercover-callout';
 
     // Effort callout (shown once for Opus 4.6 users when effort is enabled)
-    if (allowDialogsWithAnimation && showEffortCallout) return 'effort-callout';
+    // Don't show on empty conversations — it's confusing to see a dialog before any interaction
+    if (allowDialogsWithAnimation && showEffortCallout && messages.length > 0) return 'effort-callout';
 
     // Remote callout (shown once before first bridge enable)
     if (allowDialogsWithAnimation && showRemoteCallout) return 'remote-callout';
@@ -3559,6 +3574,27 @@ export function REPL({
           // can stop the spark animation and show post-turn UI.
           sendBridgeResultRef.current();
 
+          // Show turn performance timer if not aborted
+          if (!abortController.signal.aborted) {
+            const hookMs = getTurnHookDurationMs();
+            const toolMs = getTurnToolDurationMs();
+            const classifierMs = getTurnClassifierDurationMs();
+            const totalToolHookMs = hookMs + toolMs + classifierMs;
+            const turnDurationMs = Date.now() - loadingStartTimeRef.current - totalPausedMsRef.current;
+            const apiMs = Math.max(0, turnDurationMs - totalToolHookMs);
+
+            const turnSec = (turnDurationMs / 1000).toFixed(1);
+            const apiSec = (apiMs / 1000).toFixed(1);
+            const toolHookSec = (totalToolHookMs / 1000).toFixed(1);
+
+            addNotification({
+              key: 'turn-performance-timer',
+              text: `✳ Turn completed in ${turnSec}s (API: ${apiSec}s · Tools & Hooks: ${toolHookSec}s)`,
+              priority: 'medium',
+              timeoutMs: 5000,
+            });
+          }
+
           // Auto-hide tungsten panel content at turn end (ant-only), but keep
           // tungstenActiveSession set so the pill stays in the footer and the user
           // can reopen the panel. Background tmux tasks (e.g. /hunter) run for
@@ -3660,7 +3696,7 @@ export function REPL({
         }
       }
     },
-    [onQueryImpl, setAppState, resetLoadingState, queryGuard, mrOnBeforeQuery, mrOnTurnComplete],
+    [onQueryImpl, setAppState, resetLoadingState, queryGuard, mrOnBeforeQuery, mrOnTurnComplete, addNotification],
   );
 
   // Handle initial message (from CLI args or plan mode exit with context clear)

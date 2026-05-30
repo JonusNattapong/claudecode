@@ -25,6 +25,7 @@ export async function processBashCommand(
   attachmentMessages: AttachmentMessage[],
   context: ProcessUserInputContext,
   setToolJSX: SetToolJSXFn,
+  runInBackground?: boolean,
 ): Promise<{
   messages: (UserMessage | AttachmentMessage | SystemMessage)[];
   shouldQuery: boolean;
@@ -95,6 +96,7 @@ export async function processBashCommand(
           {
             command: inputString,
             dangerouslyDisableSandbox: true,
+            ...(runInBackground && { run_in_background: true }),
           },
           bashModeContext,
           undefined,
@@ -105,6 +107,7 @@ export async function processBashCommand(
           {
             command: inputString,
             dangerouslyDisableSandbox: true,
+            ...(runInBackground && { run_in_background: true }),
           },
           bashModeContext,
           undefined,

@@ -1,14 +1,14 @@
 import { feature } from 'bun:bundle';
 import * as React from 'react';
 import { getIsRemoteMode } from '../../bootstrap/state.js';
+import ThemedBox from '../../components/design-system/ThemedBox.js';
+import { Spinner } from '../../components/Spinner.js';
+import { Box, Text } from '../../ink.js';
 import { redownloadUserSettings } from '../../services/settingsSync/index.js';
+import type { LocalJSXCommandCall, LocalJSXCommandOnDone } from '../../types/command.js';
 import { isEnvTruthy } from '../../utils/envUtils.js';
 import { refreshActivePlugins } from '../../utils/plugins/refresh.js';
 import { settingsChangeDetector } from '../../utils/settings/changeDetector.js';
-import type { LocalJSXCommandCall, LocalJSXCommandOnDone } from '../../types/command.js';
-import { Box, Text } from '../../ink.js';
-import ThemedBox from '../../components/design-system/ThemedBox.js';
-import { Spinner } from '../../components/Spinner.js';
 
 type ReloadResult = {
   enabled_count: number;
@@ -106,7 +106,15 @@ function ReloadDashboard({ onDone, context }: Props): React.ReactNode {
         </Box>
 
         {/* Divider */}
-        <Box borderStyle="single" borderTop={true} borderBottom={false} borderLeft={false} borderRight={false} borderColor="permission" marginBottom={1} />
+        <Box
+          borderStyle="single"
+          borderTop={true}
+          borderBottom={false}
+          borderLeft={false}
+          borderRight={false}
+          borderColor="permission"
+          marginBottom={1}
+        />
 
         {/* Info Grid */}
         <Box flexDirection="row" justifyContent="space-between" width="100%">

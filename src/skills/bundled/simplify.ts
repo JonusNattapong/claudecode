@@ -1,15 +1,17 @@
 import { AGENT_TOOL_NAME } from '../../tools/AgentTool/constants.js';
 import { registerBundledSkill } from '../bundledSkills.js';
 
-const SIMPLIFY_PROMPT = `# Simplify: Code Review and Cleanup
+const SIMPLIFY_PROMPT = `# Simplify: Cleanup-Only Code Review
 
-Review all changed files for reuse, quality, and efficiency. Fix any issues found.
+This is a **cleanup-only** review. Focus exclusively on code quality, reuse, efficiency, and abstraction level alignment. Do NOT hunt for correctness bugs — that is the job of \`/code-review\`.
+
+Fix any issues found directly — apply changes to the working tree.
 
 ## Phase 1: Identify Changes
 
 Run \`git diff\` (or \`git diff HEAD\` if there are staged changes) to see what changed. If there are no git changes, review the most recently modified files that the user mentioned or that you edited earlier in this conversation.
 
-## Phase 2: Launch Three Review Agents in Parallel
+## Phase 2: Launch Review Agents in Parallel
 
 Use the ${AGENT_TOOL_NAME} tool to launch all three agents concurrently in a single message. Pass each agent the full diff so it has the complete context.
 
@@ -40,14 +42,23 @@ Review the same changes for efficiency:
 1. **Unnecessary work**: redundant computations, repeated file reads, duplicate network/API calls, N+1 patterns
 2. **Missed concurrency**: independent operations run sequentially when they could run in parallel
 3. **Hot-path bloat**: new blocking work added to startup or per-request/per-render hot paths
-4. **Recurring no-op updates**: state/store updates inside polling loops, intervals, or event handlers that fire unconditionally — add a change-detection guard so downstream consumers aren't notified when nothing changed. Also: if a wrapper function takes an updater/reducer callback, verify it honors same-reference returns (or whatever the "no change" signal is) — otherwise callers' early-return no-ops are silently defeated
+4. **Recurring no-op updates**: state/store updates inside polling loops, intervals, or event handlers that fire unconditionally — add a change-detection guard so downstream consumers aren't notified when nothing changed
 5. **Unnecessary existence checks**: pre-checking file/resource existence before operating (TOCTOU anti-pattern) — operate directly and handle the error
 6. **Memory**: unbounded data structures, missing cleanup, event listener leaks
 7. **Overly broad operations**: reading entire files when only a portion is needed, loading all items when filtering for one
 
+### Agent 4: Altitude (Abstraction Level Alignment)
+
+Review the same changes for over-engineering and misaligned abstraction:
+
+1. **Over-engineering**: abstractions that add complexity without proportional benefit — generic interfaces with a single implementation, elaborate type hierarchies for simple data, premature configuration/hook systems
+2. **Wrong abstraction level**: code that operates at a different level of abstraction than its surroundings — inlining framework internals alongside business logic, or wrapping trivial operations in unnecessary indirection
+3. **Scope creep**: a change that addresses future concerns instead of the current requirement, adding unused parameters, conditional branches, or extension points
+4. **Inconsistency with codebase conventions**: deviating from established patterns in the surrounding code without justification — different error handling style, different naming convention, different module structure
+
 ## Phase 3: Fix Issues
 
-Wait for all three agents to complete. Aggregate their findings and fix each issue directly. If a finding is a false positive or not worth addressing, note it and move on — do not argue with the finding, just skip it.
+Wait for all agents to complete. Aggregate their findings and fix each issue directly. If a finding is a false positive or not worth addressing, note it and move on — do not argue with the finding, just skip it.
 
 When done, briefly summarize what was fixed (or confirm the code was already clean).
 `;

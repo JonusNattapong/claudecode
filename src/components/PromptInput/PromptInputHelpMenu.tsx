@@ -57,9 +57,6 @@ export function PromptInputHelpMenu(props: Props): React.ReactNode {
           <Text dimColor={dimColor}>@ for file paths</Text>
         </Box>
         <Box>
-          <Text dimColor={dimColor}>& for background</Text>
-        </Box>
-        <Box>
           <Text dimColor={dimColor}>/btw for side question</Text>
         </Box>
       </Box>

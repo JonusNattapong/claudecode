@@ -213,6 +213,15 @@ export type HookEvent = string;
 
 export type HookInput = Record<string, unknown>;
 
+export type MessageDisplayHookInput = HookInput & {
+  hook_event_name: 'MessageDisplay';
+  turn_id: string;
+  message_id: string;
+  position: number;
+  text_delta: string;
+  is_final_delta: boolean;
+};
+
 // ============================================================================
 // SDK Status Types
 // ============================================================================

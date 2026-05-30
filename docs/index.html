@@ -45,7 +45,7 @@
     <section class="hero">
       <div class="hero-badge">
         <span class="dot"></span>
-        v2.1.165 — Multi-Provider AI CLI
+        v2.1.180 — Multi-Provider AI CLI
       </div>
       <h1>
         Code with<br>
@@ -135,8 +135,14 @@
       <div class="feature-card">
         <div class="feature-icon">&#x25CB;</div>
         <h3>Agent View</h3>
-        <p>Multi-session dashboard with supervisor daemon, background tasks, IPC communication, and worktree isolation.</p>
+        <p>Multi-session dashboard with supervisor daemon, background tasks, IPC communication, worktree isolation, PR column display, dispatch autocomplete, and keyboard shortcuts.</p>
         <span class="feature-tag">/agents</span>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">&#x2699;</div>
+        <h3>Background Shell</h3>
+        <p>Run long-lived commands as persistent background agent tasks with <code>!bg &lt;command&gt;</code>. Live status, exit codes, stderr capture, and full dashboard integration.</p>
+        <span class="feature-tag">!bg</span>
       </div>
       <div class="feature-card">
         <div class="feature-icon">&#x25C6;</div>
@@ -263,13 +269,12 @@
     </div>
 
     <!-- ─── Changelog ─── -->
-    <h2 class="section-title" id="updates">v2.1.165 Updates</h2>
+    <h2 class="section-title" id="updates">v2.1.180 Updates</h2>
     <ul>
-      <li><strong>Remote Control enabled by default</strong> — All sessions are now remote-control-ready without needing <code>/rc</code> or <code>--remote-control</code>. Set <code>"remoteControlAtStartup": false</code> in settings to opt out.</li>
-      <li><strong><code>/loop</code></strong> — Run a prompt on a recurring interval (<code>/loop 5m /check-deploy</code>). Previously gated behind a feature flag; now available to all users.</li>
-      <li><strong><code>/autofix-pr</code></strong> — Fix CI errors and address review comments on a PR via a remote Claudevil on the web session.</li>
-      <li><strong><code>/plugin-details</code></strong> — Show component inventory (skills, commands, hooks, MCP servers) and estimated per-session token cost for any installed plugin.</li>
-      <li><strong>Interactive Argument Ghost Text</strong> — Parameter hints now render as inline dim text after the cursor. Press <kbd>Tab</kbd> or <kbd>→</kbd> to accept and fill placeholders like <code>[condition]</code>.</li>
+      <li><strong><code>!bg &lt;command&gt;</code> — Background shell tasks</strong> — Shell commands run as persistent background agent sessions visible in <code>claude agents</code>. Live status, exit codes, and stderr capture.</li>
+      <li><strong>Dispatch input autocomplete</strong> — Agent view now suggests agents (<code>@name</code>), skills (<code>/skill</code>), PR numbers (<code>#123</code>), and filter syntax (<code>a:agent</code>, <code>s:state</code>) with Tab/arrow navigation.</li>
+      <li><strong>PR column display</strong> — Agent rows show PR info scaled to terminal width: status dot, number, title, and status label. Peek panel shows PR details inline.</li>
+      <li><strong>Agent logout hotkey</strong> — Press <kbd>l</kbd> to stop/delete the selected agent session with double-press confirmation.</li>
     </ul>
 
     <div style="margin-top:var(--space-lg)">
@@ -278,7 +283,7 @@
 
     <!-- ─── Footer ─── -->
     <footer class="footer">
-      <span>Claudevil v2.1.165 — Open Source (MIT)</span>
+      <span>Claudevil v2.1.180 — Open Source (MIT)</span>
       <div class="footer-links">
         <a href="https://github.com/JonusNattapong/claudecode">GitHub</a>
         <a href="https://github.com/JonusNattapong/claudecode/issues">Issues</a>

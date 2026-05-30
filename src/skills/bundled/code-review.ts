@@ -77,18 +77,23 @@ export function registerCodeReviewSkill(): void {
   registerBundledSkill({
     name: 'code-review',
     description:
-      'Review changed code for correctness bugs at a chosen effort level (low/medium/high). Pass --comment to post findings as inline GitHub PR comments.',
-    aliases: ['simplify'],
+      'Review changed code for correctness bugs at a chosen effort level (low/medium/high). Pass --fix to apply changes directly. Pass --comment to post findings as inline GitHub PR comments.',
     userInvocable: true,
     async getPromptForCommand(args) {
       let effort = 'medium';
       let commentMode = false;
+      let fixMode = false;
 
       if (args) {
         // Parse effort level
         const effortMatch = args.match(/\b(low|medium|high)\b/i);
         if (effortMatch) {
           effort = effortMatch[1]!.toLowerCase();
+        }
+
+        // Check for --fix flag
+        if (args.includes('--fix')) {
+          fixMode = true;
         }
 
         // Check for --comment flag
@@ -98,6 +103,13 @@ export function registerCodeReviewSkill(): void {
       }
 
       let prompt = CODE_REVIEW_PROMPT.replace('{effort}', effort);
+      if (fixMode) {
+        // Replace "Do NOT fix" instruction with "Apply fixes"
+        prompt = prompt.replace(
+          'Do NOT fix the bugs — only report them. The user will decide how to proceed.',
+          'Apply the fixes directly to your working tree using the Edit tool. Fix each bug as you find it.'
+        );
+      }
       if (commentMode) {
         prompt += '\n\n' + CODE_REVIEW_COMMENT_PROMPT;
       }

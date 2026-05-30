@@ -22,7 +22,7 @@ import { logForDebugging } from '../debug.js';
 import { isPluginInstalled } from './installedPluginsManager.js';
 import { getPluginById } from './marketplaceManager.js';
 import { isOfficialMarketplaceName, parsePluginIdentifier } from './pluginIdentifier.js';
-import { isPluginBlockedByPolicy } from './pluginPolicy.js';
+import { isPluginBlockedByPolicy, isMarketplaceAllowedForSuggestions } from './pluginPolicy.js';
 
 /**
  * Hard cap on `claudeCodeHints.plugin[]` — bounds config growth. Each shown
@@ -69,6 +69,7 @@ export function maybeRecordPluginHint(hint: ClaudeCodeHint): void {
   const { name, marketplace } = parsePluginIdentifier(pluginId);
   if (!name || !marketplace) return;
   if (!isOfficialMarketplaceName(marketplace)) return;
+  if (!isMarketplaceAllowedForSuggestions(marketplace)) return;
   if (shown.includes(pluginId)) return;
   if (isPluginInstalled(pluginId)) return;
   if (isPluginBlockedByPolicy(pluginId)) return;

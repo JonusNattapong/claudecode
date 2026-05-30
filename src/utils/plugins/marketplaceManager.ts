@@ -740,6 +740,7 @@ export async function gitClone(
   targetPath: string,
   ref?: string,
   sparsePaths?: string[],
+  skipLfs?: boolean,
 ): Promise<{ code: number; stderr: string }> {
   const useSparse = sparsePaths && sparsePaths.length > 0;
   const args = ['-c', 'core.sshCommand=ssh -o BatchMode=yes -o StrictHostKeyChecking=yes', 'clone', '--depth', '1'];
@@ -763,10 +764,14 @@ export async function gitClone(
   const timeoutMs = getPluginGitTimeoutMs();
   logForDebugging(`git clone: url=${redactUrlCredentials(gitUrl)} ref=${ref ?? 'default'} timeout=${timeoutMs}ms`);
 
+  const env = skipLfs
+    ? { ...process.env, ...GIT_NO_PROMPT_ENV, GIT_LFS_SKIP_SMUDGE: '1' }
+    : { ...process.env, ...GIT_NO_PROMPT_ENV };
+
   const result = await execFileNoThrowWithCwd(gitExe(), args, {
     timeout: timeoutMs,
     stdin: 'ignore',
-    env: { ...process.env, ...GIT_NO_PROMPT_ENV },
+    env,
   });
 
   // Scrub credentials from execa's error/stderr fields before any logging or
@@ -1010,7 +1015,7 @@ async function cacheMarketplaceFromGit(
   ref?: string,
   sparsePaths?: string[],
   onProgress?: MarketplaceProgressCallback,
-  options?: { disableCredentialHelper?: boolean },
+  options?: { disableCredentialHelper?: boolean; skipLfs?: boolean },
 ): Promise<void> {
   const fs = getFsImplementation();
 
@@ -1078,7 +1083,7 @@ async function cacheMarketplaceFromGit(
     `Cloning repository (timeout: ${timeoutSec}s): ${redactUrlCredentials(gitUrl)}${refMessage}`,
   );
   const cloneStarted = performance.now();
-  const result = await gitClone(gitUrl, cachePath, ref, sparsePaths);
+  const result = await gitClone(gitUrl, cachePath, ref, sparsePaths, options?.skipLfs);
   logPluginFetch(
     'marketplace_clone',
     gitUrl,
@@ -1371,7 +1376,7 @@ async function loadAndCacheMarketplace(
           // SSH looks good, try it first
           safeCallProgress(onProgress, `Cloning via SSH: ${sshUrl}`);
           try {
-            await cacheMarketplaceFromGit(sshUrl, temporaryCachePath, source.ref, source.sparsePaths, onProgress);
+            await cacheMarketplaceFromGit(sshUrl, temporaryCachePath, source.ref, source.sparsePaths, onProgress, { skipLfs: source.skipLfs });
           } catch (err) {
             lastError = toError(err);
 
@@ -1390,7 +1395,7 @@ async function loadAndCacheMarketplace(
 
             // Try HTTPS
             try {
-              await cacheMarketplaceFromGit(httpsUrl, temporaryCachePath, source.ref, source.sparsePaths, onProgress);
+              await cacheMarketplaceFromGit(httpsUrl, temporaryCachePath, source.ref, source.sparsePaths, onProgress, { skipLfs: source.skipLfs });
               lastError = null; // Success!
             } catch (httpsErr) {
               // HTTPS also failed - use HTTPS error as the final error
@@ -1407,7 +1412,7 @@ async function loadAndCacheMarketplace(
           logForDebugging(`SSH not configured for GitHub, using HTTPS for ${source.repo}`, { level: 'info' });
 
           try {
-            await cacheMarketplaceFromGit(httpsUrl, temporaryCachePath, source.ref, source.sparsePaths, onProgress);
+            await cacheMarketplaceFromGit(httpsUrl, temporaryCachePath, source.ref, source.sparsePaths, onProgress, { skipLfs: source.skipLfs });
           } catch (err) {
             lastError = toError(err);
 
@@ -1427,7 +1432,7 @@ async function loadAndCacheMarketplace(
 
             // Try SSH
             try {
-              await cacheMarketplaceFromGit(sshUrl, temporaryCachePath, source.ref, source.sparsePaths, onProgress);
+              await cacheMarketplaceFromGit(sshUrl, temporaryCachePath, source.ref, source.sparsePaths, onProgress, { skipLfs: source.skipLfs });
               lastError = null; // Success!
             } catch (sshErr) {
               // SSH also failed - use SSH error as the final error
@@ -1451,7 +1456,7 @@ async function loadAndCacheMarketplace(
       case 'git': {
         temporaryCachePath = join(cacheDir, tempName);
         cleanupNeeded = true;
-        await cacheMarketplaceFromGit(source.url, temporaryCachePath, source.ref, source.sparsePaths, onProgress);
+        await cacheMarketplaceFromGit(source.url, temporaryCachePath, source.ref, source.sparsePaths, onProgress, { skipLfs: source.skipLfs });
         marketplacePath = join(temporaryCachePath, source.path || '.claude-plugin/marketplace.json');
         break;
       }
@@ -1741,7 +1746,7 @@ export async function addMarketplaceSource(
  * @param name - The marketplace name to remove
  * @throws If marketplace with given name is not found
  */
-export async function removeMarketplaceSource(name: string): Promise<void> {
+export async function removeMarketplaceSource(name: string, scope?: string): Promise<void> {
   const config = await loadKnownMarketplacesConfig();
 
   if (!config[name]) {

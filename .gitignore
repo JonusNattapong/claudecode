@@ -91,3 +91,5 @@ scratch/
 # Custom ignored files & test workspaces
 *.tgz
 temp-test-memory-workspace/
+PLAN.md
+plan.md

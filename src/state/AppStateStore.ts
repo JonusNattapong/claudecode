@@ -147,6 +147,8 @@ export type AppState = DeepImmutable<{
   sessionGoalStartTime?: number;
   // Turn count since goal was set (incremented each prompt submit)
   sessionGoalTurnCount?: number;
+  // Whether the session goal is currently paused
+  sessionGoalPaused?: boolean;
   // Transcript shortcuts panel visibility (toggled by ? or v)
   showTranscriptShortcuts?: boolean;
 }> & {

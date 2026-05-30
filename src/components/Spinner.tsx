@@ -144,24 +144,19 @@ function SpinnerWithVerbInner({
         setThinkingStatus('thinking');
       }
     } else if (thinkingStartRef.current !== null) {
-      // Stopped thinking - calculate duration and ensure 2s minimum display
-      const duration = Date.now() - thinkingStartRef.current;
-      const elapsed = Date.now() - thinkingStartRef.current;
-      const remainingThinkingTime = Math.max(0, 2000 - elapsed);
-
-      thinkingStartRef.current = null;
-
-      // Show "thinking..." for remaining time if < 2s elapsed, then show duration
-      const showDuration = (): void => {
+      // Stopped thinking. If a tool is now running (not loading/idle),
+      // clear the thinking display immediately — don't show lingering
+      // "still thinking" while the model is executing a tool call.
+      if (mode === 'loading' || mode === 'idle') {
+        // Brief pause transitions: show thinking duration briefly
+        const duration = Date.now() - thinkingStartRef.current;
+        thinkingStartRef.current = null;
         setThinkingStatus(duration);
-        // Clear after 2s
         clearStatusTimer = setTimeout(setThinkingStatus, 2000, null);
-      };
-
-      if (remainingThinkingTime > 0) {
-        showDurationTimer = setTimeout(showDuration, remainingThinkingTime);
       } else {
-        showDuration();
+        // Tool is running — clear thinking status immediately
+        thinkingStartRef.current = null;
+        setThinkingStatus(null);
       }
     }
 

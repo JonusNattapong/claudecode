@@ -4,6 +4,7 @@ import { extractClaimsFromText } from '../../research/claims.js';
 import { collectLocalMemory } from '../../research/collectors/localMemory.js';
 import { collectLocalRepo } from '../../research/collectors/localRepo.js';
 import { collectLocalWiki } from '../../research/collectors/localWiki.js';
+import { collectWebSearch } from '../../research/collectors/webSearch.js';
 import { createResearchPlan } from '../../research/planner.js';
 import { buildResearchReport } from '../../research/reportBuilder.js';
 import {
@@ -28,14 +29,15 @@ import { getFsImplementation } from '../../utils/fsOperations.js';
 
 export const call: LocalCommandCall = async (args, context) => {
   const cwd = process.cwd();
-  const argv = args.trim().split(/\s+/);
-  const subcommand = argv[0]?.toLowerCase();
-
-  if (!subcommand) {
+  const trimmed = args.trim();
+  if (!trimmed) {
     return {
       type: 'text',
       value: [
-        'Usage: /research <subcommand> [args]',
+        'Usage: /research <query> OR /research <subcommand> [args]',
+        '',
+        'Quick Search:',
+        '  /research React 19 release notes',
         '',
         'Subcommands:',
         '  init                            Initialize research folders',
@@ -51,7 +53,17 @@ export const call: LocalCommandCall = async (args, context) => {
     };
   }
 
-  const queryAndFlags = argv.slice(1).join(' ');
+  const argv = trimmed.split(/\s+/);
+  const firstWord = argv[0].toLowerCase();
+  const SUBCOMMANDS = new Set(['init', 'plan', 'run', 'sources', 'open', 'claims', 'report', 'save', 'doctor']);
+
+  let subcommand = 'run';
+  let queryAndFlags = trimmed;
+
+  if (SUBCOMMANDS.has(firstWord)) {
+    subcommand = firstWord;
+    queryAndFlags = trimmed.slice(firstWord.length).trim();
+  }
 
   // Parse query and mode
   let mode: ResearchMode = 'quick';
@@ -121,8 +133,9 @@ export const call: LocalCommandCall = async (args, context) => {
       const repoSources = plan.sourceStrategy.includes('local_repo') ? await collectLocalRepo(cwd, query) : [];
       const wikiSources = plan.sourceStrategy.includes('local_wiki') ? await collectLocalWiki(cwd, query) : [];
       const memorySources = plan.sourceStrategy.includes('local_memory') ? await collectLocalMemory(cwd, query) : [];
+      const webSources = plan.sourceStrategy.includes('web') ? await collectWebSearch(cwd, query, runDir) : [];
 
-      const allSources = [...repoSources, ...wikiSources, ...memorySources];
+      const allSources = [...repoSources, ...wikiSources, ...memorySources, ...webSources];
       for (const source of allSources) {
         await appendSourceToRun(runDir, source);
       }

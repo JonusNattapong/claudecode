@@ -75,6 +75,13 @@ const STATE_ICONS: Record<TaskCategory, string> = {
  */
 export type PRStatus = 'pending_checks' | 'checks_failed' | 'checks_passed' | 'merged' | 'draft' | 'closed';
 
+export type PRDisplayInfo = {
+  number: number;
+  title?: string;
+  status: PRStatus;
+  url?: string;
+};
+
 const PR_STATUS_ICONS: Record<PRStatus, { char: string; color: string }> = {
   pending_checks: { char: '●', color: 'yellow' },
   checks_failed: { char: '●', color: 'yellow' },
@@ -84,8 +91,21 @@ const PR_STATUS_ICONS: Record<PRStatus, { char: string; color: string }> = {
   closed: { char: '●', color: 'grey' },
 };
 
+const PR_STATUS_LABELS: Record<PRStatus, string> = {
+  pending_checks: 'Pending',
+  checks_failed: 'Failed',
+  checks_passed: 'Passing',
+  merged: 'Merged',
+  draft: 'Draft',
+  closed: 'Closed',
+};
+
 export function getPRStatusIcon(status: PRStatus): { char: string; color: string } {
   return PR_STATUS_ICONS[status] ?? { char: '●', color: 'grey' };
+}
+
+export function getPRStatusLabel(status: PRStatus): string {
+  return PR_STATUS_LABELS[status] ?? 'Unknown';
 }
 
 export function getStatusIcon(task: {
@@ -133,6 +153,7 @@ type Props = {
   prCount?: number;
   prStatus?: PRStatus | null;
   prUrl?: string | null;
+  prDisplayInfo?: PRDisplayInfo | null;
   width?: number;
 };
 
@@ -163,7 +184,7 @@ function formatRowLine({
   return `${truncateToWidth(name, nameWidth)}${truncateToWidth(previewText, previewWidth)}${time.padStart(timeWidth)}`;
 }
 
-export function AgentViewRow({ task, isSelected, prCount, prStatus, width = 96 }: Props) {
+export function AgentViewRow({ task, isSelected, prCount, prStatus, prUrl, prDisplayInfo, width = 96 }: Props) {
   const cat = getTaskCategory(task);
   const statusStyle = getStatusIcon(task);
   const previewText = getActivityPreview(task);
@@ -174,6 +195,26 @@ export function AgentViewRow({ task, isSelected, prCount, prStatus, width = 96 }
   const rowLine = formatRowLine({ task, previewText, width: Math.max(40, width - 3) });
   const backgroundColor = isSelected ? '#3a3a3a' : undefined;
   const textColor = isSelected ? 'text' : undefined;
+
+  // Width-aware PR column rendering
+  const prColumn = React.useMemo(() => {
+    if (!prDisplayInfo && !prDot) return null;
+    if (width < 80) {
+      // Narrow: just the status dot
+      return prDot ? { text: prDot.char, color: prDot.color as any } : null;
+    }
+    if (width >= 120) {
+      // Wide: #number + title + status label + dot
+      const prNum = `#${prDisplayInfo?.number ?? ''}`;
+      const prTitle = prDisplayInfo?.title ? truncateToWidth(prDisplayInfo.title, 24) : '';
+      const label = prDisplayInfo?.status ? getPRStatusLabel(prDisplayInfo.status) : '';
+      const parts = [prNum, prTitle, label, prDot?.char].filter(Boolean).join(' ');
+      return { text: parts, color: prDot?.color as any };
+    }
+    // Medium (80-119): #number + dot
+    const prNum = `#${prDisplayInfo?.number ?? ''}`;
+    return { text: `${prNum} ${prDot?.char}`, color: prDot?.color as any };
+  }, [prDisplayInfo, prDot, width]);
 
   return (
     <Box key={task.id} flexDirection="row" height={1} width={width}>
@@ -190,7 +231,12 @@ export function AgentViewRow({ task, isSelected, prCount, prStatus, width = 96 }
       >
         {rowLine}
       </Text>
-      {prDot && showPRCount && (
+      {prColumn && (
+        <Text dimColor color={prColumn.color} backgroundColor={backgroundColor}>
+          {' '}{prColumn.text}
+        </Text>
+      )}
+      {!prColumn && prDot && showPRCount && (
         <Text dimColor backgroundColor={backgroundColor}>
           {prCount}
         </Text>

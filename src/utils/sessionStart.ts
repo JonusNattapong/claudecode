@@ -6,6 +6,7 @@ import { withDiagnosticsTiming } from './diagLogs.js';
 import { isBareMode } from './envUtils.js';
 import { updateWatchPaths } from './hooks/fileChangedWatcher.js';
 import { shouldAllowManagedHooksOnly } from './hooks/hooksConfigSnapshot.js';
+import { clearSkillCaches } from '../skills/loadSkillsDir.js';
 import { executeSessionStartHooks, executeSetupHooks } from './hooks.js';
 import { logError } from './log.js';
 import { loadPluginHooks } from './plugins/loadPluginHooks.js';
@@ -24,6 +25,25 @@ type SessionStartHooksOptions = {
 // joined later — rippling a structural return-type change through that
 // handoff would touch five callsites for what is a print-mode-only value).
 let pendingInitialUserMessage: string | undefined;
+
+// Set by processSessionStartHooks when a hook emits sessionTitle;
+// consumed once by takeSessionTitle.
+let pendingSessionTitle: string | undefined;
+
+export function takeSessionTitle(): string | undefined {
+  const v = pendingSessionTitle;
+  pendingSessionTitle = undefined;
+  return v;
+}
+
+// Set by processSessionStartHooks when a hook requests skill reload.
+let pendingReloadSkills = false;
+
+export function takeReloadSkills(): boolean {
+  const v = pendingReloadSkills;
+  pendingReloadSkills = false;
+  return v;
+}
 
 export function takeInitialUserMessage(): string | undefined {
   const v = pendingInitialUserMessage;
@@ -136,6 +156,18 @@ export async function processSessionStartHooks(
     if (hookResult.watchPaths && hookResult.watchPaths.length > 0) {
       allWatchPaths.push(...hookResult.watchPaths);
     }
+    if (hookResult.reloadSkills) {
+      pendingReloadSkills = true;
+    }
+    if (hookResult.sessionTitle) {
+      pendingSessionTitle = hookResult.sessionTitle;
+    }
+  }
+
+  // If hooks requested skill reload, clear caches so skills are rescanned
+  if (pendingReloadSkills) {
+    clearSkillCaches();
+    logForDebugging('SessionStart hook requested skill reload — caches cleared');
   }
 
   if (allWatchPaths.length > 0) {
