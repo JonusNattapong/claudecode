@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="../assets/claude-logo-long.png" alt="Claude Code" width="480" />
+  <img src="../assets/claude-logo-long.png" alt="Clew" width="480" />
 </p>
 
 <p align="center">
@@ -9,38 +9,45 @@
   <a href="README_TH.md"><strong>ไทย</strong></a>
 </p>
 
-# Claude Code
+# Clew
 
-Claude Code เป็นโปรเจ็กต์ **reverse-engineer / rebuild จากซอร์ส** ของ [Claude Code](https://claude.ai/code) CLI อย่างเป็นทางการของ Anthropic โดยมุ่งให้ได้เวอร์ชันที่ **รัน สร้าง (build) และดีบักได้** จากโค้ดจริง ไม่ใช่แค่ไบนารีปิดกล่อง พร้อมขยายด้วย multi-provider routing, adapters และเครื่องมือสำหรับวิศวกรรมซอฟต์แวร์
+Clew เป็น CLI สำหรับช่วยพัฒนาซอฟต์แวร์ด้วย AI แบบไม่เป็นทางการ
 
-> **ข้อจำกัดความรับผิดชอบ:** โปรเจ็กต์นี้ไม่ได้รับการสนับสนุนหรือรับรองจาก Anthropic PBC ผลิตภัณฑ์ Claude Code ต้นฉบับเป็น proprietary — โปรเจ็กต์นี้ reconstruct และขยายพฤติกรรมเพื่อการวิจัยและการใช้งานแบบ self-hosted โปรดอ่าน [LICENSE.md](../LICENSE.md) ก่อนแจกจ่ายหรือนำไปใช้ในองค์กร
+โปรเจกต์นี้เป็นงาน rebuild และ extension จากซอร์ส เพื่อการวิจัย การพัฒนาในเครื่อง การดีบัก การใช้งานแบบ self-hosted และการเลือก provider ได้หลายแบบ
 
-## จุดยืนของโปรเจ็กต์
+โปรเจกต์นี้ไม่ใช่ผลิตภัณฑ์ทางการของ Anthropic ไม่ใช่ distribution ที่ได้รับอนุญาต และไม่ได้รับการสนับสนุน รับรอง หรืออนุมัติจาก Anthropic PBC
 
-| ด้าน | สิ่งที่ Claude Code มอบให้ |
-| --- | --- |
-| **ความใกล้เคียงต้นฉบับ** | CLI ที่ reconstruct ให้สอดคล้องกับ UX แบบเทอร์มินัล, tools และจุดขยายของ Claude Code |
-| **Build & debug** | โค้ด Bun/TypeScript ที่ `bun run dev`, type-check, test และแก้ไขได้ในเครื่อง |
-| **ฟีเจอร์ระดับ enterprise** | Bridge/เซสชันระยะไกล, MCP, plugins, skills, agents/supervisor, voice, session memory, LSP — โดยไม่บังคับให้ทุก workflow ผ่านบริการ hosted-only ของ Anthropic |
-| **จุดต่างของเรา** | **Multi-provider** แบบ declarative (`providers.json`, `/model`), adapters และยูทิลิตี dev (`preload`, `codeindex`, `session`) |
+> **ข้อจำกัดความรับผิดชอบ:** Anthropic, Claude และ Claude Code เป็นเครื่องหมายการค้าของเจ้าของที่เกี่ยวข้อง ผลิตภัณฑ์ Claude Code ทางการเป็นซอฟต์แวร์ proprietary โปรดอ่าน [LICENSE.md](../LICENSE.md) ก่อนใช้งาน แก้ไข แจกจ่าย หรือนำโปรเจกต์นี้ไป deploy
 
-> นี่คือการ rebuild โดยชุมชนสำหรับวิศวกรที่ต้องการความโปร่งใสและเลือก provider ได้ — ไม่ใช่การแจกจ่ายอย่างเป็นทางการจาก Anthropic
+## สิ่งที่โปรเจกต์นี้มอบให้
+
+| ด้าน                   | รายละเอียด                                                                                                    |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------- |
+| Source-built CLI       | แอปเทอร์มินัล Bun/TypeScript ที่ build, test, inspect และแก้ไขในเครื่องได้                                    |
+| Multi-provider routing | รองรับหลาย AI provider ผ่าน adapter และคำสั่งเลือกโมเดล                                                       |
+| Developer tooling      | มีคำสั่งสำหรับ context, code review, simplify, research, plugins, MCP, LSP, sessions และ background workflows |
+| Local extensibility    | รองรับ plugins, hooks, skills, custom tools, scheduled tasks และ config ระดับโปรเจกต์                         |
+| Research use           | ใช้ศึกษา architecture ของ AI coding agent, terminal UX, provider routing และ tool execution                   |
 
 ## ทำอะไรได้บ้าง
 
-Claude Code คือผู้ช่วยเขียนโค้ดด้วย AI ในเทอร์มินัล อ่าน/แก้โค้ดเบสในเครื่อง รัน tools สลับ provider/model และประสานงาน workflow ยาวผ่าน commands, agents, plugins และ skills
+Clew ทำงานในเทอร์มินัลโดยตรง สามารถอ่านและแก้ codebase ในเครื่อง รัน shell commands ตามสิทธิ์ที่กำหนด สลับ provider/model และจัดการ workflow ยาวผ่าน agents, plugins, skills และ scheduled tasks
 
 จุดเด่น:
 
-- **Multi-provider AI routing** — Anthropic, OpenAI, Google Gemini, OpenRouter, Ollama, GitHub Copilot และผู้ให้บริการที่เข้ากันได้กับ OpenAI
-- **สลับโมเดลขณะรัน** ด้วย `/model` และการตั้งค่า provider
-- **Workflow แบบ tool** — อ่าน/แก้/เขียน/ค้นหา, shell, LSP, เบราว์เซอร์, MCP
-- **Plugin hooks** — ดัก prompt, คำสั่ง shell, การใช้ tool และการแก้ไฟล์
-- **Skills** จากที่มาในตัวและ `.claude/skills/` ในโปรเจ็กต์
-- **Agents และ supervisor** สำหรับงานวิจัย เขียนโค้ด และประสานงาน
-- **Durable Agent Runtime & Orchestrator (PLAN I)** — รันไทม์ควบคุมเอเจนต์แบบทนทาน ทำงานออฟไลน์ได้ 100% มีระบบกู้คืน Checkpoint และขออนุมัติคำสั่งอันตรายแบบโต้ตอบ
-- **Scheduled Tasks** — ตั้งเตือนแบบครั้งเดียวหรือทำซ้ำผ่านฟอร์ม interactive ของ `/task` พร้อมตัวเลือกเก็บถาวรใน `.claude/scheduled_tasks.json`
-- **Session และ bridge** — บันทึก context, กู้คืนงาน และความร่วมมือระยะไกล
+* **Multi-provider AI routing** — รองรับ Anthropic, OpenAI, Google Gemini, OpenRouter, Ollama, GitHub Copilot และ endpoint ที่เข้ากันได้กับ OpenAI
+* **สลับโมเดลขณะรัน** — ใช้ `/model` เพื่อเลือก provider หรือ model ระหว่าง session
+* **Tool-driven workflows** — อ่าน ค้นหา แก้ไข เขียนไฟล์ รัน shell commands ใช้ LSP ใช้ MCP tools และเชื่อม browser automation
+* **Plugin hooks** — hook prompt, shell execution, tool calls, message display, session start และ file editing actions
+* **Dynamic skills** — โหลด skills จากในตัวโปรเจกต์และ `.claude/skills/`
+* **Code review tools** — ใช้ `/code-review --fix` เพื่อตรวจโค้ดที่เปลี่ยนและ apply fix ใช้ `/simplify` เพื่อ cleanup โค้ด
+* **Model picker** — เลือก model เป็นค่า global หรือ session-only
+* **Plugin marketplace support** — รองรับ `skipLfs` สำหรับ plugin sources
+* **Local research workflow** — ใช้ `/research <query>` สำหรับ workflow ค้นคว้าและ scrape เว็บในเครื่อง เมื่อมีการตั้งค่าที่รองรับ
+* **Agents และ supervisor** — จัดการ background agents, multi-step workflows, summaries, task status, approvals และ session state
+* **Background shell commands** — รันคำสั่งยาวด้วย `!bg <command>`
+* **Scheduled tasks** — สร้าง one-shot หรือ recurring tasks ผ่าน `/task`
+* **Sessions และ bridge mode** — บันทึก กู้คืน และเชื่อม session สำหรับ workflow ระยะไกล
 
 ## เริ่มต้นอย่างรวดเร็ว
 
@@ -56,10 +63,18 @@ npm install -g @jonusnattapong/claudecode
 bun install -g @jonusnattapong/claudecode
 ```
 
-รันจากไดเรกทอรีโปรเจ็กต์ใดก็ได้:
+รัน CLI ในไดเรกทอรีโปรเจกต์:
 
 ```bash
-claudevil
+clew
+```
+
+> global launcher ต้องมี Bun ติดตั้งอยู่ในเครื่อง
+
+ถ้าตั้ง alias ไว้ใน `package.json` จะรันได้อีกชื่อด้วย:
+
+```bash
+clewcode
 ```
 
 ### รันจากซอร์ส
@@ -67,20 +82,29 @@ claudevil
 ```bash
 git clone https://github.com/JonusNattapong/claudecode.git
 cd claudecode
+
 bun install
 bun run build
 bun run start
 ```
 
+สำหรับโหมดพัฒนา:
+
+```bash
+bun run dev
+```
+
 ## ความต้องการของระบบ
 
-- [Bun](https://bun.sh) 1.3 ขึ้นไป สำหรับพัฒนาในเครื่อง
-- API key อย่างน้อยหนึ่งตัว เช่น `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GOOGLE_API_KEY` หรือ provider อื่นที่รองรับ
-- Windows, macOS, Linux หรือ WSL2
+* Bun 1.3 ขึ้นไป
+* Node.js 18 ขึ้นไป
+* Git
+* Windows, macOS, Linux หรือ WSL2
+* API key จาก provider ที่รองรับอย่างน้อยหนึ่งตัว เว้นแต่ใช้ local provider เช่น Ollama
 
 ## ตั้งค่า Provider
 
-ตั้งค่าใน shell หรือไฟล์ `.env`:
+ตั้งค่า provider keys ใน shell หรือไฟล์ `.env`
 
 ```bash
 export ANTHROPIC_API_KEY=sk-ant-...
@@ -90,7 +114,7 @@ export OPENROUTER_API_KEY=sk-or-...
 export OLLAMA_HOST=http://localhost:11434
 ```
 
-ใน Claude Code สลับโมเดลหรือ provider:
+สลับ model หรือ provider ระหว่าง session:
 
 ```text
 /model
@@ -99,48 +123,39 @@ export OLLAMA_HOST=http://localhost:11434
 /model google/gemini-2.5-pro
 ```
 
-ภาพรวม provider: [docs/providers.html](../docs/providers.html)
+เอกสาร provider:
+
+```text
+../docs/providers.html
+```
 
 ## คำสั่งที่ใช้บ่อย
 
 ```text
-/model      สลับโมเดลหรือ provider
-/status     สถานะเซสชัน provider และ context
-/doctor     วินิจฉัยระบบ
-/context    ดูการใช้ context
-/compact    บีบอัดบทสนทนา
-/mcp        จัดการ MCP servers
-/plugin     จัดการ plugins
-/bridge     ตั้งค่า bridge mode
-/agent      จัดการเอเจนต์เวิร์กโฟลว์ (run, status, trace, approvals, report)
-/daemon     เปิด control panel แบบ interactive สำหรับ autonomous daemon
-/task       สร้าง Scheduled Tasks หรือจัดการคิวงาน autonomous
+/model        สลับ model หรือ provider
+/status       ดูสถานะ provider, session และ context
+/doctor       รัน diagnostics
+/context      ตรวจการใช้ context
+/compact      บีบอัด conversation history
+/mcp          จัดการ MCP servers
+/code-review  ตรวจโค้ดที่เปลี่ยน
+/simplify     cleanup-focused review
+/plugin       จัดการ plugins และ hooks
+/bridge       ตั้งค่า bridge mode
+/agent        จัดการ background agent workflows
+/daemon       เปิด autonomous daemon dashboard
+/task         สร้างหรือจัดการ scheduled tasks
 ```
 
-พิมพ์ `/` ใน CLI เพื่อดูคำสั่งทั้งหมด
+พิมพ์ `/` ใน CLI เพื่อดูรายการคำสั่งทั้งหมด
 
 ## Scheduled Tasks
 
-ระบบ Scheduled Tasks ใช้ผ่านฟอร์ม interactive ของ `/task` ได้เลย ไม่ต้องจำ cron syntax เอง พิมพ์ `/task` แบบไม่มี argument แล้วกรอก name, schedule, prompt และ storage mode จากนั้นกดยืนยัน
+ระบบ scheduled task ใช้ผ่าน `/task`
 
-| คุณทำ | Claude Code จะทำ |
-| --- | --- |
-| `/task` | เปิดฟอร์มสร้าง Scheduled Task |
-| เลือก `Daily` เวลา `09:00` | สร้าง recurring task รายวัน |
-| เลือก `Weekdays` เวลา `09:00` | สร้าง weekday cron เช่น `0 9 * * 1-5` |
-| เลือก `In N minutes` ค่า `10` | สร้าง one-shot reminder สำหรับเวลาถัดไปตาม timezone เครื่อง |
-| เลือก `Custom cron` | กรอก standard 5-field cron expression ได้เอง |
-| `/task scheduled` | เปิดฟอร์มเดิมแบบระบุชัดเจน |
-| `/task list` | แสดงรายการ autonomous queue tasks |
-
-รายละเอียด:
-
-- ใช้ standard 5-field cron ตาม timezone ของเครื่อง: `minute hour day-of-month month day-of-week`
-- `Durable` เก็บใน `.claude/scheduled_tasks.json` และอยู่ข้าม session
-- `Session-only` เก็บใน memory เฉพาะ session ปัจจุบัน
-- recurring tasks auto-expire หลัง 30 วัน ยกเว้น task ถาวรที่ระบบสร้างเอง
-- one-shot tasks auto-delete หลังจาก fire
-- การตั้งเวลาด้วยภาษาธรรมชาติยังใช้ได้ผ่าน tools ด้านหลังอย่าง `CronCreate`, `CronList` และ `CronDelete` เมื่อโมเดลเลือกใช้
+```text
+/task
+```
 
 ตัวอย่าง:
 
@@ -151,14 +166,24 @@ Schedule: Daily
 Time: 20:00
 Prompt: ตรวจสอบสถานะเซิร์ฟเวอร์
 Storage: Durable
+```
 
+```text
 /task
 Name: เตือน commit
 Schedule: In N minutes
 Delay: 10
-Prompt: อย่าลืม commit โค้ด
+Prompt: เตือนให้ commit โค้ด
 Storage: Session-only
 ```
+
+พฤติกรรมของ task:
+
+* Durable tasks ถูกบันทึกที่ `.claude/scheduled_tasks.json`
+* Session-only tasks ทำงานเฉพาะ session ปัจจุบัน
+* Recurring tasks ใช้ cron syntax แบบ 5 fields
+* One-shot tasks ถูกลบหลังจากรันเสร็จ
+* ใช้ timezone ของเครื่องสำหรับการรันตามเวลา
 
 ## การพัฒนา
 
@@ -166,79 +191,79 @@ Storage: Session-only
 bun run dev              # โหมด dev พร้อม watch
 bun run start            # รัน CLI จากซอร์ส
 bun run build            # build ไปที่ dist/
-bun test                 # รันเทสต์
-bun x tsc --noEmit       # type-check
-bun run lint:check       # ตรวจ lint
-bun run format:check     # ตรวจรูปแบบโค้ด
-bun run check:ci         # Biome CI
+bun test                 # รัน tests
+bun x tsc --noEmit       # type check
+bun run lint:check       # ตรวจ Biome lint
+bun run format:check     # ตรวจ Biome formatting
+bun run check:ci         # รัน Biome CI validation
 ```
 
-ยูทิลิตีในโปรเจ็กต์:
+Developer utilities:
 
 ```bash
-bun run preload <module>     # โหลด context ก่อนแก้โมดูล
-bun run session <command>    # บันทึก/แสดง/กู้คืน session
-bun run codeindex <command>  # index และค้นหาโค้ดเบส
-bun run codegraph            # กราฟ dependency ของโมดูล
-bun run ast-grep -- <args>   # ค้นหา/แก้ไขแบบ AST
+bun run preload <module>     # preload module context
+bun run session <command>    # save, list หรือ restore session context
+bun run codeindex <command>  # index และค้นหา codebase
+bun run codegraph            # สร้าง module dependency graph
+bun run ast-grep -- <args>   # ค้นหาหรือ rewrite ด้วย AST
 ```
 
-## โครงสร้างโปรเจ็กต์
+## โครงสร้างโปรเจกต์
 
 ```text
 src/
-├── main.tsx              Bootstrap และ runtime หลัก
-├── query.ts              ประมวลผล query หลัก
-├── QueryEngine.ts         orchestration ของ query
-├── agentRuntime/         การจัดระเบียบเอเจนต์, บันทึกการรัน, และตรวจสอบสิทธิ์เครื่องมือ
-├── commands/             slash commands
-├── tools/                tools ในตัว
+├── main.tsx              # Terminal UI bootstrap และ main loop
+├── query.ts              # Query processing และ system prompt logic
+├── QueryEngine.ts        # Query orchestration, caching, dedupe และ rate limits
+├── agentRuntime/         # Agent orchestration และ persistent run stores
+├── commands/             # Slash command implementations
+├── tools/                # Built-in developer tools
 ├── services/
-│   ├── ai/               Provider manager, adapters, registry
-│   ├── mcp/              MCP client
-│   ├── plugins/          plugins และ hooks
-│   ├── tools/            บริการรัน tool
-│   ├── lsp/              LSP
-│   ├── Supervisor/       ควบคุม agent
-│   └── SessionMemory/    หน่วยความจำเซสชัน
-├── skills/               โหลด skills
-├── cli/                  UI แบบ Ink/React
-├── components/           คอมโพเนนต์เทอร์มินัล
-├── bridge/               ความร่วมมือระยะไกล
-├── coordinator/          ประสานหลาย agent
-├── keybindings/          ปุ่มลัด
-├── state/                state แบบ reactive
-└── vim/                  โหมด vim
+│   ├── ai/               # Provider manager, adapters, normalizers และ providers.json
+│   ├── mcp/              # Model Context Protocol clients
+│   ├── plugins/          # Plugin lifecycle hooks และ interceptors
+│   ├── tools/            # Tool execution service
+│   ├── lsp/              # Language Server Protocol integration
+│   ├── Supervisor/       # Background agent supervisor
+│   └── SessionMemory/    # Persistent session memory
+├── skills/               # Dynamic skill loader
+├── cli/                  # Terminal UI contexts
+├── components/           # Terminal UI components
+├── bridge/               # WebSocket bridge
+├── coordinator/          # Multi-agent coordinator
+├── keybindings/          # Keyboard shortcut mappings
+├── state/                # Reactive stores
+└── vim/                  # Vim-like navigation mode
 ```
 
 ## สถาปัตยกรรม
 
 ```text
 Terminal UI
-  -> ชั้นคำสั่งและ keybinding
-  -> Provider manager และ adapters
-  -> Query engine และ streaming loop
-  -> Tool executor
-  -> Plugin hooks, MCP, LSP, agents, memory, bridge
+  -> Command registry และ keybindings
+  -> Provider manager และ AI adapters
+  -> Query engine และ streaming loops
+  -> Tool executor service
+  -> Plugins, MCP, LSP, agents, session memory และ bridge
 ```
 
 ## เอกสาร
 
-- [การติดตั้ง](../docs/installation.html)
-- [เริ่มต้นอย่างรวดเร็ว](../docs/quick-start.html)
-- [การตั้งค่า](../docs/configuration.html)
-- [AI Providers](../docs/providers.html)
-- [โมเดล](../docs/models.html)
-- [คำสั่ง](../docs/commands.html)
-- [Tools](../docs/tools.html)
-- [Plugins](../docs/plugins.html)
-- [Skills](../docs/skills.html)
-- [สถาปัตยกรรม](../docs/architecture.html)
-- [โมเดลสิทธิ์](../docs/permission-model.html)
-- [Bridge Mode](../docs/features/bridge-mode.html)
-- [SearXNG Search](../docs/features/searxng-search.html)
-- [แก้ปัญหา](../docs/troubleshooting.html)
-- [Evals](../docs/features/evals.html)
+* [การติดตั้ง](../docs/installation.html)
+* [เริ่มต้นอย่างรวดเร็ว](../docs/quick-start.html)
+* [การตั้งค่า](../docs/configuration.html)
+* [AI Providers](../docs/providers.html)
+* [Models](../docs/models.html)
+* [Commands](../docs/commands.html)
+* [Tools](../docs/tools.html)
+* [Plugins](../docs/plugins.html)
+* [Skills](../docs/skills.html)
+* [Architecture](../docs/architecture.html)
+* [Permission Model](../docs/permission-model.html)
+* [Bridge Mode](../docs/features/bridge-mode.html)
+* [SearXNG Search](../docs/features/searxng-search.html)
+* [Troubleshooting](../docs/troubleshooting.html)
+* [Evals](../docs/features/evals.html)
 
 ## การดีบัก
 
@@ -257,16 +282,35 @@ bun install
 bun run dev
 ```
 
-มี `ripgrep` สำหรับ Windows ที่ `src/utils/vendor/ripgrep/x64-win32/rg.exe`
+อาจมี `ripgrep` สำหรับ Windows อยู่ที่:
+
+```text
+src/utils/vendor/ripgrep/x64-win32/rg.exe
+```
 
 ## การมีส่วนร่วม
 
-ดู [CONTRIBUTING.md](../CONTRIBUTING.md), [CODE_OF_CONDUCT.md](../CODE_OF_CONDUCT.md) และ [SECURITY.md](../SECURITY.md)
+อ่านไฟล์เหล่านี้ก่อน contribute:
+
+* [CONTRIBUTING.md](../CONTRIBUTING.md)
+* [CODE_OF_CONDUCT.md](../CODE_OF_CONDUCT.md)
+* [SECURITY.md](../SECURITY.md)
+* [LICENSE.md](../LICENSE.md)
+
+ห้ามส่ง proprietary code, copied source, leaked material, credentials, private keys หรือเนื้อหาที่คุณไม่มีสิทธิ์ license
+
+## Security
+
+ห้ามเปิด public issue สำหรับช่องโหว่ความปลอดภัย
+
+ให้ใช้ขั้นตอน private reporting ตาม [SECURITY.md](../SECURITY.md)
 
 ## บันทึกการเปลี่ยนแปลง
 
-[CHANGELOG.md](../CHANGELOG.md)
+ดู [CHANGELOG.md](../CHANGELOG.md)
 
 ## ใบอนุญาต
 
-[LICENSE.md](../LICENSE.md)
+ดู [LICENSE.md](../LICENSE.md)
+
+เฉพาะ modifications และ original additions ที่ contributor เขียนเองเท่านั้นที่อยู่ภายใต้ license ตามที่ระบุใน `LICENSE.md` repository นี้ไม่ได้ให้สิทธิ์ใน proprietary software, services, models, trademarks หรือ protected materials ของ Anthropic

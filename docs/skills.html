@@ -3,15 +3,15 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Skills — Claudevil</title>
-  <meta name="description" content="Reusable task instructions and workflows in Claudevil — create, use, and share skills across projects.">
+  <title>Skills — Clew</title>
+  <meta name="description" content="Reusable task instructions and workflows in Clew — create, use, and share skills across projects.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
-<header class="header"><div class="header-inner"><a href="index.html" class="logo"><span>Claudevil</span></a><nav class="header-nav"><a href="index.html">Home</a><a href="index.html#features">Features</a><a href="index.html#commands">Commands</a><a href="quick-start.html" class="active">Docs</a><a href="https://github.com/JonusNattapong/claudecode" target="_blank">GitHub</a></nav><button class="menu-btn" id="menuToggle" aria-label="Toggle navigation"><span></span><span></span><span></span></button></div></header>
+<header class="header"><div class="header-inner"><a href="index.html" class="logo"><span>Clew</span></a><nav class="header-nav"><a href="index.html">Home</a><a href="index.html#features">Features</a><a href="index.html#commands">Commands</a><a href="quick-start.html" class="active">Docs</a><a href="https://github.com/JonusNattapong/claudecode" target="_blank">GitHub</a></nav><button class="menu-btn" id="menuToggle" aria-label="Toggle navigation"><span></span><span></span><span></span></button></div></header>
 <div class="app"><aside class="sidebar" id="sidebar"></aside><div class="sidebar-overlay" id="sidebarOverlay"></div><main class="content">
   <h1>Skills</h1>
   <p class="section-subtitle">Skills are reusable prompt-type commands — markdown files that provide structured instructions to the AI model. They are loaded from bundled, user, project, and plugin directories.</p>
@@ -23,7 +23,7 @@
   <p>Skills are loaded from four sources (order: bundled → user → project → plugin):</p>
   <table>
     <tr><th>Source</th><th>Path</th><th>Scope</th></tr>
-    <tr><td>Bundled</td><td>Ships with Claudevil</td><td>All users</td></tr>
+    <tr><td>Bundled</td><td>Ships with Clew</td><td>All users</td></tr>
     <tr><td>User</td><td><code>~/.claude/skills/&lt;name&gt;/SKILL.md</code></td><td>Personal</td></tr>
     <tr><td>Project</td><td><code>.claude/skills/&lt;name&gt;/SKILL.md</code></td><td>Team (in-repo)</td></tr>
     <tr><td>Plugin</td><td>Inside plugin directories</td><td>Plugin users</td></tr>
@@ -98,7 +98,7 @@ touch ~/.claude/skills/my-skill/SKILL.md
   </div>
 
   <footer class="footer">
-    <span>Claudevil v2.1.180 — Open Source (MIT)</span>
+    <span>Clew v2.1.180 — Open Source (MIT)</span>
     <div class="footer-links">
       <a href="https://github.com/JonusNattapong/claudecode">GitHub</a>
       <a href="https://github.com/JonusNattapong/claudecode/issues">Issues</a>

@@ -15,7 +15,7 @@ import { deleteSource, getAllSources, getSource, insertChunks, searchChunksFTS, 
 import type { MemoryChunk, MemoryMetadata, SourceDocument } from './types.js';
 import { getMemoryWorkspaceStatus, initMemoryWorkspace } from './workspace.js';
 
-const tempCwd = join(process.cwd(), 'temp-test-memory-workspace');
+const tempCwd = join(process.cwd(), 'test/temp-test-memory-workspace');
 
 describe('Claude Memory System (PLAN E)', () => {
   beforeAll(async () => {

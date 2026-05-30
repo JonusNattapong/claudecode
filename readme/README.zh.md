@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="../assets/claude-logo-long.png" alt="Claude Code" width="480" />
+  <img src="../assets/claude-logo-long.png" alt="Clew" width="480" />
 </p>
 
 <p align="center">
@@ -9,78 +9,104 @@
   <a href="README_TH.md">ไทย</a>
 </p>
 
-# Claude Code
+# Clew
 
-Claude Code 是对 Anthropic 官方 [Claude Code](https://claude.ai/code) CLI 的独立、研究导向的 **逆向工程重建** 项目。目标是从源码获得 **可运行、可构建、可调试** 的终端工作流，而不是只能使用闭源二进制；并在此基础上扩展多供应商路由、适配器与工程化工具。
+Clew 是一个非官方的 AI 辅助软件开发 CLI。
 
-> **免责声明：** 本项目与 Anthropic PBC 无隶属、背书或赞助关系。上游 Claude Code 为专有软件；本项目为研究与自托管用途重建并扩展行为。分发或部署前请阅读 [LICENSE.md](../LICENSE.md)。
+本项目是一个源码级 rebuild 与 extension 项目，面向研究、本地开发、调试、自托管工作流和多供应商选择。
 
-## 项目定位
+本项目不是 Anthropic 的官方产品、发行版、合作项目或受支持实现。
 
-| 方面 | Claude Code 提供的内容 |
-| --- | --- |
-| **源码级还原** | 重建与 Claude Code 终端体验、工具与扩展点一致的 CLI |
-| **构建与调试** | 可使用 `bun run dev`、类型检查、测试并在本地修改的 Bun/TypeScript 代码树 |
-| **企业级能力面** | Bridge/远程会话、MCP、插件、Skills、Agent/Supervisor、语音、会话记忆、LSP 等——无需所有工作流都依赖 Anthropic 托管独占功能 |
-| **我们的差异** | 声明式 **多供应商** 路由（`providers.json`、`/model`）、供应商适配器及开发工具（`preload`、`codeindex`、`session`） |
+> **免责声明：** Anthropic、Claude 和 Claude Code 是其各自所有者的商标。Anthropic 的官方 Claude Code 产品是专有软件。本项目与 Anthropic PBC 无隶属、背书、赞助或批准关系。使用、修改、分发或部署本仓库前，请阅读 [LICENSE.md](../LICENSE.md)。
 
-> 这是面向需要透明度与供应商选择的工程师的社区重建，**不是** Anthropic 官方发行版。
+## 本项目提供什么
+
+| 方面               | 说明                                                                                  |
+| ---------------- | ----------------------------------------------------------------------------------- |
+| Source-built CLI | 一个 Bun/TypeScript 终端应用，可在本地构建、测试、检查和修改                                              |
+| 多供应商路由           | 通过 provider adapters 和模型选择命令支持多个 AI provider                                        |
+| 开发者工具            | 支持 context inspection、code review、simplify、research、plugins、MCP、LSP、sessions 和后台工作流 |
+| 本地扩展能力           | 支持 plugins、hooks、skills、custom tools、scheduled tasks 和项目级配置                         |
+| 研究用途             | 可用于研究 AI coding agent 架构、terminal UX、provider routing 和 tool execution              |
 
 ## 功能概览
 
-Claude Code 是在终端中运行的 AI 编程助手，可检查与编辑本地代码库、执行工具、切换模型供应商，并通过命令、Agent、插件与项目 Skills 协调较长的工作流。
+Clew 直接在终端中运行。它可以检查和编辑本地代码库，在权限控制下执行 shell commands，切换 provider/model，并通过 agents、plugins、skills 和 scheduled tasks 协调较长的工作流。
 
 亮点：
 
-- **多供应商 AI 路由**：Anthropic、OpenAI、Google Gemini、OpenRouter、Ollama、GitHub Copilot 及其他 OpenAI 兼容服务
-- **运行时切换模型**：`/model` 与供应商配置
-- **基于工具的编码工作流**：读写搜、Shell、LSP、浏览、MCP
-- **插件钩子**：拦截提示词、Shell、工具调用与文件编辑
-- **Skills**：内置与项目级 `.claude/skills/`
-- **Agent 与 Supervisor**：研究、编码与协调任务
-- **会话与 Bridge**：保存上下文、恢复工作、远程协作
+* **多供应商 AI 路由**：支持 Anthropic、OpenAI、Google Gemini、OpenRouter、Ollama、GitHub Copilot 以及 OpenAI-compatible endpoints
+* **运行时模型切换**：使用 `/model` 在 session 中切换 provider 或 model
+* **Tool-driven workflows**：读取、搜索、编辑、写入文件；执行 shell commands；查询 LSP；运行 MCP tools；连接 browser automation
+* **Plugin hooks**：hook prompts、shell execution、tool calls、message display、session start 和 file editing actions
+* **Dynamic skills**：从内置目录和项目级 `.claude/skills/` 加载 skills
+* **Code review tools**：使用 `/code-review --fix` 检查变更代码并应用修复；使用 `/simplify` 做 cleanup-focused review
+* **Model picker**：选择全局或 session-only 模型默认值
+* **Plugin marketplace support**：下载 plugin sources 时支持 `skipLfs`
+* **Local research workflow**：配置后可用 `/research <query>` 执行本地优先的研究与网页抓取工作流
+* **Agents 和 supervisor**：管理后台 agents、multi-step workflows、summaries、task status、approvals 和 session state
+* **后台 shell commands**：使用 `!bg <command>` 运行长时间命令
+* **Scheduled tasks**：通过 `/task` 创建一次性或循环任务
+* **Sessions 和 bridge mode**：保存、恢复并协调开发 session
 
 ## 快速开始
 
 ### 全局安装
 
-```bash
+```bash id="8rzhsy"
 npm install -g @jonusnattapong/claudecode
 ```
 
 或：
 
-```bash
+```bash id="soh0em"
 bun install -g @jonusnattapong/claudecode
 ```
 
-在任意项目目录运行：
+在项目目录中运行 CLI：
 
-```bash
-claude
+```bash id="6f1a3n"
+clew
+```
+
+> global launcher 需要本机已安装 Bun。
+
+如果 `package.json` 中配置了 alias，也可以运行：
+
+```bash id="h0514a"
+clewcode
 ```
 
 ### 从源码运行
 
-```bash
+```bash id="1hwbnw"
 git clone https://github.com/JonusNattapong/claudecode.git
 cd claudecode
+
 bun install
 bun run build
 bun run start
 ```
 
+开发模式：
+
+```bash id="cd78qq"
+bun run dev
+```
+
 ## 环境要求
 
-- 本地开发需要 [Bun](https://bun.sh) 1.3 或更高版本
-- 至少一个供应商凭据，如 `ANTHROPIC_API_KEY`、`OPENAI_API_KEY`、`GOOGLE_API_KEY` 等
-- 支持 Windows、macOS、Linux 或 WSL2
+* Bun 1.3 或更高版本
+* Node.js 18 或更高版本
+* Git
+* Windows、macOS、Linux 或 WSL2
+* 至少一个受支持 provider 的 API key；如果使用 Ollama 等本地 provider，则可不需要远程 provider key
 
-## 供应商配置
+## Provider 配置
 
-在 Shell 或 `.env` 中设置：
+在 shell 或本地 `.env` 文件中设置 provider keys。
 
-```bash
+```bash id="egj1oz"
 export ANTHROPIC_API_KEY=sk-ant-...
 export OPENAI_API_KEY=sk-...
 export GOOGLE_API_KEY=...
@@ -88,116 +114,160 @@ export OPENROUTER_API_KEY=sk-or-...
 export OLLAMA_HOST=http://localhost:11434
 ```
 
-在 Claude Code 内切换模型或供应商：
+在 session 中切换 model 或 provider：
 
-```text
+```text id="12rs65"
 /model
 /model list
 /model openai/gpt-4o
 /model google/gemini-2.5-pro
 ```
 
-供应商概览见 [docs/providers.html](../docs/providers.html)。
+Provider 文档：
+
+```text id="w7gdzb"
+../docs/providers.html
+```
 
 ## 常用命令
 
-```text
-/model      切换模型或供应商
-/status     会话、供应商与上下文状态
-/doctor     运行诊断
-/context    查看上下文占用
-/compact    压缩对话上下文
-/mcp        管理 MCP 服务器
-/plugin     管理插件
-/bridge     配置 Bridge 模式
+```text id="89gxr6"
+/model        切换 model 或 provider
+/status       查看 provider、session 和 context 状态
+/doctor       运行 diagnostics
+/context      检查 context 使用情况
+/compact      压缩 conversation history
+/mcp          管理 MCP servers
+/code-review  检查变更代码
+/simplify     cleanup-focused review
+/plugin       管理 plugins 和 hooks
+/bridge       配置 bridge mode
+/agent        管理 background agent workflows
+/daemon       打开 autonomous daemon dashboard
+/task         创建或管理 scheduled tasks
 ```
 
-在 CLI 中输入 `/` 可发现全部命令。
+在 CLI 中输入 `/` 查看全部命令。
+
+## Scheduled Tasks
+
+Scheduled task 系统通过 `/task` 使用。
+
+```text id="4a7zqj"
+/task
+```
+
+示例：
+
+```text id="3lm95i"
+/task
+Name: 服务器检查
+Schedule: Daily
+Time: 20:00
+Prompt: 检查本地服务器状态
+Storage: Durable
+```
+
+```text id="7mizgu"
+/task
+Name: 提醒提交
+Schedule: In N minutes
+Delay: 10
+Prompt: 提醒我提交代码
+Storage: Session-only
+```
+
+任务行为：
+
+* Durable tasks 保存到 `.claude/scheduled_tasks.json`
+* Session-only tasks 只在当前 session 中运行
+* Recurring tasks 使用 5-field cron syntax
+* One-shot tasks 运行后删除
+* 按本机 timezone 执行
 
 ## 开发
 
-```bash
-bun run dev              # 开发模式（watch）
+```bash id="0qwpym"
+bun run dev              # 开发模式
 bun run start            # 从源码运行 CLI
 bun run build            # 构建到 dist/
-bun test                 # 运行测试
-bun x tsc --noEmit       # 仅类型检查
-bun run lint:check       # Lint 检查
-bun run format:check     # 格式检查
-bun run check:ci         # Biome CI
+bun test                 # 运行 tests
+bun x tsc --noEmit       # type check
+bun run lint:check       # 检查 Biome lint
+bun run format:check     # 检查 Biome formatting
+bun run check:ci         # 运行 Biome CI validation
 ```
 
-项目工具：
+开发者工具：
 
-```bash
-bun run preload <module>     # 编辑前预加载模块上下文
-bun run session <command>    # 保存/列出/恢复会话
-bun run codeindex <command>  # 索引与搜索代码库
-bun run codegraph            # 生成模块依赖图
-bun run ast-grep -- <args>   # 基于 AST 的搜索或改写
+```bash id="zljj16"
+bun run preload <module>     # preload module context
+bun run session <command>    # save、list 或 restore session context
+bun run codeindex <command>  # index 并搜索 codebase
+bun run codegraph            # 生成 module dependency graph
+bun run ast-grep -- <args>   # 使用 AST 搜索或 rewrite
 ```
 
 ## 项目结构
 
-```text
+```text id="k0g51v"
 src/
-├── main.tsx              CLI 引导与主运行时
-├── query.ts              核心查询处理
-├── QueryEngine.ts        查询编排
-├── commands/             斜杠命令实现
-├── tools/                内置工具
+├── main.tsx              # Terminal UI bootstrap 和 main loop
+├── query.ts              # Query processing 和 system prompt logic
+├── QueryEngine.ts        # Query orchestration、caching、dedupe 和 rate limits
+├── agentRuntime/         # Agent orchestration 和 persistent run stores
+├── commands/             # Slash command implementations
+├── tools/                # Built-in developer tools
 ├── services/
-│   ├── ai/               供应商管理、适配器、模型注册表
-│   ├── mcp/              MCP 客户端
-│   ├── plugins/          插件生命周期与钩子
-│   ├── tools/            工具执行服务
-│   ├── lsp/              LSP 集成
-│   ├── Supervisor/       Agent 监督
-│   └── SessionMemory/    持久会话记忆
-├── skills/               Skills 加载
-├── cli/                  Ink/React 终端 UI
-├── components/           终端 UI 组件
-├── bridge/               远程协作 Bridge
-├── coordinator/          多 Agent 协调
-├── keybindings/          自定义快捷键
-├── state/                轻量响应式存储
-└── vim/                  Vim 编辑模式
+│   ├── ai/               # Provider manager、adapters、normalizers 和 providers.json
+│   ├── mcp/              # Model Context Protocol clients
+│   ├── plugins/          # Plugin lifecycle hooks 和 interceptors
+│   ├── tools/            # Tool execution service
+│   ├── lsp/              # Language Server Protocol integration
+│   ├── Supervisor/       # Background agent supervisor
+│   └── SessionMemory/    # Persistent session memory
+├── skills/               # Dynamic skill loader
+├── cli/                  # Terminal UI contexts
+├── components/           # Terminal UI components
+├── bridge/               # WebSocket bridge
+├── coordinator/          # Multi-agent coordinator
+├── keybindings/          # Keyboard shortcut mappings
+├── state/                # Reactive stores
+└── vim/                  # Vim-like navigation mode
 ```
 
 ## 架构
 
-```text
-终端 UI
-  -> 命令与快捷键层
-  -> 供应商管理与适配器
-  -> 查询引擎与流式循环
-  -> 工具执行器
-  -> 插件钩子、MCP、LSP、Agent、记忆、Bridge
+```text id="r3lj72"
+Terminal UI
+  -> Command registry 和 keybindings
+  -> Provider manager 和 AI adapters
+  -> Query engine 和 streaming loops
+  -> Tool executor service
+  -> Plugins、MCP、LSP、agents、session memory 和 bridge
 ```
-
-供应商 SDK 由适配器封装，运行时以统一接口处理流式响应、工具调用、用量元数据与内容块。
 
 ## 文档
 
-- [安装](../docs/installation.html)
-- [快速开始](../docs/quick-start.html)
-- [配置](../docs/configuration.html)
-- [AI 供应商](../docs/providers.html)
-- [模型](../docs/models.html)
-- [命令](../docs/commands.html)
-- [工具](../docs/tools.html)
-- [插件](../docs/plugins.html)
-- [Skills](../docs/skills.html)
-- [架构](../docs/architecture.html)
-- [权限模型](../docs/permission-model.html)
-- [Bridge 模式](../docs/features/bridge-mode.html)
-- [SearXNG 搜索](../docs/features/searxng-search.html)
-- [故障排除](../docs/troubleshooting.html)
-- [Evals](../docs/features/evals.html)
+* [安装](../docs/installation.html)
+* [快速开始](../docs/quick-start.html)
+* [配置](../docs/configuration.html)
+* [AI Providers](../docs/providers.html)
+* [Models](../docs/models.html)
+* [Commands](../docs/commands.html)
+* [Tools](../docs/tools.html)
+* [Plugins](../docs/plugins.html)
+* [Skills](../docs/skills.html)
+* [Architecture](../docs/architecture.html)
+* [Permission Model](../docs/permission-model.html)
+* [Bridge Mode](../docs/features/bridge-mode.html)
+* [SearXNG Search](../docs/features/searxng-search.html)
+* [Troubleshooting](../docs/troubleshooting.html)
+* [Evals](../docs/features/evals.html)
 
 ## 调试
 
-```bash
+```bash id="gonie3"
 DEBUG=1 bun run src/main.tsx
 DEBUG=provider:anthropic bun run src/main.tsx
 ```
@@ -206,35 +276,41 @@ DEBUG=provider:anthropic bun run src/main.tsx
 
 ### Windows
 
-```powershell
+```powershell id="zjay2e"
 Remove-Item -Recurse -Force node_modules
 bun install
 bun run dev
 ```
 
-Windows 版 `ripgrep` 位于 `src/utils/vendor/ripgrep/x64-win32/rg.exe`。
+Windows 版 `ripgrep` 可能位于：
 
-### 生产构建
-
-生产构建会将 Electron、Chromium BiDi、Anthropic 平台 SDK 变体、AWS SDK、Google 认证库、Sharp、音频采集包及 React DevTools 等设为 external。
+```text id="qkyt7k"
+src/utils/vendor/ripgrep/x64-win32/rg.exe
+```
 
 ## 贡献
 
-欢迎 Issue 与 Pull Request。提交 PR 前请运行：
+贡献前请阅读：
 
-```bash
-bun test
-bun run lint:check
-bun run format:check
-bun x tsc --noEmit
-```
+* [CONTRIBUTING.md](../CONTRIBUTING.md)
+* [CODE_OF_CONDUCT.md](../CODE_OF_CONDUCT.md)
+* [SECURITY.md](../SECURITY.md)
+* [LICENSE.md](../LICENSE.md)
 
-请参阅 [CONTRIBUTING.md](../CONTRIBUTING.md)、[CODE_OF_CONDUCT.md](../CODE_OF_CONDUCT.md) 与 [SECURITY.md](../SECURITY.md)。
+请勿提交 proprietary code、copied source、leaked material、credentials、private keys，或任何你无权许可的内容。
+
+## Security
+
+请勿为安全漏洞创建 public issue。
+
+请按照 [SECURITY.md](../SECURITY.md) 中的 private reporting 流程提交。
 
 ## 更新日志
 
-[CHANGELOG.md](../CHANGELOG.md)
+见 [CHANGELOG.md](../CHANGELOG.md)。
 
 ## 许可证
 
-[LICENSE.md](../LICENSE.md)
+见 [LICENSE.md](../LICENSE.md)。
+
+只有 contributor-authored modifications 和 original additions 按 `LICENSE.md` 中说明的方式授权。本仓库不授予 Anthropic proprietary software、services、models、trademarks 或其他 protected materials 的任何权利。

@@ -1,4 +1,4 @@
-// Claudevil Docs — Mobile Nav & Helpers
+// Clew Docs — Mobile Nav & Helpers
 (function () {
   'use strict';
 

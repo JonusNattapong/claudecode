@@ -1,83 +1,182 @@
 name: Feature Request
-description: Suggest an idea or new feature
+description: Suggest an idea, improvement, or new capability
 title: "[Feature]: "
-labels: ["enhancement"]
+labels:
+
+* enhancement
+
 body:
-  - type: markdown
-    attributes:
-      value: |
-        Thank you for suggesting a feature. Please provide as much detail as possible to help us understand your request.
 
-  - type: checkboxes
-    id: prerequisites
-    attributes:
-      label: Prerequisites
-      description: Please confirm before submitting
-      options:
-        - label: I have searched existing issues and this feature has not been requested yet
-          required: true
+* type: markdown
+  attributes:
+  value: |
+  Thank you for suggesting a feature.
 
-  - type: textarea
-    id: problem
-    attributes:
-      label: Problem Statement
-      description: Is your feature request related to a problem? Please describe
-      placeholder: I'm always frustrated when...
-    validations:
-      required: true
+  ```
+  Please provide enough detail for maintainers to understand the problem, evaluate the scope, and decide whether this belongs in the project.
+  ```
 
-  - type: textarea
-    id: solution
-    attributes:
-      label: Proposed Solution
-      description: Describe the solution you'd like to see
-      placeholder: It would be great if...
-    validations:
-      required: true
+* type: checkboxes
+  id: prerequisites
+  attributes:
+  label: Prerequisites
+  description: Confirm before submitting.
+  options:
+  - label: I have searched existing issues and discussions.
+  required: true
+  - label: This feature has not already been requested.
+  required: true
+  - label: This request is about this repository, not Anthropic's official services, APIs, models, accounts, or hosted infrastructure.
+  required: true
 
-  - type: textarea
-    id: alternatives
-    attributes:
-      label: Alternatives Considered
-      description: Describe any alternative solutions or workarounds you've considered
+* type: textarea
+  id: problem
+  attributes:
+  label: Problem Statement
+  description: Describe the problem or limitation this feature would address.
+  placeholder: |
+  Describe the current limitation.
 
-  - type: dropdown
-    id: category
-    attributes:
-      label: Feature Category
-      description: What area does this feature relate to?
-      options:
-        - AI Provider / Model Support
-        - Tool / Command
-        - Plugin System
-        - Skill System
-        - UI / Terminal
-        - Performance
-        - Documentation
-        - Other
-    validations:
-      required: true
+  ```
+  Example:
+  The current provider selection flow does not let users filter models by capability, which makes it harder to choose the right model for a task.
+  ```
 
-  - type: textarea
-    id: use-case
-    attributes:
-      label: Use Case
-      description: Describe a concrete use case for this feature
-      placeholder: As a developer, I want to... so that I can...
-    validations:
-      required: true
+  validations:
+  required: true
 
-  - type: textarea
-    id: additional
-    attributes:
-      label: Additional Context
-      description: Add any other context, mockups, or examples about the feature request here
+* type: textarea
+  id: solution
+  attributes:
+  label: Proposed Solution
+  description: Describe the behavior, command, UI, configuration, or API you want.
+  placeholder: |
+  Describe the proposed feature.
 
-  - type: checkboxes
-    id: contribution
-    attributes:
-      label: Contribution
-      description: Would you be willing to contribute this feature?
-      options:
-        - label: I am willing to submit a pull request for this feature
-          required: false
+  ```
+  Example:
+  Add a provider model filter that supports capability tags such as vision, tools, reasoning, long-context, and low-latency.
+  ```
+
+  validations:
+  required: true
+
+* type: textarea
+  id: use-case
+  attributes:
+  label: Concrete Use Case
+  description: Explain how this feature would be used in practice.
+  placeholder: |
+  As a user, I want to...
+  So that I can...
+
+  ```
+  Include command examples, workflow examples, or expected output if useful.
+  ```
+
+  validations:
+  required: true
+
+* type: dropdown
+  id: category
+  attributes:
+  label: Feature Category
+  description: Which area does this feature affect?
+  options:
+  - AI Provider / Model Support
+  - Tool / Command
+  - Plugin System
+  - Skill System
+  - MCP Integration
+  - LSP Integration
+  - UI / Terminal
+  - Configuration
+  - Authentication
+  - Performance
+  - Security / Permissions
+  - Documentation
+  - Build / Packaging
+  - CI / Release
+  - Other
+  validations:
+  required: true
+
+* type: dropdown
+  id: priority
+  attributes:
+  label: Priority
+  description: How important is this feature to your workflow?
+  options:
+  - Low
+  - Medium
+  - High
+  - Critical
+  validations:
+  required: true
+
+* type: textarea
+  id: alternatives
+  attributes:
+  label: Alternatives Considered
+  description: Describe any alternative designs, workarounds, or existing tools you considered.
+  placeholder: |
+  Alternative 1:
+  Alternative 2:
+  Current workaround:
+
+* type: textarea
+  id: compatibility
+  attributes:
+  label: Compatibility Notes
+  description: Describe any compatibility concerns.
+  placeholder: |
+  Does this affect existing commands, config files, plugins, MCP servers, providers, or stored data?
+
+  ```
+  If yes, explain the expected migration path.
+  ```
+
+* type: checkboxes
+  id: breaking-change
+  attributes:
+  label: Breaking Change
+  description: Would this feature require breaking existing behavior?
+  options:
+  - label: This feature may require a breaking change.
+  required: false
+
+* type: textarea
+  id: implementation
+  attributes:
+  label: Possible Implementation
+  description: Optional. Describe files, modules, commands, or architecture changes that may be involved.
+  placeholder: |
+  Possible files/modules:
+  - src/commands/...
+  - src/services/...
+  - src/tools/...
+
+  ```
+  Notes:
+  ```
+
+* type: textarea
+  id: additional
+  attributes:
+  label: Additional Context
+  description: Add mockups, examples, logs, command output, links, or related context.
+  placeholder: |
+  Add any extra information here.
+
+* type: checkboxes
+  id: contribution
+  attributes:
+  label: Contribution
+  description: Are you willing to help implement this?
+  options:
+  - label: I am willing to submit a pull request for this feature.
+  required: false
+  - label: I am willing to test this feature before release.
+  required: false
+  - label: I am willing to help write documentation for this feature.
+  required: false

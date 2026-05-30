@@ -93,7 +93,6 @@ import { TaskCreateTool } from './tools/TaskCreateTool/TaskCreateTool.js';
 import { TaskGetTool } from './tools/TaskGetTool/TaskGetTool.js';
 import { TaskUpdateTool } from './tools/TaskUpdateTool/TaskUpdateTool.js';
 import { TaskListTool } from './tools/TaskListTool/TaskListTool.js';
-import { CodeIndexTool } from './tools/CodeIndexTool/CodeIndexTool.js';
 import { SessionSearchTool } from './tools/SessionSearchTool/SessionSearchTool.js';
 import { BrowserTool } from './tools/BrowserTool/BrowserTool.js';
 import uniqBy from 'lodash-es/uniqBy.js';
@@ -224,7 +223,6 @@ export function getAllBaseTools(): Tools {
     ReadMcpResourceTool,
     ...(isToolSearchEnabledOptimistic() ? [ToolSearchTool] : []),
     ...(getComputerUseTool() ? [getComputerUseTool()] : []),
-    ...(feature('CODE_INDEX') ? [CodeIndexTool] : []),
     SessionSearchTool,
   ];
 }

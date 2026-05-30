@@ -1,12 +1,12 @@
 {
   "name": "@jonusnattapong/claudecode",
-  "version": "2.1.178",
-  "description": "Official Claude Code CLI — AI-powered coding assistant",
+  "version": "0.0.1",
+  "description": "Unofficial Claude Code-compatible CLI rebuild for research, local development, and self-hosted use",
   "main": "./dist/main.js",
   "type": "module",
   "bin": {
-    "claudevil": "bin/claudevil.cjs",
-    "claudecode": "bin/claudevil.cjs"
+    "clew": "bin/clew.cjs",
+    "clewcode": "bin/clew.cjs"
   },
   "files": [
     "bin/",
@@ -37,8 +37,7 @@
     "ast-grep": "bun x ast-grep",
     "codegraph": "bun run scripts/codegraph.ts",
     "preload": "bun run scripts/preload.ts",
-    "session": "bun run scripts/session.ts",
-    "codeindex": "bun run scripts/codeindex.ts"
+    "session": "bun run scripts/session.ts"
   },
   "keywords": [
     "ai",
@@ -54,7 +53,7 @@
     "opencode"
   ],
   "author": "Dek1milliontoken",
-  "license": "SEE LICENSE IN LICENSE.md",
+  "license": "SEE LICENSE.md",
   "dependencies": {
     "@ai-sdk/anthropic": "^3.0.0",
     "@ai-sdk/google": "^3.0.0",

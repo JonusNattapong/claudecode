@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>MCP — Claudevil</title>
-  <meta name="description" content="Model Context Protocol (MCP) server management — connect external tools, resources, and services to Claudevil.">
+  <title>MCP — Clew</title>
+  <meta name="description" content="Model Context Protocol (MCP) server management — connect external tools, resources, and services to Clew.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -15,7 +15,7 @@
   <div class="header-inner">
     <a href="index.html" class="logo">
       
-      <span>Claudevil</span>
+      <span>Clew</span>
     </a>
     <nav class="header-nav">
       <a href="index.html">Home</a>
@@ -37,9 +37,9 @@
 
   <main class="content">
   <h1>Model Context Protocol (MCP)</h1>
-  <p class="section-subtitle">Connect Claudevil to external tools, data sources, and services via the Model Context Protocol — an open standard for AI-application integration.</p>
+  <p class="section-subtitle">Connect Clew to external tools, data sources, and services via the Model Context Protocol — an open standard for AI-application integration.</p>
 
-  <p>MCP support is implemented in <code>src/services/mcp/</code>. Servers are discovered at startup and their tools, resources, and prompts are merged into Claudevil's runtime.</p>
+  <p>MCP support is implemented in <code>src/services/mcp/</code>. Servers are discovered at startup and their tools, resources, and prompts are merged into Clew's runtime.</p>
 
   <h2>How It Works</h2>
   <pre><code>  MCP Server Config (JSON or inline)
@@ -68,16 +68,16 @@
   <h2>CLI Configuration</h2>
   <p>MCP servers are configured at startup via CLI flags:</p>
   <pre><code># Load servers from a JSON config file
-  claudevil --mcp-config ./mcp-servers.json
+  clew --mcp-config ./mcp-servers.json
 
   # Load multiple configs
-  claudevil --mcp-config ./servers.json ./extra.json
+  clew --mcp-config ./servers.json ./extra.json
 
   # Pass inline JSON
-  claudevil --mcp-config '{"servers":{...}}'
+  clew --mcp-config '{"servers":{...}}'
 
   # Strict mode (only use MCP servers, no built-ins)
-  claudevil --strict-mcp-config</code></pre>
+  clew --strict-mcp-config</code></pre>
 
   <h2>MCP Server Config Format</h2>
   <p>Each MCP server is defined with a command, arguments, and environment variables:</p>
@@ -97,7 +97,7 @@
   }</code></pre>
 
   <h2>Tool Discovery</h2>
-  <p>When an MCP server connects, Claudevil:</p>
+  <p>When an MCP server connects, Clew:</p>
   <ol>
     <li>Sends <code>tools/list</code> to discover available tools</li>
     <li>Merges discovered tools into the global tool pool via <code>assembleToolPool()</code></li>
@@ -108,7 +108,7 @@
   <p>MCP-provided tools inherit their schemas from the server and go through the same permission gating and hook system as built-in tools.</p>
 
   <h2>Resources</h2>
-  <p>MCP servers can also expose resources — structured data that Claudevil can read:</p>
+  <p>MCP servers can also expose resources — structured data that Clew can read:</p>
   <ul>
     <li><strong>ListMcpResources</strong> — List available resources from all connected servers</li>
     <li><strong>ReadMcpResource</strong> — Read a specific resource by URI</li>
@@ -127,7 +127,7 @@
   </table>
 
   <footer class="footer">
-    <span>Claudevil v2.1.180 — Open Source (MIT)</span>
+    <span>Clew v2.1.180 — Open Source (MIT)</span>
     <div class="footer-links">
       <a href="https://github.com/JonusNattapong/claudecode">GitHub</a>
       <a href="https://github.com/JonusNattapong/claudecode/issues">Issues</a>

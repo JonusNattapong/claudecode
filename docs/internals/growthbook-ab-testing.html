@@ -3,26 +3,26 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>GrowthBook A/B Testing — Claudevil</title>
-  <meta name="description" content="GrowthBook A/B testing system for feature flags, experiments, and gradual rollouts in Claudevil.">
+  <title>GrowthBook A/B Testing — Clew</title>
+  <meta name="description" content="GrowthBook A/B testing system for feature flags, experiments, and gradual rollouts in Clew.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../css/styles.css">
 </head>
 <body>
-<header class="header"><div class="header-inner"><a href="../index.html" class="logo"><span>Claudevil</span></a><nav class="header-nav"><a href="../index.html">Home</a><a href="../index.html#features">Features</a><a href="../index.html#commands">Commands</a><a href="../quick-start.html" class="active">Docs</a><a href="https://github.com/JonusNattapong/claudecode" target="_blank">GitHub</a></nav><button class="menu-btn" id="menuToggle" aria-label="Toggle navigation"><span></span><span></span><span></span></button></div></header>
+<header class="header"><div class="header-inner"><a href="../index.html" class="logo"><span>Clew</span></a><nav class="header-nav"><a href="../index.html">Home</a><a href="../index.html#features">Features</a><a href="../index.html#commands">Commands</a><a href="../quick-start.html" class="active">Docs</a><a href="https://github.com/JonusNattapong/claudecode" target="_blank">GitHub</a></nav><button class="menu-btn" id="menuToggle" aria-label="Toggle navigation"><span></span><span></span><span></span></button></div></header>
 <div class="app"><aside class="sidebar" id="sidebar"></aside><div class="sidebar-overlay" id="sidebarOverlay"></div><main class="content">
   <h1>GrowthBook A/B Testing</h1>
   <p class="section-subtitle">Feature flagging and experiment management using GrowthBook for gradual rollouts, A/B tests, and targeted feature releases.</p>
 
   <div class="callout callout-warn">
     <strong>Internal Infrastructure</strong>
-    GrowthBook integration is used for Claudevil's own product development telemetry and experiment tracking. It is not a user-facing feature — this documentation is for contributors and integrators.
+    GrowthBook integration is used for Clew's own product development telemetry and experiment tracking. It is not a user-facing feature — this documentation is for contributors and integrators.
   </div>
 
   <h2>Overview</h2>
-  <p>GrowthBook provides feature flagging and A/B testing within Claudevil. It enables controlled rollouts of new features, experiment tracking, and targeted feature releases based on user segments. The SDK is initialized at startup and evaluates flags locally with caching for minimal latency.</p>
+  <p>GrowthBook provides feature flagging and A/B testing within Clew. It enables controlled rollouts of new features, experiment tracking, and targeted feature releases based on user segments. The SDK is initialized at startup and evaluates flags locally with caching for minimal latency.</p>
 
   <h2>Architecture</h2>
   <ul>
@@ -59,7 +59,7 @@
 
   <h2>How It Works</h2>
   <ol>
-    <li>On startup, Claudevil initializes the GrowthBook SDK with the configured API host and client key</li>
+    <li>On startup, Clew initializes the GrowthBook SDK with the configured API host and client key</li>
     <li>Feature definitions are fetched from the GrowthBook server and cached locally</li>
     <li>Throughout the session, code checks feature flags using the cached evaluation function</li>
     <li>Flag values are re-evaluated periodically or on explicit refresh</li>
@@ -76,7 +76,7 @@
   </ul>
 
   <footer class="footer">
-    <span>Claudevil v2.1.180 — Open Source (MIT)</span>
+    <span>Clew v2.1.180 — Open Source (MIT)</span>
     <div class="footer-links">
       <a href="https://github.com/JonusNattapong/claudecode">GitHub</a>
       <a href="https://github.com/JonusNattapong/claudecode/issues">Issues</a>

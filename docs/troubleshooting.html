@@ -3,15 +3,15 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Troubleshooting — Claudevil</title>
-  <meta name="description" content="Common issues and solutions for Claudevil — provider keys, build errors, MCP, plugins, and runtime problems.">
+  <title>Troubleshooting — Clew</title>
+  <meta name="description" content="Common issues and solutions for Clew — provider keys, build errors, MCP, plugins, and runtime problems.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
-<header class="header"><div class="header-inner"><a href="index.html" class="logo"><span>Claudevil</span></a><nav class="header-nav"><a href="index.html">Home</a><a href="index.html#features">Features</a><a href="index.html#commands">Commands</a><a href="quick-start.html" class="active">Docs</a><a href="https://github.com/JonusNattapong/claudecode" target="_blank">GitHub</a></nav><button class="menu-btn" id="menuToggle" aria-label="Toggle navigation"><span></span><span></span><span></span></button></div></header>
+<header class="header"><div class="header-inner"><a href="index.html" class="logo"><span>Clew</span></a><nav class="header-nav"><a href="index.html">Home</a><a href="index.html#features">Features</a><a href="index.html#commands">Commands</a><a href="quick-start.html" class="active">Docs</a><a href="https://github.com/JonusNattapong/claudecode" target="_blank">GitHub</a></nav><button class="menu-btn" id="menuToggle" aria-label="Toggle navigation"><span></span><span></span><span></span></button></div></header>
 <div class="app"><aside class="sidebar" id="sidebar"></aside><div class="sidebar-overlay" id="sidebarOverlay"></div><main class="content">
   <h1>Troubleshooting</h1>
   <p class="section-subtitle">Start with <code>/doctor</code> — it checks runtime version, provider credentials, config integrity, plugin/MCP status, and Sentry telemetry.</p>
@@ -22,7 +22,7 @@
   <p><strong>Check:</strong> Provider API key and model selection.</p>
   <pre><code>/status                          # Shows active provider and model
 echo $ANTHROPIC_API_KEY          # Verify key is set
-claudevil --model sonnet          # Specify model at startup</code></pre>
+clew --model sonnet          # Specify model at startup</code></pre>
 
   <h3>Build fails</h3>
   <pre><code>node --version                   # Must be 22.12.0+
@@ -45,17 +45,17 @@ bun run build                    # Full build</code></pre>
   <pre><code>/permissions                     # View current mode and rules
 /permissions set auto            # Auto-approve low-risk actions
 # Or use CLI flags:
-claudevil --allowedTools "Bash(git *) Edit Read"</code></pre>
+clew --allowedTools "Bash(git *) Edit Read"</code></pre>
 
   <h3>MCP tools not showing or server won't start</h3>
   <pre><code>/mcp                             # List configured MCP servers
-claudevil --mcp-config ./mcp-config.json  # Load from file</code></pre>
+clew --mcp-config ./mcp-config.json  # Load from file</code></pre>
   <p>Verify the server's configuration JSON. Check <code>src/services/mcp/client.ts</code> for protocol version requirements.</p>
 
   <h3>Plugins not appearing after install</h3>
   <pre><code>/plugin                          # List installed plugins
 /reload-plugins                  # Refresh without restart
-claudevil --plugin-dir /path/to/plugins  # Load from custom dir</code></pre>
+clew --plugin-dir /path/to/plugins  # Load from custom dir</code></pre>
 
   <h3>Context window full</h3>
   <pre><code>/context                         # Show usage
@@ -72,16 +72,16 @@ Remove-Item bun.lock
 bun install</code></pre>
 
   <h2>Debug Mode</h2>
-  <pre><code>claudevil --debug                          # General debug
-claudevil --debug api,hooks                # Category-filtered
-claudevil --debug-file /tmp/debug.log      # Log to file
-DEBUG=provider:anthropic claudevil         # Provider-specific</code></pre>
+  <pre><code>clew --debug                          # General debug
+clew --debug api,hooks                # Category-filtered
+clew --debug-file /tmp/debug.log      # Log to file
+DEBUG=provider:anthropic clew         # Provider-specific</code></pre>
 
   <h2>Print Mode (Non-Interactive)</h2>
   <p>If the TUI doesn't work in your environment, use <code>--print</code> for pipe-friendly output:</p>
-  <pre><code>claudevil -p "explain this file" > output.txt
-claudevil -p --output-format json "list dependencies" | jq
-echo "refactor this" | claudevilvil -p</code></pre>
+  <pre><code>clew -p "explain this file" > output.txt
+clew -p --output-format json "list dependencies" | jq
+echo "refactor this" | clewvil -p</code></pre>
 
   <h2>Getting Help</h2>
   <ul>
@@ -91,7 +91,7 @@ echo "refactor this" | claudevilvil -p</code></pre>
   </ul>
 
   <footer class="footer">
-    <span>Claudevil v2.1.180 — Open Source (MIT)</span>
+    <span>Clew v2.1.180 — Open Source (MIT)</span>
     <div class="footer-links">
       <a href="https://github.com/JonusNattapong/claudecode">GitHub</a>
       <a href="https://github.com/JonusNattapong/claudecode/issues">Issues</a>
